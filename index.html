@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SenseLearn | Comprehensive Inclusive Learning Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Lexend', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            dark: '#111827',    /* Deepest Slate */
+                            slate: '#1F2937',   /* Secondary Dark */
+                            primary: '#059669', /* Emerald Green */
+                            primaryHover: '#047857',
+                            accent: '#D97706',  /* Warm Amber */
+                            light: '#F9FAFB',   /* Off White */
+                            surface: '#FFFFFF',
+                            border: '#E5E7EB'
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                        'card': '0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Accessibility Styles */
+        :root {
+            --base-size: 16px;
+        }
+
+        html {
+            font-size: var(--base-size);
+        }
+
+        /* High Contrast Mode Overrides */
+        body.high-contrast {
+            background-color: #000000 !important;
+            color: #FFFF00 !important;
+        }
+        
+        body.high-contrast * {
+            background-color: #000000 !important;
+            color: #FFFF00 !important;
+            border-color: #FFFF00 !important;
+            box-shadow: none !important;
+            background-image: none !important; /* Remove background patterns */
+        }
+
+        body.high-contrast .bg-brand-primary, 
+        body.high-contrast .bg-brand-accent,
+        body.high-contrast button,
+        body.high-contrast input,
+        body.high-contrast textarea {
+            border: 2px solid #FFFF00 !important;
+        }
+
+        /* Animation Classes */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease-out;
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Focus styles for keyboard navigation */
+        *:focus-visible {
+            outline: 3px solid #D97706;
+            outline-offset: 2px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888; 
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555; 
+        }
+        
+        /* Accordion transition */
+        .accordion-content {
+            transition: max-height 0.3s ease-out, padding 0.3s ease;
+        }
+    </style>
+</head>
+<body class="font-sans text-gray-700 antialiased bg-brand-light transition-colors duration-300 flex flex-col min-h-screen">
+
+    <!-- Accessibility Toolbar -->
+    <div class="bg-brand-dark text-white py-2 px-4 border-b border-gray-800 relative z-50" role="toolbar" aria-label="Accessibility Tools">
+        <div class="container mx-auto flex flex-wrap justify-between items-center text-xs md:text-sm">
+            <div class="flex items-center space-x-2 md:space-x-6">
+                <span class="font-semibold text-brand-accent uppercase tracking-wider hidden sm:block">Accessibility Tools</span>
+                <button onclick="toggleContrast()" class="hover:text-brand-accent focus:text-brand-accent flex items-center gap-1 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    High Contrast
+                </button>
+                <div class="flex items-center space-x-2 border-l border-gray-700 pl-4">
+                    <span>Text:</span>
+                    <button onclick="resizeText(-1)" class="px-2 py-0.5 bg-gray-700 rounded hover:bg-brand-accent transition" aria-label="Decrease font size">A-</button>
+                    <button onclick="resizeText(1)" class="px-2 py-0.5 bg-gray-700 rounded hover:bg-brand-accent transition" aria-label="Increase font size">A+</button>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="#main-content" class="skip-link hover:text-brand-accent transition">Skip to Content</a>
+                <a href="#" class="hover:text-brand-accent transition hidden sm:inline">Student Portal</a>
+                <a href="#" class="hover:text-brand-accent transition hidden sm:inline">Tutor Login</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation -->
+    <nav class="bg-brand-surface shadow-sm sticky top-0 z-40 transition-all duration-300" id="navbar">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <!-- Logo -->
+                <a href="#" class="flex items-center gap-2 group">
+                    <div class="bg-brand-primary text-white p-2 rounded-lg group-hover:bg-brand-dark transition duration-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    </div>
+                    <div>
+                        <span class="text-xl font-display font-bold text-gray-900 leading-none block">SenseLearn</span>
+                        <span class="text-xs text-gray-500 font-medium tracking-wide">LMS FOR ALL</span>
+                    </div>
+                </a>
+                
+                <!-- Desktop Links -->
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="#about" class="text-gray-600 hover:text-brand-primary font-medium text-sm transition">About Us</a>
+                    <a href="#features" class="text-gray-600 hover:text-brand-primary font-medium text-sm transition">Features</a>
+                    <a href="#process" class="text-gray-600 hover:text-brand-primary font-medium text-sm transition">How it Works</a>
+                    <a href="#testimonials" class="text-gray-600 hover:text-brand-primary font-medium text-sm transition">Stories</a>
+                    <a href="#contact" class="text-gray-600 hover:text-brand-primary font-medium text-sm transition">Contact</a>
+                </div>
+
+                <!-- CTA & Mobile Toggle -->
+                <div class="flex items-center gap-4">
+                    <a href="#join" class="hidden md:inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200 bg-brand-primary rounded-full hover:bg-brand-primaryHover shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary">
+                        Get Started
+                    </a>
+                    <button class="lg:hidden p-2 text-gray-600 hover:text-brand-primary focus:outline-none" onclick="toggleMenu()" aria-label="Toggle Menu">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobile-menu" class="hidden lg:hidden bg-white border-t border-gray-100 absolute w-full shadow-lg">
+            <div class="px-4 py-4 space-y-3">
+                <a href="#about" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brand-primary hover:bg-gray-50">About Us</a>
+                <a href="#features" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brand-primary hover:bg-gray-50">Features</a>
+                <a href="#process" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brand-primary hover:bg-gray-50">How It Works</a>
+                <a href="#contact" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-brand-primary hover:bg-gray-50">Contact</a>
+                <div class="pt-4 border-t border-gray-100">
+                    <a href="#" class="block w-full text-center px-4 py-3 bg-brand-primary text-white font-bold rounded-lg hover:bg-brand-primaryHover">Sign Up Now</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="main-content" class="flex-grow">
+
+        <!-- Hero Section -->
+        <section class="relative pt-16 pb-24 lg:pt-32 lg:pb-40 overflow-hidden bg-white">
+            <!-- Background Decoration -->
+            <div class="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-brand-primary opacity-5 blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 rounded-full bg-brand-accent opacity-5 blur-3xl"></div>
+
+            <div class="container mx-auto px-6 relative z-10">
+                <div class="flex flex-col lg:flex-row items-center gap-16">
+                    <!-- Text Content -->
+                    <div class="lg:w-1/2 space-y-8 reveal">                    
+                        <h1 class="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-gray-900 leading-[1.15]">
+                            Education that <br>
+                            <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent">Understands You.</span>
+                        </h1>
+                        
+                        <p class="text-lg text-gray-600 leading-relaxed max-w-xl">
+                            LMS designed specifically for the deaf, mute, and visually impaired community. We bridge the gap with haptic feedback, voice-to-text, and sign language integration.
+                        </p>
+                        
+                        <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                            <a href="#demo" class="px-8 py-4 bg-brand-dark text-white rounded-xl font-bold text-center hover:bg-gray-800 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center gap-3">
+                                Request Demo
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                            </a>
+                            <a href="#features" class="px-8 py-4 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-center hover:bg-gray-50 transition shadow-sm hover:shadow-md flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Watch Video
+                            </a>
+                        </div>
+                        
+                        <div class="pt-8 flex items-center gap-4 text-sm text-gray-500">
+                            <div class="flex -space-x-3">
+                                <div class="w-10 h-10 rounded-full border-2 border-white bg-gray-200 flex items-center justify-center font-bold text-xs">JD</div>
+                                <div class="w-10 h-10 rounded-full border-2 border-white bg-gray-300 flex items-center justify-center font-bold text-xs">AS</div>
+                                <div class="w-10 h-10 rounded-full border-2 border-white bg-brand-primary text-white flex items-center justify-center font-bold text-xs">+2k</div>
+                            </div>
+                            <p>Join <strong>2,000+</strong> students learning today.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Hero Visual -->
+                    <div class="lg:w-1/2 relative reveal">
+                        <!-- Abstract layered card design -->
+                        <div class="relative w-full max-w-lg mx-auto">
+                            <!-- Back Card -->
+                            <div class="absolute top-4 -right-4 w-full h-full bg-brand-accent/20 rounded-2xl transform rotate-3"></div>
+                            <!-- Main Card -->
+                            <div class="relative bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+                                <!-- Fake Browser Header -->
+                                <div class="bg-gray-50 border-b px-4 py-3 flex items-center gap-2">
+                                    <div class="w-3 h-3 rounded-full bg-red-400"></div>
+                                    <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+                                    <div class="w-3 h-3 rounded-full bg-green-400"></div>
+                                    <div class="ml-4 bg-white px-3 py-1 rounded text-xs text-gray-400 flex-1 text-center">senselearn.edu/classroom</div>
+                                </div>
+                                <!-- Content Mockup -->
+                                <div class="p-6 space-y-6">
+                                    <!-- Video Area -->
+                                    <div class="bg-gray-900 rounded-xl aspect-video relative flex items-center justify-center group cursor-pointer overflow-hidden">
+                                        <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80')] bg-cover bg-center opacity-50"></div>
+                                        <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition">
+                                            <div class="w-0 h-0 border-t-8 border-t-transparent border-l-[16px] border-l-white border-b-8 border-b-transparent ml-1"></div>
+                                        </div>
+                                        <!-- Caption Overlay -->
+                                        <div class="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur p-2 rounded text-white text-sm">
+                                            <span class="text-yellow-400 font-bold">[CC]</span> Instructor: "Today we are learning Something really interesting..."
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Controls -->
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs text-gray-500 font-bold">Voice Control</div>
+                                                <div class="text-sm font-semibold">Active</div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100 flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs text-gray-500 font-bold">Visual Mode</div>
+                                                <div class="text-sm font-semibold">High Contrast</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Detailed Features Section -->
+        <section id="features" class="py-24 bg-brand-light">
+            <div class="container mx-auto px-6">
+                <div class="text-center max-w-3xl mx-auto mb-16 reveal">
+                    <h2 class="text-brand-primary font-bold tracking-wide uppercase text-sm mb-3">Core Capabilities</h2>
+                    <h3 class="text-3xl md:text-4xl font-display font-bold text-gray-900 mb-4">Designed for Distinct Needs</h3>
+                    <p class="text-gray-600">We don't believe in "one size fits all." Our platform morphs to the user's specific disability profile.</p>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-8">
+                    <!-- Card 1 -->
+                    <div class="bg-white rounded-2xl p-8 shadow-card border border-gray-100 hover:border-brand-primary transition duration-300 group reveal">
+                        <div class="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center mb-6 text-brand-primary group-hover:bg-brand-primary group-hover:text-white transition">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"></path></svg>
+                        </div>
+                        <h4 class="text-xl font-bold text-gray-900 mb-3">Visual to Audio Translation</h4>
+                        <p class="text-gray-600 mb-4 text-sm leading-relaxed">
+                            For visually impaired users, all on-screen content is instantly converted to high-fidelity audio. Graphs are described via AI narrative.
+                        </p>
+                        <ul class="space-y-2 text-sm text-gray-500">
+                            <li class="flex items-center gap-2"><span class="text-brand-primary">✓</span> Screen Reader Friendly</li>
+                            <li class="flex items-center gap-2"><span class="text-brand-primary">✓</span> Braille Display Support</li>
+                        </ul>
+                    </div>
+
+                    <!-- Card 2 -->
+                    <div class="bg-white rounded-2xl p-8 shadow-card border border-gray-100 hover:border-brand-accent transition duration-300 group reveal">
+                        <div class="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center mb-6 text-brand-accent group-hover:bg-brand-accent group-hover:text-white transition">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        </div>
+                        <h4 class="text-xl font-bold text-gray-900 mb-3">Sign Language Integration</h4>
+                        <p class="text-gray-600 mb-4 text-sm leading-relaxed">
+                            Every video lecture comes with a dedicated sign language interpreter window (PIP) and synchronized closed captions with speaker ID.
+                        </p>
+                        <ul class="space-y-2 text-sm text-gray-500">
+                            <li class="flex items-center gap-2"><span class="text-brand-accent">✓</span> Real-time Captioning</li>
+                            <li class="flex items-center gap-2"><span class="text-brand-accent">✓</span> Visual Alert Systems</li>
+                        </ul>
+                    </div>
+
+                    <!-- Card 3 -->
+                    <div class="bg-white rounded-2xl p-8 shadow-card border border-gray-100 hover:border-purple-500 transition duration-300 group reveal">
+                        <div class="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center mb-6 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                        </div>
+                        <h4 class="text-xl font-bold text-gray-900 mb-3">AAC & Symbol Communication</h4>
+                        <p class="text-gray-600 mb-4 text-sm leading-relaxed">
+                            For users with speech impairments, we integrate Augmentative and Alternative Communication (AAC) boards directly into the chat.
+                        </p>
+                        <ul class="space-y-2 text-sm text-gray-500">
+                            <li class="flex items-center gap-2"><span class="text-purple-600">✓</span> Text-to-Speech Engine</li>
+                            <li class="flex items-center gap-2"><span class="text-purple-600">✓</span> Predictive Symbol Typing</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works (Timeline) -->
+        <section id="process" class="py-24 bg-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16 reveal">
+                    <h2 class="text-3xl md:text-4xl font-display font-bold text-gray-900">Your Journey with SenseLearn</h2>
+                </div>
+
+                <div class="relative">
+                    <!-- Line -->
+                    <div class="hidden md:block absolute left-1/2 top-0 bottom-0 w-0.5 bg-gray-200 transform -translate-x-1/2"></div>
+
+                    <!-- Step 1 -->
+                    <div class="relative flex flex-col md:flex-row items-center justify-between mb-16 reveal">
+                        <div class="md:w-5/12 text-center md:text-right pr-0 md:pr-12 mb-6 md:mb-0">
+                            <h3 class="text-xl font-bold text-brand-dark">1. Profile Assessment</h3>
+                            <p class="text-gray-600 mt-2">Create an account and complete our accessibility questionnaire. We configure the UI to match your specific needs (Color blind, text size, audio preference).</p>
+                        </div>
+                        <div class="z-10 bg-brand-primary w-12 h-12 rounded-full flex items-center justify-center text-white font-bold border-4 border-white shadow-lg">1</div>
+                        <div class="md:w-5/12 pl-0 md:pl-12">
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 text-sm text-gray-500 italic">
+                                "System detected: High Contrast Preference. Switching UI..."
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="relative flex flex-col md:flex-row items-center justify-between mb-16 reveal">
+                        <div class="order-2 md:order-1 md:w-5/12 text-center md:text-right pr-0 md:pr-12">
+                             <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 text-sm text-gray-500 italic">
+                                "Recommended: Basic Braille Literacy Course"
+                            </div>
+                        </div>
+                        <div class="order-1 md:order-2 z-10 bg-brand-accent w-12 h-12 rounded-full flex items-center justify-center text-white font-bold border-4 border-white shadow-lg mb-6 md:mb-0">2</div>
+                        <div class="order-3 md:order-3 md:w-5/12 pl-0 md:pl-12">
+                            <h3 class="text-xl font-bold text-brand-dark">2. Custom Curriculum</h3>
+                            <p class="text-gray-600 mt-2">Our AI suggests courses based on your goals and abilities. Tutors are assigned to monitor and assist in real-time.</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="relative flex flex-col md:flex-row items-center justify-between reveal">
+                        <div class="md:w-5/12 text-center md:text-right pr-0 md:pr-12 mb-6 md:mb-0">
+                            <h3 class="text-xl font-bold text-brand-dark">3. Learn & Certify</h3>
+                            <p class="text-gray-600 mt-2">Attend live classes, complete adaptive quizzes, and earn recognized certifications to boost your career prospects.</p>
+                        </div>
+                        <div class="z-10 bg-brand-dark w-12 h-12 rounded-full flex items-center justify-center text-white font-bold border-4 border-white shadow-lg">3</div>
+                        <div class="md:w-5/12 pl-0 md:pl-12">
+                             <div class="bg-green-50 p-4 rounded-lg border border-green-100 text-sm text-green-700 font-bold flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Certificate Earned!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials -->
+        <section id="testimonials" class="py-24 bg-brand-slate text-white">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-16 reveal">
+                    <h2 class="text-3xl md:text-4xl font-display font-bold">Voices of Change</h2>
+                    <p class="text-gray-400 mt-4">Hear from the community we serve.</p>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-8">
+                    <!-- Review 1 -->
+                    <div class="bg-gray-800 p-8 rounded-2xl relative reveal">
+                        <div class="text-brand-accent text-6xl absolute top-4 left-4 font-serif opacity-30">"</div>
+                        <p class="text-gray-300 relative z-10 mb-6 leading-relaxed">
+                            "My son is deaf, and traditional schools struggled to keep him engaged. SenseLearn's sign language integration made him fall in love with math for the first time."
+                        </p>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-gray-600 rounded-full overflow-hidden">
+                                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="Parent" class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <h4 class="font-bold">Maria G.</h4>
+                                <span class="text-sm text-gray-500">Parent</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Review 2 -->
+                    <div class="bg-gray-800 p-8 rounded-2xl relative reveal">
+                         <div class="text-brand-accent text-6xl absolute top-4 left-4 font-serif opacity-30">"</div>
+                        <p class="text-gray-300 relative z-10 mb-6 leading-relaxed">
+                            "The screen reader compatibility is flawless. Usually, LMS dashboards are a nightmare for the blind, but this one is built right from the ground up."
+                        </p>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-gray-600 rounded-full overflow-hidden">
+                                <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="Student" class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <h4 class="font-bold">David Chen</h4>
+                                <span class="text-sm text-gray-500">Computer Science Student</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Review 3 -->
+                    <div class="bg-gray-800 p-8 rounded-2xl relative reveal">
+                         <div class="text-brand-accent text-6xl absolute top-4 left-4 font-serif opacity-30">"</div>
+                        <p class="text-gray-300 relative z-10 mb-6 leading-relaxed">
+                            "As a tutor, the real-time monitoring tools let me see exactly when a student is stuck. I can intervene immediately with the right assistive tool."
+                        </p>
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-gray-600 rounded-full overflow-hidden">
+                                <img src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80" alt="Tutor" class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <h4 class="font-bold">Dr. Sarah L.</h4>
+                                <span class="text-sm text-gray-500">Special Ed. Coordinator</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="py-24 bg-white">
+            <div class="container mx-auto px-6 max-w-4xl">
+                <div class="text-center mb-16 reveal">
+                    <h2 class="text-3xl font-display font-bold text-gray-900">Frequently Asked Questions</h2>
+                </div>
+                
+                <div class="space-y-4 reveal">
+                    <!-- FAQ Item 1 -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button class="w-full px-6 py-4 text-left bg-gray-50 hover:bg-gray-100 flex justify-between items-center focus:outline-none" onclick="toggleAccordion(1)">
+                            <span class="font-bold text-gray-800">Do I need special hardware?</span>
+                            <span id="icon-1" class="transform transition-transform duration-300">▼</span>
+                        </button>
+                        <div id="content-1" class="hidden px-6 py-4 bg-white text-gray-600 border-t border-gray-200">
+                            No. While we support refreshable braille displays and specialized keyboards, SenseLearn is designed to work on standard laptops, tablets, and smartphones using standard accessibility features.
+                        </div>
+                    </div>
+
+                    <!-- FAQ Item 2 -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button class="w-full px-6 py-4 text-left bg-gray-50 hover:bg-gray-100 flex justify-between items-center focus:outline-none" onclick="toggleAccordion(2)">
+                            <span class="font-bold text-gray-800">Is financial aid available?</span>
+                            <span id="icon-2" class="transform transition-transform duration-300">▼</span>
+                        </button>
+                        <div id="content-2" class="hidden px-6 py-4 bg-white text-gray-600 border-t border-gray-200">
+                            Yes. We believe education is a right. We offer scholarships and sliding-scale pricing based on income and location. Contact our support team for details.
+                        </div>
+                    </div>
+
+                    <!-- FAQ Item 3 -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button class="w-full px-6 py-4 text-left bg-gray-50 hover:bg-gray-100 flex justify-between items-center focus:outline-none" onclick="toggleAccordion(3)">
+                            <span class="font-bold text-gray-800">How do tutors track progress?</span>
+                            <span id="icon-3" class="transform transition-transform duration-300">▼</span>
+                        </button>
+                        <div id="content-3" class="hidden px-6 py-4 bg-white text-gray-600 border-t border-gray-200">
+                            Tutors have a dedicated dashboard showing real-time engagement, quiz scores, and "stuck" indicators. They can send instant feedback via text, audio, or video message.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact" class="py-24 bg-brand-light">
+            <div class="container mx-auto px-6">
+                <div class="flex flex-col md:flex-row gap-16 bg-white rounded-3xl shadow-xl overflow-hidden reveal">
+                    
+                    <!-- Contact Info -->
+                    <div class="md:w-5/12 bg-brand-primary p-12 text-white flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-3xl font-display font-bold mb-6">Get in Touch</h3>
+                            <p class="text-green-100 mb-8">Have questions about accessibility features or institutional partnerships? We'd love to hear from you.</p>
+                            
+                            <div class="space-y-6">
+                                <div class="flex items-start gap-4">
+                                    <svg class="w-6 h-6 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                    <div>
+                                        <h5 class="font-bold">Headquarters</h5>
+                                        <p class="text-green-100 text-sm">123 Inclusive Way, Tech City, TC 90210</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-4">
+                                    <svg class="w-6 h-6 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                    <div>
+                                        <h5 class="font-bold">Email</h5>
+                                        <p class="text-green-100 text-sm">hello@senselearn.com</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-12">
+                            <h5 class="font-bold mb-4">Follow Us</h5>
+                            <div class="flex gap-4">
+                                <!-- Social Icons -->
+                                <a href="#" class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/40 transition">F</a>
+                                <a href="#" class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/40 transition">T</a>
+                                <a href="#" class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/40 transition">L</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form -->
+                    <div class="md:w-7/12 p-12">
+                        <form class="space-y-6">
+                            <div class="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">First Name</label>
+                                    <input type="text" class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none transition" placeholder="John">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Last Name</label>
+                                    <input type="text" class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none transition" placeholder="Doe">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
+                                <input type="email" class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none transition" placeholder="john@example.com">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">I am a...</label>
+                                <select class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none transition">
+                                    <option>Student / Parent</option>
+                                    <option>Tutor / Educator</option>
+                                    <option>School Administrator</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Message</label>
+                                <textarea rows="4" class="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none transition" placeholder="How can we help you?"></textarea>
+                            </div>
+
+                            <button class="w-full bg-brand-dark text-white font-bold py-4 rounded-lg hover:bg-gray-800 transition shadow-lg">Send Message</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Detailed Footer -->
+    <footer class="bg-brand-dark text-gray-400 pt-16 pb-8 border-t border-gray-800 text-sm">
+        <div class="container mx-auto px-6">
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-12">
+                <div class="col-span-2 lg:col-span-2">
+                    <a href="#" class="text-2xl font-display font-bold text-white mb-4 block">SenseLearn</a>
+                    <p class="mb-6 max-w-sm">
+                        Breaking down barriers in education through innovative technology. SenseLearn is a non-profit initiative dedicated to making learning accessible for everyone, regardless of physical ability.
+                    </p>
+                </div>
+                
+                <div>
+                    <h5 class="text-white font-bold mb-4 uppercase tracking-wider">Product</h5>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="hover:text-brand-primary transition">Features</a></li>
+                        <li><a href="#" class="hover:text-brand-primary transition">Pricing</a></li>
+                        <li><a href="#" class="hover:text-brand-primary transition">Integrations</a></li>
+                        <li><a href="#" class="hover:text-brand-primary transition">Enterprise</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h5 class="text-white font-bold mb-4 uppercase tracking-wider">Resources</h5>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="hover:text-brand-primary transition">Blog</a></li>
+                        <li><a href="#" class="hover:text-brand-primary transition">Accessibility Guide</a></li>
+                        <li><a href="#" class="hover:text-brand-primary transition">Community Forum</a></li>
+                        <li><a href="#" class="hover:text-brand-primary transition">Help Center</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h5 class="text-white font-bold mb-4 uppercase tracking-wider">Legal</h5>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="hover:text-brand-primary transition">Privacy Policy</a></li>
+                        <li><a href="#" class="hover:text-brand-primary transition">Terms of Service</a></li>
+                        <li><a href="#" class="hover:text-brand-primary transition">Cookie Policy</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p>&copy; 2026 SenseLearn LMS. All rights reserved.</p>
+                <div class="mt-4 md:mt-0 flex items-center space-x-6">
+                    <span class="flex items-center gap-2 text-gray-500">
+                        <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                        Systems Operational
+                    </span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // 1. Mobile Menu Toggle
+        function toggleMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        // 2. Accessibility: Font Resizer
+        function resizeText(multiplier) {
+            const html = document.documentElement;
+            const currentSize = parseFloat(window.getComputedStyle(html, null).getPropertyValue('font-size'));
+            let newSize = currentSize + multiplier;
+            if (newSize >= 12 && newSize <= 24) {
+                html.style.fontSize = newSize + 'px';
+            }
+        }
+
+        // 3. Accessibility: High Contrast Mode
+        function toggleContrast() {
+            document.body.classList.toggle('high-contrast');
+            const isHighContrast = document.body.classList.contains('high-contrast');
+            localStorage.setItem('highContrast', isHighContrast);
+        }
+
+        // 4. Accordion Functionality
+        function toggleAccordion(id) {
+            const content = document.getElementById(`content-${id}`);
+            const icon = document.getElementById(`icon-${id}`);
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // 5. Scroll Animations & Counters
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                    
+                    // Trigger counters if they exist in this section
+                    const counters = entry.target.querySelectorAll('.count-up');
+                    if(counters.length > 0) {
+                        counters.forEach(counter => {
+                            const target = +counter.getAttribute('data-target');
+                            const duration = 2000; // ms
+                            const increment = target / (duration / 16); // 60fps
+                            
+                            let current = 0;
+                            const updateCounter = () => {
+                                current += increment;
+                                if(current < target) {
+                                    counter.innerText = Math.ceil(current);
+                                    requestAnimationFrame(updateCounter);
+                                } else {
+                                    counter.innerText = target + "+";
+                                }
+                            };
+                            updateCounter();
+                        });
+                    }
+
+                    observer.unobserve(entry.target); 
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.reveal').forEach(el => {
+            observer.observe(el);
+        });
+
+        // 6. Check LocalStorage preference
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('highContrast') === 'true') {
+                document.body.classList.add('high-contrast');
+            }
+        });
+    </script>
+</body>
+</html>
