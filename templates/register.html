@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>SenseLearn | Register</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full bg-white shadow-xl rounded-2xl p-8 space-y-6">
+        <div>
+            <h1 class="text-2xl font-bold mb-1">Create your account</h1>
+            <p class="text-sm text-slate-500">Join SenseLearn to access inclusive learning experiences.</p>
+        </div>
+
+        <form id="register-form" class="space-y-3">
+            <input id="register-email" type="email" placeholder="Email"
+                   class="w-full border rounded-lg px-3 py-2" required />
+            <input id="register-password" type="password" placeholder="Password (min 8 chars)"
+                   class="w-full border rounded-lg px-3 py-2" required />
+            <button type="submit"
+                    class="w-full bg-slate-900 text-white rounded-lg py-2 font-semibold hover:bg-black">
+                Create account
+            </button>
+        </form>
+
+        <p id="register-msg" class="mt-1 text-sm"></p>
+
+        <p class="text-xs text-slate-500 text-center">
+            Already have an account?
+            <a href="/login" class="text-emerald-600 font-semibold hover:underline">Log in</a>
+        </p>
+    </div>
+
+    <script>
+        const API_BASE = '/api/auth';
+
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('register-msg');
+            msg.textContent = 'Loading...';
+            msg.className = 'mt-1 text-sm text-slate-600';
+
+            try {
+                const res = await fetch(API_BASE + '/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('register-email').value,
+                        password: document.getElementById('register-password').value,
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    let text = data.message || 'Registration failed';
+                    if (data.detail) {
+                        text += ' (' + data.detail + ')';
+                    }
+                    msg.textContent = text;
+                    msg.className = 'mt-1 text-sm text-red-600';
+                } else {
+                    msg.textContent = data.message || 'Registration successful';
+                    msg.className = 'mt-1 text-sm text-emerald-600';
+                }
+            } catch (err) {
+                msg.textContent = 'Network error';
+                msg.className = 'mt-1 text-sm text-red-600';
+            }
+        });
+    </script>
+</body>
+</html>
+
+

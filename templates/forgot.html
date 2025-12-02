@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>SenseLearn | Forgot Password</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full bg-white shadow-xl rounded-2xl p-8 space-y-6">
+        <div>
+            <h1 class="text-2xl font-bold mb-1">Reset password</h1>
+            <p class="text-sm text-slate-500">Request a reset code, then set a new password.</p>
+        </div>
+
+        <div class="space-y-3">
+            <h2 class="text-sm font-semibold">1. Get a reset code</h2>
+            <form id="forgot-form" class="space-y-2">
+                <input id="forgot-email" type="email" placeholder="Email"
+                       class="w-full border rounded-lg px-3 py-2" required />
+                <button type="submit"
+                        class="w-full bg-amber-500 text-white rounded-lg py-2 font-semibold hover:bg-amber-600">
+                    Send reset code
+                </button>
+            </form>
+            <p id="forgot-msg" class="mt-1 text-sm"></p>
+        </div>
+
+        <div class="space-y-3 border-t pt-4">
+            <h2 class="text-sm font-semibold">2. Set a new password</h2>
+            <form id="reset-form" class="space-y-2">
+                <input id="reset-email" type="email" placeholder="Email"
+                       class="w-full border rounded-lg px-3 py-2" required />
+                <input id="reset-code" type="text" placeholder="Reset code"
+                       class="w-full border rounded-lg px-3 py-2" required />
+                <input id="reset-password" type="password" placeholder="New password (min 8 chars)"
+                       class="w-full border rounded-lg px-3 py-2" required />
+                <button type="submit"
+                        class="w-full bg-indigo-600 text-white rounded-lg py-2 font-semibold hover:bg-indigo-700">
+                    Reset password
+                </button>
+            </form>
+            <p id="reset-msg" class="mt-1 text-sm"></p>
+        </div>
+
+        <p class="text-xs text-slate-500 text-center">
+            Remembered your password?
+            <a href="/login" class="text-emerald-600 font-semibold hover:underline">Go to login</a>
+        </p>
+    </div>
+
+    <script>
+        const API_BASE = '/api/auth';
+
+        document.getElementById('forgot-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('forgot-msg');
+            msg.textContent = 'Loading...';
+            msg.className = 'mt-1 text-sm text-slate-600';
+
+            try {
+                const res = await fetch(API_BASE + '/forgot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('forgot-email').value,
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    msg.textContent = data.message || 'Request failed';
+                    msg.className = 'mt-1 text-sm text-red-600';
+                } else {
+                    msg.textContent = (data.message || 'Code sent') + (data.code ? ' (demo code: ' + data.code + ')' : '');
+                    msg.className = 'mt-1 text-sm text-emerald-600';
+                }
+            } catch (err) {
+                msg.textContent = 'Network error';
+                msg.className = 'mt-1 text-sm text-red-600';
+            }
+        });
+
+        document.getElementById('reset-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('reset-msg');
+            msg.textContent = 'Loading...';
+            msg.className = 'mt-1 text-sm text-slate-600';
+
+            try {
+                const res = await fetch(API_BASE + '/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('reset-email').value,
+                        code: document.getElementById('reset-code').value,
+                        new_password: document.getElementById('reset-password').value,
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    msg.textContent = data.message || 'Reset failed';
+                    msg.className = 'mt-1 text-sm text-red-600';
+                } else {
+                    msg.textContent = data.message || 'Password reset successful';
+                    msg.className = 'mt-1 text-sm text-emerald-600';
+                }
+            } catch (err) {
+                msg.textContent = 'Network error';
+                msg.className = 'mt-1 text-sm text-red-600';
+            }
+        });
+    </script>
+</body>
+</html>
+
+
