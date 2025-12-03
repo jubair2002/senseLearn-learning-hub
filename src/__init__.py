@@ -1,9 +1,11 @@
 from flask import Flask, render_template, send_file
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
+from flask_migrate import Migrate
 import os
 
 db = SQLAlchemy()
+migrate = Migrate()
 
 
 def create_app() -> Flask:
@@ -43,15 +45,15 @@ def create_app() -> Flask:
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     db.init_app(app)
+    migrate.init_app(app, db)
 
     # Serve the main landing page and auth pages from HTML templates
     @app.route("/")
     def index():
-        # index.html still lives at project root, served as a static file
         return send_file(os.path.join(project_root, "index.html"))
 
     @app.route("/login")
-    @app.route("/auth")  # backward compatible
+    @app.route("/auth")
     def login_page():
         return render_template("login.html")
 
@@ -75,5 +77,3 @@ def create_app() -> Flask:
         db.create_all()
 
     return app
-
-

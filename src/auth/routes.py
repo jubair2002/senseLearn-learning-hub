@@ -33,9 +33,20 @@ def register():
         data = request.get_json() or {}
         email = (data.get("email") or "").strip().lower()
         password = data.get("password") or ""
+        
+        # New required fields
+        full_name = (data.get("full_name") or "").strip()
+        disability_type = (data.get("disability_type") or "").strip()
+        
+        # New optional fields
+        username = (data.get("username") or "").strip() or None
+        phone_number = (data.get("phone_number") or "").strip() or None
 
-        if not email or not password:
-            return jsonify({"message": "Email and password are required"}), 400
+        # Validation for required fields
+        if not email or not password or not full_name or not disability_type:
+            return jsonify(
+                {"message": "Email, password, full_name, and disability_type are required"}
+            ), 400
 
         if not is_valid_email(email):
             return jsonify({"message": "Please provide a valid email address"}), 400
@@ -46,8 +57,24 @@ def register():
 
         if User.query.filter_by(email=email).first():
             return jsonify({"message": "User with this email already exists"}), 409
+        
+        if username and User.query.filter_by(username=username).first():
+            return jsonify({"message": "User with this username already exists"}), 409
+        
+        # Simple check for disability type based on user request options
+        valid_disabilities = ["Deaf", "Mute", "Blind", "Other"]
+        if disability_type not in valid_disabilities:
+            return jsonify({"message": "Invalid disability type selected"}), 400
 
-        user = User(email=email, password_hash=hash_password(password))
+        # Create user with all new fields
+        user = User(
+            email=email, 
+            password_hash=hash_password(password),
+            full_name=full_name,
+            username=username,
+            phone_number=phone_number,
+            disability_type=disability_type
+        )
 
         db.session.add(user)
         db.session.commit()
@@ -178,4 +205,3 @@ def reset_password():
     db.session.commit()
 
     return jsonify({"message": "Password has been reset successfully"}), 200
-
