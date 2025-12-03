@@ -11,6 +11,13 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # --- New Fields for Registration ---
+    full_name = db.Column(db.String(255), nullable=False) # New: Required
+    username = db.Column(db.String(50), unique=True, nullable=True) # New: Optional, unique
+    phone_number = db.Column(db.String(20), nullable=True) # New: Optional
+    disability_type = db.Column(db.String(50), nullable=False) # New: Required (Dropdown)
+    # -----------------------------------
+
     def __repr__(self) -> str:  # pragma: no cover
         return f"<User {self.email}>"
 
@@ -30,4 +37,3 @@ class PasswordResetCode(db.Model):
     def create_for_user(cls, user: User, code: str, minutes_valid: int = 15) -> "PasswordResetCode":
         expires = datetime.utcnow() + timedelta(minutes=minutes_valid)
         return cls(user=user, code=code, expires_at=expires)
-

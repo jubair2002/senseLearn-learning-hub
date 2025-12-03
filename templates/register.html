@@ -13,10 +13,29 @@
         </div>
 
         <form id="register-form" class="space-y-3">
-            <input id="register-email" type="email" placeholder="Email"
+            <input id="register-full-name" type="text" placeholder="Full Name (Required)"
                    class="w-full border rounded-lg px-3 py-2" required />
-            <input id="register-password" type="password" placeholder="Password (min 8 chars)"
+
+            <input id="register-email" type="email" placeholder="Email (Required)"
                    class="w-full border rounded-lg px-3 py-2" required />
+            
+            <input id="register-username" type="text" placeholder="Username (Optional)"
+                   class="w-full border rounded-lg px-3 py-2" />
+
+            <input id="register-phone-number" type="tel" placeholder="Phone Number (Optional)"
+                   class="w-full border rounded-lg px-3 py-2" />
+            
+            <select id="register-disability-type" class="w-full border rounded-lg px-3 py-2" required>
+                <option value="" disabled selected>Select Disability Type (Required)</option>
+                <option value="Deaf">Deaf</option>
+                <option value="Mute">Mute</option>
+                <option value="Blind">Blind</option>
+                <option value="Other">Other</option>
+            </select>
+            
+            <input id="register-password" type="password" placeholder="Password (min 8 chars, Required)"
+                   class="w-full border rounded-lg px-3 py-2" required />
+            
             <button type="submit"
                     class="w-full bg-slate-900 text-white rounded-lg py-2 font-semibold hover:bg-black">
                 Create account
@@ -45,8 +64,15 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        // Existing fields
                         email: document.getElementById('register-email').value,
                         password: document.getElementById('register-password').value,
+                        
+                        // New fields
+                        full_name: document.getElementById('register-full-name').value,
+                        username: document.getElementById('register-username').value,
+                        phone_number: document.getElementById('register-phone-number').value,
+                        disability_type: document.getElementById('register-disability-type').value,
                     }),
                 });
                 const data = await res.json();
@@ -69,5 +95,3 @@
     </script>
 </body>
 </html>
-
-

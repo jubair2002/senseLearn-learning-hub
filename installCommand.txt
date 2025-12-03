@@ -1,0 +1,13 @@
+1st run 
+pip install -r requirements.txt
+
+create db in local with given name in .env
+run flask db migrate
+
+
+
+if some changes in db class in code then run 
+
+flask db init (run once)
+flask db migrate -m "Added new fields to User model" <commit messages>
+flask db upgrade
