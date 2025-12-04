@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Profile - SenseLearn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="text-xl font-bold text-green-600">SenseLearn</a>
+                    <div class="ml-10 flex space-x-4">
+                        <a href="/student/dashboard" class="text-gray-500 hover:text-gray-700">Dashboard</a>
+                        <a href="/student/profile" class="text-gray-700 hover:text-gray-900 font-medium">Profile</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-700">{{ user.full_name }}</span>
+                    <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-3xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Student Profile</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="mb-4 p-3 rounded {% if category == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 mb-2">Full Name *</label>
+                    <input type="text" name="full_name" value="{{ user.full_name }}" 
+                           class="w-full border rounded-lg px-3 py-2" required>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 mb-2">Email</label>
+                    <input type="email" value="{{ user.email }}" 
+                           class="w-full border rounded-lg px-3 py-2 bg-gray-100" disabled>
+                    <p class="text-sm text-gray-500 mt-1">Email cannot be changed</p>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 mb-2">Phone Number</label>
+                    <input type="tel" name="phone_number" value="{{ user.phone_number or '' }}" 
+                           class="w-full border rounded-lg px-3 py-2">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 mb-2">Disability Type *</label>
+                    <select name="disability_type" class="w-full border rounded-lg px-3 py-2" required>
+                        <option value="Deaf" {% if user.disability_type == 'Deaf' %}selected{% endif %}>Deaf</option>
+                        <option value="Mute" {% if user.disability_type == 'Mute' %}selected{% endif %}>Mute</option>
+                        <option value="Blind" {% if user.disability_type == 'Blind' %}selected{% endif %}>Blind</option>
+                        <option value="Other" {% if user.disability_type == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                
+                <div class="pt-4">
+                    <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                        Update Profile
+                    </button>
+                    <a href="/student/dashboard" class="ml-4 text-gray-600 hover:text-gray-900">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+        
+        <div class="bg-gray-100 rounded-lg p-4">
+            <h3 class="font-semibold text-gray-700 mb-2">Account Information</h3>
+            <p class="text-sm text-gray-600">Account created: {{ user.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+            <p class="text-sm text-gray-600">User ID: {{ user.id }}</p>
+        </div>
+    </div>
+</body>
+</html>

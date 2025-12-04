@@ -1,8 +1,8 @@
 from datetime import datetime
 
 from flask import current_app, jsonify, request
+from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy.exc import SQLAlchemyError
-from decimal import Decimal
 
 from src import db
 from src.auth import auth_bp
@@ -77,8 +77,6 @@ def register():
             valid_disabilities = ["Deaf", "Mute", "Blind", "Other"]
             if disability_type not in valid_disabilities:
                 return jsonify({"message": "Invalid disability type selected"}), 400
-            
-            student_needs = (data.get("student_needs") or "").strip() or None
 
         # Tutor-specific validation
         if user_type == "tutor":
@@ -111,19 +109,21 @@ def register():
         # Set student-specific fields
         if user_type == "student":
             user.disability_type = disability_type
-            # Note: Add student_needs to model if you want to store it
         
         # Set tutor-specific fields
         if user_type == "tutor":
             user.qualifications = qualifications
             user.experience_years = int(experience_years)
             user.subjects = subjects
-            user.hourly_rate = Decimal(str(hourly_rate))
+            user.hourly_rate = hourly_rate
             user.bio = bio
             user.is_verified = False  # Tutors need verification
 
         db.session.add(user)
         db.session.commit()
+        
+        # Login the user after registration
+        login_user(user, remember=True)
         
         # Prepare success message based on user type
         success_message = {
@@ -155,7 +155,17 @@ def register():
             500,
         )
 
-    return jsonify({"message": success_message, "user_type": user_type}), 201
+    return jsonify({
+        "message": success_message, 
+        "user_type": user_type,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "user_type": user.user_type,
+            "is_verified": user.is_verified if hasattr(user, 'is_verified') else True
+        }
+    }), 201
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -174,16 +184,28 @@ def login():
     if not user or not verify_password(password, user.password_hash):
         return jsonify({"message": "Invalid email or password"}), 401
 
-    # Return user type in response for frontend routing
+    # Login the user
+    login_user(user, remember=True)
+    
+    # Return success with user info
     return jsonify({
-        "message": "Login successful", 
+        "message": "Login successful",
         "user": {
+            "id": user.id,
             "email": user.email,
-            "user_type": user.user_type,
             "full_name": user.full_name,
-            "is_verified": user.is_verified if user.is_tutor() else True
+            "user_type": user.user_type,
+            "is_verified": user.is_verified if hasattr(user, 'is_verified') else True
         }
     }), 200
+
+
+@auth_bp.route("/logout")
+@login_required
+def logout_route():
+    """Logout route."""
+    logout_user()
+    return jsonify({"message": "Logged out successfully"}), 200
 
 
 @auth_bp.route("/forgot", methods=["POST"])
