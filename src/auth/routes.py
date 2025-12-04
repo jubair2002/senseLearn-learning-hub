@@ -2,6 +2,7 @@ from datetime import datetime
 
 from flask import current_app, jsonify, request
 from sqlalchemy.exc import SQLAlchemyError
+from decimal import Decimal
 
 from src import db
 from src.auth import auth_bp
@@ -34,50 +35,102 @@ def register():
         email = (data.get("email") or "").strip().lower()
         password = data.get("password") or ""
         
-        # New required fields
+        # Common fields
         full_name = (data.get("full_name") or "").strip()
-        disability_type = (data.get("disability_type") or "").strip()
+        user_type = (data.get("user_type") or "student").strip().lower()
         
-        # New optional fields
+        # Optional common fields
         username = (data.get("username") or "").strip() or None
         phone_number = (data.get("phone_number") or "").strip() or None
 
-        # Validation for required fields
-        if not email or not password or not full_name or not disability_type:
+        # Validate required fields
+        if not email or not password or not full_name:
             return jsonify(
-                {"message": "Email, password, full_name, and disability_type are required"}
+                {"message": "Email, password, and full_name are required"}
             ), 400
 
         if not is_valid_email(email):
             return jsonify({"message": "Please provide a valid email address"}), 400
 
+        # Validate user type
+        if user_type not in ["student", "tutor"]:
+            return jsonify({"message": "Invalid user type. Must be 'student' or 'tutor'"}), 400
+
         ok, error = validate_password(password)
         if not ok:
             return jsonify({"message": error}), 400
 
+        # Check for existing email
         if User.query.filter_by(email=email).first():
             return jsonify({"message": "User with this email already exists"}), 409
         
+        # Check for existing username if provided
         if username and User.query.filter_by(username=username).first():
             return jsonify({"message": "User with this username already exists"}), 409
-        
-        # Simple check for disability type based on user request options
-        valid_disabilities = ["Deaf", "Mute", "Blind", "Other"]
-        if disability_type not in valid_disabilities:
-            return jsonify({"message": "Invalid disability type selected"}), 400
 
-        # Create user with all new fields
+        # Student-specific validation
+        if user_type == "student":
+            disability_type = (data.get("disability_type") or "").strip()
+            if not disability_type:
+                return jsonify({"message": "Disability type is required for students"}), 400
+            
+            valid_disabilities = ["Deaf", "Mute", "Blind", "Other"]
+            if disability_type not in valid_disabilities:
+                return jsonify({"message": "Invalid disability type selected"}), 400
+            
+            student_needs = (data.get("student_needs") or "").strip() or None
+
+        # Tutor-specific validation
+        if user_type == "tutor":
+            qualifications = (data.get("qualifications") or "").strip()
+            experience_years = data.get("experience_years")
+            subjects = (data.get("subjects") or "").strip()
+            hourly_rate = data.get("hourly_rate")
+            bio = (data.get("bio") or "").strip()
+            
+            # Validate required tutor fields
+            if not qualifications or not subjects or not bio:
+                return jsonify({"message": "Qualifications, subjects, and bio are required for tutors"}), 400
+            
+            if experience_years is None or experience_years < 0:
+                return jsonify({"message": "Valid years of experience required for tutors"}), 400
+            
+            if hourly_rate is None or float(hourly_rate) <= 0:
+                return jsonify({"message": "Valid hourly rate required for tutors"}), 400
+
+        # Create user with appropriate fields
         user = User(
             email=email, 
             password_hash=hash_password(password),
             full_name=full_name,
             username=username,
             phone_number=phone_number,
-            disability_type=disability_type
+            user_type=user_type,
         )
+
+        # Set student-specific fields
+        if user_type == "student":
+            user.disability_type = disability_type
+            # Note: Add student_needs to model if you want to store it
+        
+        # Set tutor-specific fields
+        if user_type == "tutor":
+            user.qualifications = qualifications
+            user.experience_years = int(experience_years)
+            user.subjects = subjects
+            user.hourly_rate = Decimal(str(hourly_rate))
+            user.bio = bio
+            user.is_verified = False  # Tutors need verification
 
         db.session.add(user)
         db.session.commit()
+        
+        # Prepare success message based on user type
+        success_message = {
+            "student": "Student account created successfully!",
+            "tutor": "Tutor account created successfully! Your account will be verified soon."
+        }.get(user_type, "Account created successfully!")
+        
     except SQLAlchemyError as exc:  # DB or connection error
         db.session.rollback()
         current_app.logger.exception("Error while registering user")
@@ -102,7 +155,7 @@ def register():
             500,
         )
 
-    return jsonify({"message": "User registered successfully"}), 201
+    return jsonify({"message": success_message, "user_type": user_type}), 201
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -121,7 +174,16 @@ def login():
     if not user or not verify_password(password, user.password_hash):
         return jsonify({"message": "Invalid email or password"}), 401
 
-    return jsonify({"message": "Login successful", "user": {"email": user.email}}), 200
+    # Return user type in response for frontend routing
+    return jsonify({
+        "message": "Login successful", 
+        "user": {
+            "email": user.email,
+            "user_type": user.user_type,
+            "full_name": user.full_name,
+            "is_verified": user.is_verified if user.is_tutor() else True
+        }
+    }), 200
 
 
 @auth_bp.route("/forgot", methods=["POST"])
