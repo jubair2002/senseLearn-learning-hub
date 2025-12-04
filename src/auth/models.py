@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
+from flask_login import UserMixin
 
 from src import db
 
 
-class User(db.Model):
+class User(db.Model, UserMixin):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -29,7 +30,6 @@ class User(db.Model):
     hourly_rate = db.Column(db.Numeric(10, 2), nullable=True)  # Hourly rate
     bio = db.Column(db.Text, nullable=True)  # Short bio/description
     is_verified = db.Column(db.Boolean, default=False)  # Tutor verification status
-    # -----------------------------------
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<User {self.email} ({self.user_type})>"

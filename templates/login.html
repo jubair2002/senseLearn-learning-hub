@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <title>SenseLearn | Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -22,52 +22,56 @@
                 Login
             </button>
         </form>
-
+        
         <p id="login-msg" class="mt-1 text-sm"></p>
-
-        <div class="text-xs text-slate-500 flex justify-between items-center">
-            <a href="/forgot" class="text-emerald-600 font-semibold hover:underline">Forgot password?</a>
-            <span>
-                New here?
-                <a href="/register" class="text-emerald-600 font-semibold hover:underline">Create account</a>
-            </span>
-        </div>
+        
+        <p class="text-xs text-slate-500 text-center">
+            New here?
+            <a href="/register" class="text-emerald-600 font-semibold hover:underline">
+                Create an account
+            </a>
+        </p>
     </div>
 
     <script>
-        const API_BASE = '/api/auth';
-
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const msg = document.getElementById('login-msg');
-            msg.textContent = 'Loading...';
-            msg.className = 'mt-1 text-sm text-slate-600';
+            msg.textContent = 'Logging in...';
+            msg.className = 'mt-2 text-sm text-slate-600';
 
             try {
-                const res = await fetch(API_BASE + '/login', {
+                const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         email: document.getElementById('login-email').value,
-                        password: document.getElementById('login-password').value,
-                    }),
+                        password: document.getElementById('login-password').value
+                    })
                 });
-                const data = await res.json();
-                if (!res.ok) {
+
+                const data = await response.json();
+                
+                if (!response.ok) {
                     msg.textContent = data.message || 'Login failed';
-                    msg.className = 'mt-1 text-sm text-red-600';
+                    msg.className = 'mt-2 text-sm text-red-600';
                 } else {
-                    msg.textContent = data.message || 'Login successful';
-                    msg.className = 'mt-1 text-sm text-emerald-600';
-                    // TODO: redirect to dashboard when implemented
+                    msg.textContent = 'Login successful! Redirecting...';
+                    msg.className = 'mt-2 text-sm text-green-600';
+                    
+                    // Store user info if needed
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    // Redirect to dashboard based on user type
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
                 }
-            } catch (err) {
+            } catch (error) {
                 msg.textContent = 'Network error';
-                msg.className = 'mt-1 text-sm text-red-600';
+                msg.className = 'mt-2 text-sm text-red-600';
             }
         });
     </script>
 </body>
 </html>
-
-

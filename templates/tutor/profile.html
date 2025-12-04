@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutor Profile - SenseLearn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="text-xl font-bold text-blue-600">SenseLearn</a>
+                    <div class="ml-10 flex space-x-4">
+                        <a href="/tutor/dashboard" class="text-gray-500 hover:text-gray-700">Dashboard</a>
+                        <a href="/tutor/profile" class="text-gray-700 hover:text-gray-900 font-medium">Profile</a>
+                        <a href="/tutor/verification" class="text-gray-500 hover:text-gray-700">Verification</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-700">{{ user.full_name }}</span>
+                    <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Tutor Profile</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="mb-4 p-3 rounded {% if category == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Full Name *</label>
+                        <input type="text" name="full_name" value="{{ user.full_name }}" 
+                               class="w-full border rounded-lg px-3 py-2" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2">Phone Number</label>
+                        <input type="tel" name="phone_number" value="{{ user.phone_number or '' }}" 
+                               class="w-full border rounded-lg px-3 py-2">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 mb-2">Email</label>
+                    <input type="email" value="{{ user.email }}" 
+                           class="w-full border rounded-lg px-3 py-2 bg-gray-100" disabled>
+                    <p class="text-sm text-gray-500 mt-1">Email cannot be changed</p>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 mb-2">Qualifications *</label>
+                    <textarea name="qualifications" rows="3" 
+                              class="w-full border rounded-lg px-3 py-2" required>{{ user.qualifications }}</textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Years of Experience *</label>
+                        <input type="number" name="experience_years" value="{{ user.experience_years }}" 
+                               class="w-full border rounded-lg px-3 py-2" min="0" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2">Hourly Rate ($) *</label>
+                        <input type="number" name="hourly_rate" value="{{ user.hourly_rate }}" 
+                               class="w-full border rounded-lg px-3 py-2" min="0" step="0.01" required>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 mb-2">Subjects (comma separated) *</label>
+                    <input type="text" name="subjects" value="{{ user.subjects }}" 
+                           class="w-full border rounded-lg px-3 py-2" 
+                           placeholder="e.g., Mathematics, Physics, Computer Science" required>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 mb-2">Bio *</label>
+                    <textarea name="bio" rows="4" 
+                              class="w-full border rounded-lg px-3 py-2" required>{{ user.bio }}</textarea>
+                </div>
+                
+                <div class="pt-4">
+                    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                        Update Profile
+                    </button>
+                    <a href="/tutor/dashboard" class="ml-4 text-gray-600 hover:text-gray-900">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+        
+        <div class="bg-gray-100 rounded-lg p-4">
+            <h3 class="font-semibold text-gray-700 mb-2">Account Information</h3>
+            <p class="text-sm text-gray-600">Account created: {{ user.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+            <p class="text-sm text-gray-600">User ID: {{ user.id }}</p>
+            <p class="text-sm text-gray-600">Account type: <span class="font-medium">Tutor</span></p>
+            <p class="text-sm text-gray-600">Verification status: 
+                <span class="font-medium {% if user.is_verified %}text-green-600{% else %}text-yellow-600{% endif %}">
+                    {% if user.is_verified %}Verified{% else %}Not Verified{% endif %}
+                </span>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

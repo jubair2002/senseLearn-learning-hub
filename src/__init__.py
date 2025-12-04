@@ -1,12 +1,13 @@
-from flask import Flask, render_template, send_file
+from flask import Flask, render_template, send_file, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, current_user
 from dotenv import load_dotenv
 from flask_migrate import Migrate
 import os
 
 db = SQLAlchemy()
 migrate = Migrate()
-
+login_manager = LoginManager()
 
 def create_app() -> Flask:
     """
@@ -44,36 +45,77 @@ def create_app() -> Flask:
     ] = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+    # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)
+    login_manager.init_app(app)
+    login_manager.login_view = 'login_page'  # This is the function name in __init__.py
 
-    # Serve the main landing page and auth pages from HTML templates
+    # User loader function for Flask-Login
+    @login_manager.user_loader
+    def load_user(user_id):
+        from src.auth.models import User
+        return User.query.get(int(user_id))
+
+    # Main routes
     @app.route("/")
     def index():
+        if current_user.is_authenticated:
+            if hasattr(current_user, 'user_type'):
+                if current_user.user_type == 'student':
+                    return redirect('/student/dashboard')
+                else:
+                    return redirect('/tutor/dashboard')
         return send_file(os.path.join(project_root, "index.html"))
 
     @app.route("/login")
     @app.route("/auth")
     def login_page():
+        if current_user.is_authenticated:
+            return redirect(url_for('index'))
         return render_template("login.html")
 
     @app.route("/register")
     def register_page():
+        if current_user.is_authenticated:
+            return redirect(url_for('index'))
         return render_template("register.html")
 
     @app.route("/forgot")
     def forgot_page():
         return render_template("forgot.html")
 
-    # Register blueprints
-    from src.auth import auth_bp  # type: ignore
+    @app.route("/logout")
+    def logout():
+        from flask_login import logout_user
+        from flask import flash
+        logout_user()
+        flash('You have been logged out.', 'info')
+        return redirect(url_for('index'))
 
+    # Register blueprints
+    from src.auth import auth_bp
     app.register_blueprint(auth_bp)
+
+    # Register student blueprint
+    try:
+        from src.student import student_bp
+        app.register_blueprint(student_bp)
+    except ImportError:
+        # Student module not created yet, will be created in next steps
+        pass
+
+    # Register tutor blueprint
+    try:
+        from src.tutor import tutor_bp
+        app.register_blueprint(tutor_bp)
+    except ImportError:
+        # Tutor module not created yet, will be created in next steps
+        pass
 
     # Create tables if they do not exist
     with app.app_context():
-        from src.auth.models import User, PasswordResetCode  # noqa: F401
-
+        from src.auth.models import User, PasswordResetCode
         db.create_all()
 
     return app

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutor Dashboard - SenseLearn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="text-xl font-bold text-blue-600">SenseLearn</a>
+                    <div class="ml-10 flex space-x-4">
+                        <a href="/tutor/dashboard" class="text-gray-700 hover:text-gray-900 font-medium">Dashboard</a>
+                        <a href="/tutor/profile" class="text-gray-500 hover:text-gray-700">Profile</a>
+                        <a href="/tutor/verification" class="text-gray-500 hover:text-gray-700">Verification</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-700">Welcome, {{ user.full_name }}</span>
+                    <a href="/logout" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Dashboard Content -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Tutor Dashboard</h1>
+        <p class="text-gray-600 mb-6">Manage your teaching schedule and connect with students</p>
+        
+        <!-- Verification Alert -->
+        {% if not user.is_verified %}
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-yellow-700">
+                        Your tutor account is not verified yet. 
+                        <a href="/tutor/verification" class="font-medium underline">Complete verification →</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="p-3 bg-blue-100 rounded-lg mr-4">
+                        <i class="fas fa-users text-blue-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Total Students</p>
+                        <p class="text-2xl font-bold" id="total-students">0</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="p-3 bg-green-100 rounded-lg mr-4">
+                        <i class="fas fa-dollar-sign text-green-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Total Earnings</p>
+                        <p class="text-2xl font-bold">$<span id="total-earnings">0</span></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="p-3 bg-purple-100 rounded-lg mr-4">
+                        <i class="fas fa-star text-purple-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-500">Avg. Rating</p>
+                        <p class="text-2xl font-bold" id="avg-rating">0.0</p>
+                        <div class="flex items-center mt-1">
+                            {% for i in range(5) %}
+                            <i class="fas fa-star text-yellow-400 text-sm"></i>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-lg shadow p-6 mb-6">
+                    <h2 class="text-xl font-semibold mb-4">Today's Sessions</h2>
+                    <div class="space-y-4">
+                        {% for i in range(2) %}
+                        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div>
+                                <h3 class="font-medium text-gray-800">Mathematics Session</h3>
+                                <p class="text-sm text-gray-500 mt-1">
+                                    <i class="far fa-clock mr-2"></i>3:00 PM - 4:30 PM
+                                </p>
+                                <p class="text-sm text-gray-500 mt-1">
+                                    <i class="fas fa-user mr-2"></i>With: John Smith
+                                </p>
+                            </div>
+                            <div>
+                                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                                    Start Session
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-xl font-semibold mb-4">Your Subjects</h2>
+                    <div class="flex flex-wrap gap-2">
+                        {% for subject in user.subjects.split(',') %}
+                        <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                            {{ subject.strip() }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column -->
+            <div>
+                <div class="bg-white rounded-lg shadow p-6 mb-6">
+                    <h2 class="text-xl font-semibold mb-4">Profile Summary</h2>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Hourly Rate:</span>
+                            <span class="font-medium text-gray-800">${{ "%.2f"|format(user.hourly_rate) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Experience:</span>
+                            <span class="font-medium text-gray-800">{{ user.experience_years }} years</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Status:</span>
+                            <span class="font-medium {% if user.is_verified %}text-green-600{% else %}text-yellow-600{% endif %}">
+                                {% if user.is_verified %}Verified{% else %}Pending Verification{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <a href="/tutor/profile" class="block text-center w-full py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+                            Update Profile
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <h3 class="text-lg font-semibold text-blue-800 mb-3">Quick Actions</h3>
+                    <div class="space-y-3">
+                        <a href="#" class="flex items-center p-3 bg-white rounded border border-blue-200 hover:bg-blue-50">
+                            <i class="fas fa-video text-blue-600 mr-3"></i>
+                            <span>Schedule New Session</span>
+                        </a>
+                        <a href="#" class="flex items-center p-3 bg-white rounded border border-blue-200 hover:bg-blue-50">
+                            <i class="fas fa-calendar-plus text-blue-600 mr-3"></i>
+                            <span>Set Availability</span>
+                        </a>
+                        <a href="#" class="flex items-center p-3 bg-white rounded border border-blue-200 hover:bg-blue-50">
+                            <i class="fas fa-chart-line text-blue-600 mr-3"></i>
+                            <span>View Earnings</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load dashboard stats
+        fetch('/tutor/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-students').textContent = data.total_students;
+                document.getElementById('total-earnings').textContent = data.total_earnings.toFixed(2);
+                document.getElementById('avg-rating').textContent = data.avg_rating;
+            })
+            .catch(error => console.error('Error:', error));
+    </script>
+</body>
+</html>

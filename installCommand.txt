@@ -11,3 +11,5 @@ if some changes in db class in code then run
 flask db init (run once)
 flask db migrate -m "Added new fields to User model" <commit messages>
 flask db upgrade
+
+flask db stamp head
