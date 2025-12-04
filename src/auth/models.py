@@ -10,16 +10,35 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # --- New Fields for Registration ---
-    full_name = db.Column(db.String(255), nullable=False) # New: Required
-    username = db.Column(db.String(50), unique=True, nullable=True) # New: Optional, unique
-    phone_number = db.Column(db.String(20), nullable=True) # New: Optional
-    disability_type = db.Column(db.String(50), nullable=False) # New: Required (Dropdown)
+    
+    # --- User Type (Student/Tutor) ---
+    user_type = db.Column(db.String(20), nullable=False, default="student")  # 'student' or 'tutor'
+    
+    # --- Common Fields for Both ---
+    full_name = db.Column(db.String(255), nullable=False)
+    username = db.Column(db.String(50), unique=True, nullable=True)
+    phone_number = db.Column(db.String(20), nullable=True)
+    
+    # --- Student Specific Fields ---
+    disability_type = db.Column(db.String(50), nullable=True)  # Only for students
+    
+    # --- Tutor Specific Fields ---
+    qualifications = db.Column(db.Text, nullable=True)  # Tutor's qualifications
+    experience_years = db.Column(db.Integer, nullable=True)  # Years of experience
+    subjects = db.Column(db.String(255), nullable=True)  # Subjects tutor can teach
+    hourly_rate = db.Column(db.Numeric(10, 2), nullable=True)  # Hourly rate
+    bio = db.Column(db.Text, nullable=True)  # Short bio/description
+    is_verified = db.Column(db.Boolean, default=False)  # Tutor verification status
     # -----------------------------------
 
     def __repr__(self) -> str:  # pragma: no cover
-        return f"<User {self.email}>"
+        return f"<User {self.email} ({self.user_type})>"
+
+    def is_student(self) -> bool:
+        return self.user_type == "student"
+    
+    def is_tutor(self) -> bool:
+        return self.user_type == "tutor"
 
 
 class PasswordResetCode(db.Model):

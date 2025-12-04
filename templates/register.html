@@ -6,38 +6,115 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-50 min-h-screen flex items-center justify-center">
-    <div class="max-w-md w-full bg-white shadow-xl rounded-2xl p-8 space-y-6">
+    <div class="max-w-lg w-full bg-white shadow-xl rounded-2xl p-8 space-y-6">
         <div>
             <h1 class="text-2xl font-bold mb-1">Create your account</h1>
             <p class="text-sm text-slate-500">Join SenseLearn to access inclusive learning experiences.</p>
         </div>
 
-        <form id="register-form" class="space-y-3">
-            <input id="register-full-name" type="text" placeholder="Full Name (Required)"
-                   class="w-full border rounded-lg px-3 py-2" required />
+        <form id="register-form" class="space-y-4">
+            <!-- User Type Selection -->
+            <div class="border rounded-lg p-4">
+                <h2 class="text-sm font-semibold mb-3 text-slate-700">I am a:</h2>
+                <div class="flex gap-4">
+                    <label class="flex-1">
+                        <input type="radio" name="user_type" value="student" checked 
+                               class="sr-only peer" />
+                        <div class="border-2 border-slate-200 rounded-lg p-4 text-center cursor-pointer 
+                                    hover:border-emerald-200 peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
+                            <div class="font-medium">Student</div>
+                            <div class="text-xs text-slate-500 mt-1">Looking for learning help</div>
+                        </div>
+                    </label>
+                    <label class="flex-1">
+                        <input type="radio" name="user_type" value="tutor"
+                               class="sr-only peer" />
+                        <div class="border-2 border-slate-200 rounded-lg p-4 text-center cursor-pointer 
+                                    hover:border-blue-200 peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                            <div class="font-medium">Tutor</div>
+                            <div class="text-xs text-slate-500 mt-1">Want to teach students</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
 
-            <input id="register-email" type="email" placeholder="Email (Required)"
-                   class="w-full border rounded-lg px-3 py-2" required />
-            
-            <input id="register-username" type="text" placeholder="Username (Optional)"
-                   class="w-full border rounded-lg px-3 py-2" />
+            <!-- Common Fields -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <input id="register-full-name" type="text" placeholder="Full Name *"
+                           class="w-full border rounded-lg px-3 py-2" required />
+                </div>
+                <div>
+                    <input id="register-email" type="email" placeholder="Email *"
+                           class="w-full border rounded-lg px-3 py-2" required />
+                </div>
+            </div>
 
-            <input id="register-phone-number" type="tel" placeholder="Phone Number (Optional)"
-                   class="w-full border rounded-lg px-3 py-2" />
-            
-            <select id="register-disability-type" class="w-full border rounded-lg px-3 py-2" required>
-                <option value="" disabled selected>Select Disability Type (Required)</option>
-                <option value="Deaf">Deaf</option>
-                <option value="Mute">Mute</option>
-                <option value="Blind">Blind</option>
-                <option value="Other">Other</option>
-            </select>
-            
-            <input id="register-password" type="password" placeholder="Password (min 8 chars, Required)"
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <input id="register-username" type="text" placeholder="Username (Optional)"
+                           class="w-full border rounded-lg px-3 py-2" />
+                </div>
+                <div>
+                    <input id="register-phone-number" type="tel" placeholder="Phone Number (Optional)"
+                           class="w-full border rounded-lg px-3 py-2" />
+                </div>
+            </div>
+
+            <!-- Student Specific Fields (Hidden by default) -->
+            <div id="student-fields" class="space-y-3 border rounded-lg p-4 bg-emerald-50">
+                <h2 class="text-sm font-semibold text-emerald-700">Student Information</h2>
+                
+                <select id="register-disability-type" class="w-full border rounded-lg px-3 py-2 bg-white">
+                    <option value="" disabled selected>Disability Type (Required for Students)</option>
+                    <option value="Deaf">Deaf</option>
+                    <option value="Mute">Mute</option>
+                    <option value="Blind">Blind</option>
+                    <option value="Other">Other</option>
+                </select>
+                
+                <textarea id="register-student-needs" placeholder="Learning needs or special requirements (Optional)"
+                          class="w-full border rounded-lg px-3 py-2 bg-white" rows="2"></textarea>
+            </div>
+
+            <!-- Tutor Specific Fields (Hidden by default) -->
+            <div id="tutor-fields" class="space-y-3 border rounded-lg p-4 bg-blue-50 hidden">
+                <h2 class="text-sm font-semibold text-blue-700">Tutor Information</h2>
+                
+                <textarea id="register-qualifications" placeholder="Qualifications & Certifications *"
+                          class="w-full border rounded-lg px-3 py-2 bg-white" rows="2"></textarea>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <input id="register-experience-years" type="number" min="0" max="50"
+                               placeholder="Years of Experience *"
+                               class="w-full border rounded-lg px-3 py-2 bg-white" />
+                    </div>
+                    <div>
+                        <input id="register-hourly-rate" type="number" min="0" step="0.01"
+                               placeholder="Hourly Rate ($) *"
+                               class="w-full border rounded-lg px-3 py-2 bg-white" />
+                    </div>
+                </div>
+                
+                <input id="register-subjects" type="text" 
+                       placeholder="Subjects you can teach (comma separated) *"
+                       class="w-full border rounded-lg px-3 py-2 bg-white" />
+                
+                <textarea id="register-bio" placeholder="Short Bio/Description *"
+                          class="w-full border rounded-lg px-3 py-2 bg-white" rows="3"></textarea>
+                
+                <div class="text-xs text-blue-600">
+                    <p>Note: Your tutor account will need to be verified before you can start teaching.</p>
+                </div>
+            </div>
+
+            <!-- Password Field -->
+            <input id="register-password" type="password" placeholder="Password (min 8 chars) *"
                    class="w-full border rounded-lg px-3 py-2" required />
             
             <button type="submit"
-                    class="w-full bg-slate-900 text-white rounded-lg py-2 font-semibold hover:bg-black">
+                    class="w-full bg-slate-900 text-white rounded-lg py-3 font-semibold hover:bg-black mt-4">
                 Create account
             </button>
         </form>
@@ -53,6 +130,52 @@
     <script>
         const API_BASE = '/api/auth';
 
+        // Function to update fields based on user type
+        function updateFieldsForUserType(userType) {
+            const isStudent = userType === 'student';
+            
+            // Toggle visibility
+            document.getElementById('student-fields').classList.toggle('hidden', !isStudent);
+            document.getElementById('tutor-fields').classList.toggle('hidden', isStudent);
+            
+            // Toggle required for student fields
+            const disabilityField = document.getElementById('register-disability-type');
+            if (isStudent) {
+                disabilityField.setAttribute('required', 'required');
+            } else {
+                disabilityField.removeAttribute('required');
+            }
+            
+            // Toggle required for tutor fields
+            const tutorFields = [
+                'register-qualifications',
+                'register-experience-years',
+                'register-hourly-rate',
+                'register-subjects',
+                'register-bio'
+            ];
+            
+            tutorFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (!isStudent) {
+                    field.setAttribute('required', 'required');
+                } else {
+                    field.removeAttribute('required');
+                }
+            });
+        }
+
+        // Initialize on page load
+        updateFieldsForUserType('student');
+
+        // Toggle between student and tutor fields
+        document.querySelectorAll('input[name="user_type"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                updateFieldsForUserType(this.value);
+            });
+        });
+
+        // Form submission
         document.getElementById('register-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const msg = document.getElementById('register-msg');
@@ -60,35 +183,68 @@
             msg.className = 'mt-1 text-sm text-slate-600';
 
             try {
+                const userType = document.querySelector('input[name="user_type"]:checked').value;
+                const isStudent = userType === 'student';
+                
+                const data = {
+                    // Common fields
+                    email: document.getElementById('register-email').value,
+                    password: document.getElementById('register-password').value,
+                    full_name: document.getElementById('register-full-name').value,
+                    username: document.getElementById('register-username').value,
+                    phone_number: document.getElementById('register-phone-number').value,
+                    user_type: userType,
+                    
+                    // Student fields (only if student)
+                    disability_type: isStudent ? document.getElementById('register-disability-type').value : null,
+                    student_needs: isStudent ? document.getElementById('register-student-needs').value : null,
+                    
+                    // Tutor fields (only if tutor)
+                    qualifications: !isStudent ? document.getElementById('register-qualifications').value : null,
+                    experience_years: !isStudent ? parseInt(document.getElementById('register-experience-years').value) : null,
+                    subjects: !isStudent ? document.getElementById('register-subjects').value : null,
+                    hourly_rate: !isStudent ? parseFloat(document.getElementById('register-hourly-rate').value) : null,
+                    bio: !isStudent ? document.getElementById('register-bio').value : null,
+                };
+
+                // Validate required fields based on user type
+                if (isStudent && !data.disability_type) {
+                    msg.textContent = 'Disability type is required for students';
+                    msg.className = 'mt-1 text-sm text-red-600';
+                    return;
+                }
+                
+                if (!isStudent && (!data.qualifications || !data.experience_years || !data.subjects || 
+                                   !data.hourly_rate || !data.bio)) {
+                    msg.textContent = 'All tutor information fields are required';
+                    msg.className = 'mt-1 text-sm text-red-600';
+                    return;
+                }
+
                 const res = await fetch(API_BASE + '/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        // Existing fields
-                        email: document.getElementById('register-email').value,
-                        password: document.getElementById('register-password').value,
-                        
-                        // New fields
-                        full_name: document.getElementById('register-full-name').value,
-                        username: document.getElementById('register-username').value,
-                        phone_number: document.getElementById('register-phone-number').value,
-                        disability_type: document.getElementById('register-disability-type').value,
-                    }),
+                    body: JSON.stringify(data),
                 });
-                const data = await res.json();
+                const responseData = await res.json();
                 if (!res.ok) {
-                    let text = data.message || 'Registration failed';
-                    if (data.detail) {
-                        text += ' (' + data.detail + ')';
+                    let text = responseData.message || 'Registration failed';
+                    if (responseData.detail) {
+                        text += ' (' + responseData.detail + ')';
                     }
                     msg.textContent = text;
                     msg.className = 'mt-1 text-sm text-red-600';
                 } else {
-                    msg.textContent = data.message || 'Registration successful';
+                    msg.textContent = responseData.message || 'Registration successful!';
                     msg.className = 'mt-1 text-sm text-emerald-600';
+                    
+                    // Redirect after successful registration
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
                 }
             } catch (err) {
-                msg.textContent = 'Network error';
+                msg.textContent = 'Network error: ' + err.message;
                 msg.className = 'mt-1 text-sm text-red-600';
             }
         });
