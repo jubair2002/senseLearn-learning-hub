@@ -1,7 +1,7 @@
 from flask import render_template, jsonify, request, flash, redirect, url_for
 from flask_login import login_required, current_user
-from src.student import student_bp
 from src import db
+from src.student import student_bp
 
 @student_bp.route('/dashboard')
 @login_required
@@ -10,7 +10,7 @@ def dashboard():
     # Check if user is actually a student
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
         flash('This page is only for students.', 'error')
-        return redirect('/')
+        return redirect(url_for('index'))
     
     return render_template('student/dashboard.html', user=current_user)
 
@@ -20,7 +20,7 @@ def profile():
     """Student profile page."""
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
         flash('This page is only for students.', 'error')
-        return redirect('/')
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         # Update profile
@@ -44,17 +44,29 @@ def profile():
 @student_bp.route('/api/stats')
 @login_required
 def get_stats():
-    """API endpoint for student dashboard stats."""
+    """
+    API endpoint for student dashboard stats.
+    Returns statistics for the authenticated student.
+    """
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    # Mock data - replace with real queries
+    # TODO: Implement actual database queries for statistics
+    # This endpoint should query:
+    # - Total sessions (from sessions table)
+    # - Completed sessions (sessions with status='completed')
+    # - Upcoming sessions (sessions with status='scheduled' and date > now)
+    # - Hours learned (sum of session durations)
+    # - Tutors count (distinct tutor_id from sessions)
+    # - Average rating (from ratings table)
+    
+    # Return empty stats structure - to be implemented with actual queries
     stats = {
-        'total_sessions': 12,
-        'completed_sessions': 10,
-        'upcoming_sessions': 2,
-        'hours_learned': 36,
-        'tutors_count': 3,
-        'avg_rating': 4.5
+        'total_sessions': 0,
+        'completed_sessions': 0,
+        'upcoming_sessions': 0,
+        'hours_learned': 0,
+        'tutors_count': 0,
+        'avg_rating': 0.0
     }
     return jsonify(stats)

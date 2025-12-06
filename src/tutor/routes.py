@@ -1,8 +1,8 @@
 from flask import render_template, jsonify, request, flash, redirect, url_for
 from flask_login import login_required, current_user
-from src.tutor import tutor_bp
-from src import db
 from decimal import Decimal
+from src import db
+from src.tutor import tutor_bp
 
 @tutor_bp.route('/dashboard')
 @login_required
@@ -11,7 +11,7 @@ def dashboard():
     # Check if user is actually a tutor
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
         flash('This page is only for tutors.', 'error')
-        return redirect('/')
+        return redirect(url_for('index'))
     
     return render_template('tutor/dashboard.html', user=current_user)
 
@@ -21,7 +21,7 @@ def profile():
     """Tutor profile page."""
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
         flash('This page is only for tutors.', 'error')
-        return redirect('/')
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         # Update profile
@@ -72,24 +72,36 @@ def verification():
     """Tutor verification page."""
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
         flash('This page is only for tutors.', 'error')
-        return redirect('/')
+        return redirect(url_for('index'))
     
     return render_template('tutor/verification.html', user=current_user)
 
 @tutor_bp.route('/api/stats')
 @login_required
 def get_stats():
-    """API endpoint for tutor dashboard stats."""
+    """
+    API endpoint for tutor dashboard stats.
+    Returns statistics for the authenticated tutor.
+    """
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    # Mock data - replace with real queries
+    # TODO: Implement actual database queries for statistics
+    # This endpoint should query:
+    # - Total students (distinct student_id from sessions where tutor_id = current_user.id)
+    # - Total sessions (from sessions table where tutor_id = current_user.id)
+    # - Upcoming sessions (sessions with status='scheduled' and date > now)
+    # - Total earnings (sum of session payments from payments table)
+    # - Average rating (from ratings table where tutor_id = current_user.id)
+    # - Completion rate (percentage of completed sessions)
+    
+    # Return empty stats structure - to be implemented with actual queries
     stats = {
-        'total_students': 8,
-        'total_sessions': 45,
-        'upcoming_sessions': 6,
-        'total_earnings': 1250.50,
-        'avg_rating': 4.8,
-        'completion_rate': 92
+        'total_students': 0,
+        'total_sessions': 0,
+        'upcoming_sessions': 0,
+        'total_earnings': 0.0,
+        'avg_rating': 0.0,
+        'completion_rate': 0
     }
     return jsonify(stats)

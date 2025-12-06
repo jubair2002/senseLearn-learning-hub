@@ -5,6 +5,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy.exc import SQLAlchemyError
 
 from src import db
+from src.config import config
 from src.auth import auth_bp
 from src.auth.models import PasswordResetCode, User
 from src.auth.utils import (
@@ -18,12 +19,18 @@ from src.auth.utils import (
 
 @auth_bp.route("/", methods=["GET"])
 def auth_root():
-    """Simple health/info endpoint for /api/auth."""
+    """Simple health/info endpoint for auth API."""
+    base_path = config.AUTH_API_PREFIX
     return jsonify(
         {
             "status": "ok",
             "message": "Auth API is running",
-            "endpoints": ["/register", "/login", "/forgot", "/reset"],
+            "endpoints": [
+                f"{base_path}/register",
+                f"{base_path}/login",
+                f"{base_path}/forgot",
+                f"{base_path}/reset",
+            ],
         }
     ), 200
 
@@ -37,7 +44,7 @@ def register():
         
         # Common fields
         full_name = (data.get("full_name") or "").strip()
-        user_type = (data.get("user_type") or "student").strip().lower()
+        user_type = (data.get("user_type") or config.DEFAULT_USER_TYPE).strip().lower()
         
         # Optional common fields
         username = (data.get("username") or "").strip() or None
@@ -53,8 +60,10 @@ def register():
             return jsonify({"message": "Please provide a valid email address"}), 400
 
         # Validate user type
-        if user_type not in ["student", "tutor"]:
-            return jsonify({"message": "Invalid user type. Must be 'student' or 'tutor'"}), 400
+        if user_type not in config.VALID_USER_TYPES:
+            return jsonify({
+                "message": f"Invalid user type. Must be one of: {', '.join(config.VALID_USER_TYPES)}"
+            }), 400
 
         ok, error = validate_password(password)
         if not ok:
@@ -74,9 +83,10 @@ def register():
             if not disability_type:
                 return jsonify({"message": "Disability type is required for students"}), 400
             
-            valid_disabilities = ["Deaf", "Mute", "Blind", "Other"]
-            if disability_type not in valid_disabilities:
-                return jsonify({"message": "Invalid disability type selected"}), 400
+            if disability_type not in config.VALID_DISABILITY_TYPES:
+                return jsonify({
+                    "message": f"Invalid disability type. Must be one of: {', '.join(config.VALID_DISABILITY_TYPES)}"
+                }), 400
 
         # Tutor-specific validation
         if user_type == "tutor":
@@ -127,8 +137,8 @@ def register():
         
         # Prepare success message based on user type
         success_message = {
-            "student": "Student account created successfully!",
-            "tutor": "Tutor account created successfully! Your account will be verified soon."
+            "student": config.MSG_STUDENT_REGISTER_SUCCESS,
+            "tutor": config.MSG_TUTOR_REGISTER_SUCCESS
         }.get(user_type, "Account created successfully!")
         
     except SQLAlchemyError as exc:  # DB or connection error
@@ -189,7 +199,7 @@ def login():
     
     # Return success with user info
     return jsonify({
-        "message": "Login successful",
+        "message": config.MSG_LOGIN_SUCCESS,
         "user": {
             "id": user.id,
             "email": user.email,
@@ -204,8 +214,9 @@ def login():
 @login_required
 def logout_route():
     """Logout route."""
+    from flask import redirect, url_for
     logout_user()
-    return jsonify({"message": "Logged out successfully"}), 200
+    return redirect(url_for('login_page'))
 
 
 @auth_bp.route("/forgot", methods=["POST"])
@@ -229,8 +240,12 @@ def forgot_password():
 
     PasswordResetCode.query.filter_by(user_id=user.id).delete()
 
-    code = generate_reset_code()
-    reset_obj = PasswordResetCode.create_for_user(user, code)
+    code = generate_reset_code(length=config.RESET_CODE_LENGTH)
+    reset_obj = PasswordResetCode.create_for_user(
+        user, 
+        code, 
+        minutes_valid=config.RESET_CODE_VALIDITY_MINUTES
+    )
     db.session.add(reset_obj)
     db.session.commit()
 
@@ -288,4 +303,4 @@ def reset_password():
     PasswordResetCode.query.filter_by(user_id=user.id).delete()
     db.session.commit()
 
-    return jsonify({"message": "Password has been reset successfully"}), 200
+    return jsonify({"message": config.MSG_PASSWORD_RESET_SUCCESS}), 200
