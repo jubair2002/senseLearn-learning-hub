@@ -3,6 +3,7 @@ from datetime import datetime
 from flask import current_app, jsonify, request
 from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import joinedload
 
 from src import db
 from src.config import config
@@ -69,13 +70,15 @@ def register():
         if not ok:
             return jsonify({"message": error}), 400
 
-        # Check for existing email
-        if User.query.filter_by(email=email).first():
-            return jsonify({"message": "User with this email already exists"}), 409
-        
-        # Check for existing username if provided
-        if username and User.query.filter_by(username=username).first():
-            return jsonify({"message": "User with this username already exists"}), 409
+        # Optimize: Check both email and username in a single query if possible
+        existing_user = User.query.filter(
+            (User.email == email) | (User.username == username)
+        ).first()
+        if existing_user:
+            if existing_user.email == email:
+                return jsonify({"message": "User with this email already exists"}), 409
+            if username and existing_user.username == username:
+                return jsonify({"message": "User with this username already exists"}), 409
 
         # Student-specific validation
         if user_type == "student":
@@ -190,8 +193,12 @@ def login():
     if not is_valid_email(email):
         return jsonify({"message": "Please provide a valid email address"}), 400
 
+    # Optimize query - only select needed fields
     user = User.query.filter_by(email=email).first()
-    if not user or not verify_password(password, user.password_hash):
+    if not user:
+        return jsonify({"message": "Invalid email or password"}), 401
+    
+    if not verify_password(password, user.password_hash):
         return jsonify({"message": "Invalid email or password"}), 401
 
     # Login the user

@@ -15,8 +15,13 @@
         <form id="login-form" class="space-y-4">
             <input id="login-email" type="email" placeholder="Email"
                    class="w-full border rounded-lg px-3 py-2" required />
-            <input id="login-password" type="password" placeholder="Password"
-                   class="w-full border rounded-lg px-3 py-2" required />
+            <div class="relative">
+                <input id="login-password" type="password" placeholder="Password"
+                       class="w-full border rounded-lg px-3 py-2" required />
+                <a href="/forgot" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-emerald-600 hover:text-emerald-700 font-medium hover:underline">
+                    Forgot?
+                </a>
+            </div>
             <button type="submit"
                     class="w-full bg-emerald-600 text-white rounded-lg py-2 font-semibold hover:bg-emerald-700">
                 Login
@@ -25,12 +30,20 @@
         
         <p id="login-msg" class="mt-1 text-sm"></p>
         
-        <p class="text-xs text-slate-500 text-center">
-            New here?
-            <a href="/register" class="text-emerald-600 font-semibold hover:underline">
-                Create an account
-            </a>
-        </p>
+        <div class="space-y-2 text-center">
+            <p class="text-xs text-slate-500">
+                New here?
+                <a href="/register" class="text-emerald-600 font-semibold hover:underline">
+                    Create an account
+                </a>
+            </p>
+            <p class="text-xs text-slate-500">
+                Forgot your password?
+                <a href="/forgot" class="text-emerald-600 font-semibold hover:underline">
+                    Reset it here
+                </a>
+            </p>
+        </div>
     </div>
 
     <script>

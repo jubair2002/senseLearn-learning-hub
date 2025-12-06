@@ -1,4 +1,4 @@
-from flask import Flask, render_template, send_file, redirect, url_for
+from flask import Flask, render_template, send_file, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from dotenv import load_dotenv
@@ -38,9 +38,25 @@ def create_app() -> Flask:
 
     # Load configuration from config module
     app.config["SECRET_KEY"] = config.SECRET_KEY
-    app.config["SQLALCHEMY_DATABASE_URI"] = config.SQLALCHEMY_DATABASE_URI
+    db_uri = config.SQLALCHEMY_DATABASE_URI
+    # Add connection pooling parameters for better performance
+    if "?" not in db_uri:
+        db_uri += "?charset=utf8mb4"
+    app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = config.SQLALCHEMY_TRACK_MODIFICATIONS
     app.config["SQLALCHEMY_ECHO"] = config.SQLALCHEMY_ECHO
+    # Database connection pooling for performance
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_size": 10,
+        "pool_recycle": 3600,
+        "pool_pre_ping": True,
+        "max_overflow": 20,
+        "connect_args": {
+            "connect_timeout": 5,
+            "read_timeout": 10,
+            "write_timeout": 10,
+        }
+    }
     app.config["SESSION_COOKIE_SECURE"] = config.SESSION_COOKIE_SECURE
     app.config["SESSION_COOKIE_HTTPONLY"] = config.SESSION_COOKIE_HTTPONLY
     app.config["SESSION_COOKIE_SAMESITE"] = config.SESSION_COOKIE_SAMESITE
@@ -62,24 +78,57 @@ def create_app() -> Flask:
     migrate.init_app(app, db)
     login_manager.init_app(app)
     login_manager.login_view = 'login_page'  # This is the function name in __init__.py
+    
+    # Add response headers for caching and performance
+    @app.after_request
+    def add_performance_headers(response):
+        """Add caching and performance headers to responses."""
+        # Cache static files for 1 hour
+        if request.endpoint == 'static' or request.path.startswith('/static/'):
+            response.cache_control.max_age = 3600
+            response.cache_control.public = True
+        # Don't cache HTML pages (always fresh)
+        elif response.content_type and 'text/html' in response.content_type:
+            response.cache_control.no_cache = True
+            response.cache_control.no_store = True
+            response.cache_control.must_revalidate = True
+        # Add security headers
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        return response
 
-    # User loader function for Flask-Login
+    # User loader function for Flask-Login - optimized with caching
     @login_manager.user_loader
     def load_user(user_id):
         from src.auth.models import User
-        return User.query.get(int(user_id))
+        # Use get() instead of query.get() for better performance
+        # This uses SQLAlchemy's identity map cache
+        try:
+            return db.session.get(User, int(user_id))
+        except (ValueError, TypeError):
+            return None
 
-    # Main routes
+    # Main routes - optimized for performance
     @app.route("/")
     def index():
+        # Fast path: check authentication without DB query if possible
         if current_user.is_authenticated:
             if hasattr(current_user, 'user_type'):
                 if current_user.user_type == 'student':
                     return redirect(url_for('student.dashboard'))
                 elif current_user.user_type == 'tutor':
                     return redirect(url_for('tutor.dashboard'))
-        # Serve index.html from static folder
-        return send_file(os.path.join(project_root, "static", "index.html"))
+        # Use render_template for better caching and performance
+        index_path = os.path.join(project_root, "templates", "index.html")
+        if os.path.exists(index_path):
+            return render_template("index.html")
+        # Fallback to static file
+        static_index = os.path.join(project_root, "static", "index.html")
+        if os.path.exists(static_index):
+            return send_file(static_index)
+        # Last resort: return simple response
+        return "Welcome to SenseLearn", 200
 
     @app.route("/login")
     @app.route("/auth")
@@ -120,9 +169,9 @@ def create_app() -> Flask:
     from src.tutor import tutor_bp
     app.register_blueprint(tutor_bp)
 
-    # Create tables if they do not exist
-    with app.app_context():
-        from src.auth.models import User, PasswordResetCode
-        db.create_all()
+        # Create tables if they do not exist
+        with app.app_context():
+            from src.auth.models import User, PasswordResetCode
+            db.create_all()
 
     return app

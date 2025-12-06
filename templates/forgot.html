@@ -2,44 +2,82 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SenseLearn | Forgot Password</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 min-h-screen flex items-center justify-center">
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
     <div class="max-w-md w-full bg-white shadow-xl rounded-2xl p-8 space-y-6">
         <div>
-            <h1 class="text-2xl font-bold mb-1">Reset password</h1>
-            <p class="text-sm text-slate-500">Request a reset code, then set a new password.</p>
+            <h1 class="text-2xl font-bold mb-1">Reset Password</h1>
+            <p class="text-sm text-slate-500">Enter your email to receive a reset code, then set a new password.</p>
         </div>
 
-        <div class="space-y-3">
-            <h2 class="text-sm font-semibold">1. Get a reset code</h2>
-            <form id="forgot-form" class="space-y-2">
-                <input id="forgot-email" type="email" placeholder="Email"
-                       class="w-full border rounded-lg px-3 py-2" required />
-                <button type="submit"
-                        class="w-full bg-amber-500 text-white rounded-lg py-2 font-semibold hover:bg-amber-600">
-                    Send reset code
+        <!-- Step 1: Request Reset Code -->
+        <div id="step1" class="space-y-4">
+            <form id="forgot-form" class="space-y-4">
+                <div>
+                    <input id="forgot-email" type="email" placeholder="Email"
+                           class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                           required autocomplete="email" />
+                </div>
+                <button type="submit" id="forgot-btn"
+                        class="w-full bg-emerald-600 text-white rounded-lg py-2 font-semibold hover:bg-emerald-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed">
+                    Send Reset Code
                 </button>
             </form>
-            <p id="forgot-msg" class="mt-1 text-sm"></p>
+            <p id="forgot-msg" class="mt-1 text-sm min-h-[24px]"></p>
         </div>
 
-        <div class="space-y-3 border-t pt-4">
-            <h2 class="text-sm font-semibold">2. Set a new password</h2>
-            <form id="reset-form" class="space-y-2">
-                <input id="reset-email" type="email" placeholder="Email"
-                       class="w-full border rounded-lg px-3 py-2" required />
-                <input id="reset-code" type="text" placeholder="Reset code"
-                       class="w-full border rounded-lg px-3 py-2" required />
-                <input id="reset-password" type="password" placeholder="New password (min 8 chars)"
-                       class="w-full border rounded-lg px-3 py-2" required />
-                <button type="submit"
-                        class="w-full bg-indigo-600 text-white rounded-lg py-2 font-semibold hover:bg-indigo-700">
-                    Reset password
+        <!-- Step 2: Reset Password (Hidden initially) -->
+        <div id="step2" class="space-y-4 border-t pt-6 hidden transition-all duration-300">
+            <h2 class="text-sm font-semibold text-slate-700 mb-2">Enter Reset Code & New Password</h2>
+            <form id="reset-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-600 mb-1">Email</label>
+                    <input id="reset-email" type="email" placeholder="Email"
+                           class="w-full border rounded-lg px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                           required autocomplete="email" readonly />
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-600 mb-1">Reset Code</label>
+                    <input id="reset-code" type="text" placeholder="Enter reset code"
+                           class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                           required autocomplete="off" maxlength="10" />
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-600 mb-1">New Password</label>
+                    <input id="reset-password" type="password" placeholder="New password (min 8 characters)"
+                           class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                           required autocomplete="new-password" minlength="8" />
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-600 mb-1">Confirm Password</label>
+                    <input id="reset-password-confirm" type="password" placeholder="Confirm new password"
+                           class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                           required autocomplete="new-password" minlength="8" />
+                </div>
+                <button type="submit" id="reset-btn"
+                        class="w-full bg-emerald-600 text-white rounded-lg py-2 font-semibold hover:bg-emerald-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed">
+                    Reset Password
                 </button>
             </form>
-            <p id="reset-msg" class="mt-1 text-sm"></p>
+            <p id="reset-msg" class="mt-1 text-sm min-h-[24px]"></p>
+        </div>
+
+        <!-- Success Message (Hidden initially) -->
+        <div id="success-message" class="hidden p-6 bg-emerald-50 border border-emerald-200 rounded-lg text-center">
+            <div class="mb-4">
+                <svg class="w-16 h-16 mx-auto text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <p class="text-base text-emerald-800 font-semibold mb-2">Password Reset Successful!</p>
+            <p class="text-sm text-emerald-600 mb-4">Your password has been updated. You can now login with your new password.</p>
+            <a href="/login" 
+               class="inline-block w-full bg-emerald-600 text-white rounded-lg py-2.5 font-semibold hover:bg-emerald-700 transition-colors text-center">
+                Go to Login
+            </a>
         </div>
 
         <p class="text-xs text-slate-500 text-center">
@@ -51,38 +89,102 @@
     <script>
         const API_BASE = '{{ APP_CONFIG.AUTH_API_PREFIX }}';
 
+        // Step 1: Request Reset Code
         document.getElementById('forgot-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const msg = document.getElementById('forgot-msg');
-            msg.textContent = 'Loading...';
+            const btn = document.getElementById('forgot-btn');
+            const emailInput = document.getElementById('forgot-email');
+            const email = emailInput.value.trim().toLowerCase();
+            
+            if (!email) {
+                msg.textContent = 'Please enter your email address';
+                msg.className = 'mt-1 text-sm text-red-600';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            msg.textContent = 'Sending reset code...';
             msg.className = 'mt-1 text-sm text-slate-600';
 
             try {
                 const res = await fetch(API_BASE + '/forgot', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: document.getElementById('forgot-email').value,
-                    }),
+                    body: JSON.stringify({ email: email }),
                 });
+                
                 const data = await res.json();
+                
                 if (!res.ok) {
-                    msg.textContent = data.message || 'Request failed';
+                    msg.textContent = data.message || 'Failed to send reset code';
                     msg.className = 'mt-1 text-sm text-red-600';
+                    btn.disabled = false;
+                    btn.textContent = 'Send Reset Code';
                 } else {
-                    msg.textContent = (data.message || 'Code sent') + (data.code ? ' (demo code: ' + data.code + ')' : '');
-                    msg.className = 'mt-1 text-sm text-emerald-600';
+                    // Show success message with code
+                    let successMsg = data.message || 'Reset code sent successfully!';
+                    if (data.code) {
+                        successMsg += ` Your reset code is: ${data.code}`;
+                    }
+                    msg.textContent = successMsg;
+                    msg.className = 'mt-1 text-sm text-emerald-600 font-medium';
+                    
+                    // Auto-fill email in reset form and show step 2 with animation
+                    document.getElementById('reset-email').value = email;
+                    const step2 = document.getElementById('step2');
+                    step2.classList.remove('hidden');
+                    step2.style.opacity = '0';
+                    setTimeout(() => {
+                        step2.style.opacity = '1';
+                        step2.style.transition = 'opacity 0.3s ease-in';
+                    }, 10);
+                    
+                    // Focus on reset code input
+                    setTimeout(() => {
+                        document.getElementById('reset-code').focus();
+                    }, 100);
+                    
+                    btn.disabled = false;
+                    btn.textContent = 'Send Reset Code';
                 }
             } catch (err) {
-                msg.textContent = 'Network error';
+                msg.textContent = 'Network error. Please check your connection and try again.';
                 msg.className = 'mt-1 text-sm text-red-600';
+                btn.disabled = false;
+                btn.textContent = 'Send Reset Code';
             }
         });
 
+        // Step 2: Reset Password
         document.getElementById('reset-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const msg = document.getElementById('reset-msg');
-            msg.textContent = 'Loading...';
+            const btn = document.getElementById('reset-btn');
+            const email = document.getElementById('reset-email').value.trim().toLowerCase();
+            const code = document.getElementById('reset-code').value.trim();
+            const password = document.getElementById('reset-password').value;
+            const passwordConfirm = document.getElementById('reset-password-confirm').value;
+
+            // Validate passwords match
+            if (password !== passwordConfirm) {
+                msg.textContent = 'Passwords do not match. Please try again.';
+                msg.className = 'mt-1 text-sm text-red-600';
+                document.getElementById('reset-password-confirm').focus();
+                return;
+            }
+
+            if (password.length < 8) {
+                msg.textContent = 'Password must be at least 8 characters long';
+                msg.className = 'mt-1 text-sm text-red-600';
+                document.getElementById('reset-password').focus();
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Resetting...';
+            msg.textContent = 'Resetting your password...';
             msg.className = 'mt-1 text-sm text-slate-600';
 
             try {
@@ -90,24 +192,68 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        email: document.getElementById('reset-email').value,
-                        code: document.getElementById('reset-code').value,
-                        new_password: document.getElementById('reset-password').value,
+                        email: email,
+                        code: code,
+                        new_password: password,
                     }),
                 });
+                
                 const data = await res.json();
+                
                 if (!res.ok) {
-                    msg.textContent = data.message || 'Reset failed';
+                    msg.textContent = data.message || 'Failed to reset password';
                     msg.className = 'mt-1 text-sm text-red-600';
+                    btn.disabled = false;
+                    btn.textContent = 'Reset Password';
                 } else {
-                    msg.textContent = data.message || 'Password reset successful';
-                    msg.className = 'mt-1 text-sm text-emerald-600';
+                    // Success - hide forms and show success message with animation
+                    const step1 = document.getElementById('step1');
+                    const step2 = document.getElementById('step2');
+                    const success = document.getElementById('success-message');
+                    
+                    step1.style.opacity = '0';
+                    step2.style.opacity = '0';
+                    setTimeout(() => {
+                        step1.classList.add('hidden');
+                        step2.classList.add('hidden');
+                        success.classList.remove('hidden');
+                        success.style.opacity = '0';
+                        setTimeout(() => {
+                            success.style.opacity = '1';
+                            success.style.transition = 'opacity 0.5s ease-in';
+                        }, 10);
+                    }, 300);
                 }
             } catch (err) {
-                msg.textContent = 'Network error';
+                msg.textContent = 'Network error. Please check your connection and try again.';
                 msg.className = 'mt-1 text-sm text-red-600';
+                btn.disabled = false;
+                btn.textContent = 'Reset Password';
             }
         });
+
+        // Real-time password match validation
+        const passwordInput = document.getElementById('reset-password');
+        const passwordConfirmInput = document.getElementById('reset-password-confirm');
+        const resetMsg = document.getElementById('reset-msg');
+
+        function validatePasswords() {
+            if (passwordConfirmInput.value && passwordInput.value) {
+                if (passwordInput.value !== passwordConfirmInput.value) {
+                    passwordConfirmInput.classList.add('border-red-500');
+                    passwordConfirmInput.classList.remove('border-slate-300');
+                } else {
+                    passwordConfirmInput.classList.remove('border-red-500');
+                    passwordConfirmInput.classList.add('border-slate-300');
+                    if (resetMsg.textContent.includes('Passwords do not match')) {
+                        resetMsg.textContent = '';
+                    }
+                }
+            }
+        }
+
+        passwordInput.addEventListener('input', validatePasswords);
+        passwordConfirmInput.addEventListener('input', validatePasswords);
     </script>
 </body>
 </html>
