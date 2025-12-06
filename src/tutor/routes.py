@@ -1,8 +1,8 @@
 from flask import render_template, jsonify, request, flash, redirect, url_for
 from flask_login import login_required, current_user
-from src.tutor import tutor_bp
-from src import db
 from decimal import Decimal
+from src import db
+from src.tutor import tutor_bp
 
 @tutor_bp.route('/dashboard')
 @login_required
@@ -11,7 +11,7 @@ def dashboard():
     # Check if user is actually a tutor
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
         flash('This page is only for tutors.', 'error')
-        return redirect('/')
+        return redirect(url_for('index'))
     
     return render_template('tutor/dashboard.html', user=current_user)
 
@@ -21,7 +21,7 @@ def profile():
     """Tutor profile page."""
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
         flash('This page is only for tutors.', 'error')
-        return redirect('/')
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         # Update profile
@@ -72,7 +72,7 @@ def verification():
     """Tutor verification page."""
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
         flash('This page is only for tutors.', 'error')
-        return redirect('/')
+        return redirect(url_for('index'))
     
     return render_template('tutor/verification.html', user=current_user)
 

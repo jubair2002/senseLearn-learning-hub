@@ -14,7 +14,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
-                    <a href="{{ url_for('main.index') }}" class="flex items-center space-x-2">
+                    <a href="{{ url_for('index') }}" class="flex items-center space-x-2">
                         <div class="w-8 h-8 bg-emerald-500 rounded-lg"></div>
                         <span class="text-xl font-bold text-slate-800">SenseLearn</span>
                     </a>
@@ -27,34 +27,34 @@
                                    class="{% if request.endpoint == 'student.dashboard' %}border-emerald-500 text-emerald-700{% else %}border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                     Dashboard
                                 </a>
-                                <a href="{{ url_for('student.find_tutors') }}" 
-                                   class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                    Find Tutors
+                                <a href="{{ url_for('student.profile') }}" 
+                                   class="{% if request.endpoint == 'student.profile' %}border-emerald-500 text-emerald-700{% else %}border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                    Profile
                                 </a>
                             {% elif current_user.user_type == 'tutor' %}
                                 <a href="{{ url_for('tutor.dashboard') }}" 
                                    class="{% if request.endpoint == 'tutor.dashboard' %}border-blue-500 text-blue-700{% else %}border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                     Dashboard
                                 </a>
-                                <a href="{{ url_for('tutor.my_students') }}" 
-                                   class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                    My Students
+                                <a href="{{ url_for('tutor.profile') }}" 
+                                   class="{% if request.endpoint == 'tutor.profile' %}border-blue-500 text-blue-700{% else %}border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                    Profile
                                 </a>
-                                <a href="{{ url_for('tutor.sessions') }}" 
-                                   class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                    Sessions
+                                <a href="{{ url_for('tutor.verification') }}" 
+                                   class="{% if request.endpoint == 'tutor.verification' %}border-blue-500 text-blue-700{% else %}border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                    Verification
                                 </a>
                             {% endif %}
                         {% else %}
-                            <a href="{{ url_for('main.index') }}" 
+                            <a href="{{ url_for('index') }}" 
                                class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                 Home
                             </a>
-                            <a href="{{ url_for('auth.login') }}" 
+                            <a href="{{ url_for('login_page') }}" 
                                class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                 Login
                             </a>
-                            <a href="{{ url_for('auth.register') }}" 
+                            <a href="{{ url_for('register_page') }}" 
                                class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                 Register
                             </a>
@@ -99,7 +99,7 @@
                                             <i class="fas fa-shield-alt mr-2"></i>Verification
                                         </a>
                                     {% endif %}
-                                    <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
+                                    <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
                                         <i class="fas fa-sign-out-alt mr-2"></i>Logout
                                     </a>
                                 </div>
@@ -107,11 +107,11 @@
                         </div>
                     {% else %}
                         <div class="flex space-x-4">
-                            <a href="{{ url_for('auth.login') }}" 
+                            <a href="{{ url_for('login_page') }}" 
                                class="text-slate-600 hover:text-slate-900 px-3 py-2 text-sm font-medium">
                                 Sign In
                             </a>
-                            <a href="{{ url_for('auth.register') }}" 
+                            <a href="{{ url_for('register_page') }}" 
                                class="bg-emerald-600 text-white hover:bg-emerald-700 px-4 py-2 rounded-lg text-sm font-medium">
                                 Sign Up
                             </a>

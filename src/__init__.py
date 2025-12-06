@@ -63,10 +63,11 @@ def create_app() -> Flask:
         if current_user.is_authenticated:
             if hasattr(current_user, 'user_type'):
                 if current_user.user_type == 'student':
-                    return redirect('/student/dashboard')
-                else:
-                    return redirect('/tutor/dashboard')
-        return send_file(os.path.join(project_root, "index.html"))
+                    return redirect(url_for('student.dashboard'))
+                elif current_user.user_type == 'tutor':
+                    return redirect(url_for('tutor.dashboard'))
+        # Serve index.html from static folder
+        return send_file(os.path.join(project_root, "static", "index.html"))
 
     @app.route("/login")
     @app.route("/auth")
@@ -83,6 +84,8 @@ def create_app() -> Flask:
 
     @app.route("/forgot")
     def forgot_page():
+        if current_user.is_authenticated:
+            return redirect(url_for('index'))
         return render_template("forgot.html")
 
     @app.route("/logout")
@@ -98,20 +101,12 @@ def create_app() -> Flask:
     app.register_blueprint(auth_bp)
 
     # Register student blueprint
-    try:
-        from src.student import student_bp
-        app.register_blueprint(student_bp)
-    except ImportError:
-        # Student module not created yet, will be created in next steps
-        pass
+    from src.student import student_bp
+    app.register_blueprint(student_bp)
 
     # Register tutor blueprint
-    try:
-        from src.tutor import tutor_bp
-        app.register_blueprint(tutor_bp)
-    except ImportError:
-        # Tutor module not created yet, will be created in next steps
-        pass
+    from src.tutor import tutor_bp
+    app.register_blueprint(tutor_bp)
 
     # Create tables if they do not exist
     with app.app_context():

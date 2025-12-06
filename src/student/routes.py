@@ -1,7 +1,7 @@
 from flask import render_template, jsonify, request, flash, redirect, url_for
 from flask_login import login_required, current_user
-from src.student import student_bp
 from src import db
+from src.student import student_bp
 
 @student_bp.route('/dashboard')
 @login_required
@@ -10,7 +10,7 @@ def dashboard():
     # Check if user is actually a student
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
         flash('This page is only for students.', 'error')
-        return redirect('/')
+        return redirect(url_for('index'))
     
     return render_template('student/dashboard.html', user=current_user)
 
@@ -20,7 +20,7 @@ def profile():
     """Student profile page."""
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
         flash('This page is only for students.', 'error')
-        return redirect('/')
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         # Update profile
