@@ -214,8 +214,9 @@ def login():
 @login_required
 def logout_route():
     """Logout route."""
+    from flask import redirect, url_for
     logout_user()
-    return jsonify({"message": config.MSG_LOGOUT_SUCCESS}), 200
+    return redirect(url_for('login_page'))
 
 
 @auth_bp.route("/forgot", methods=["POST"])

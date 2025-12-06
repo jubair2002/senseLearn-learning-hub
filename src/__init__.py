@@ -106,7 +106,7 @@ def create_app() -> Flask:
         from flask import flash
         logout_user()
         flash('You have been logged out.', 'info')
-        return redirect(url_for('index'))
+        return redirect(url_for('login_page'))
 
     # Register blueprints
     from src.auth import auth_bp
