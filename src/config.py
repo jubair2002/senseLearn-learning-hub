@@ -106,4 +106,3 @@ class Config:
 
 # Global config instance - will be re-initialized after load_dotenv()
 config = Config()
-
