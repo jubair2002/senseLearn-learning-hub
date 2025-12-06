@@ -169,9 +169,9 @@ def create_app() -> Flask:
     from src.tutor import tutor_bp
     app.register_blueprint(tutor_bp)
 
-        # Create tables if they do not exist
-        with app.app_context():
-            from src.auth.models import User, PasswordResetCode
-            db.create_all()
+    # Create tables if they do not exist
+    with app.app_context():
+        from src.auth.models import User, PasswordResetCode
+        db.create_all()
 
     return app
