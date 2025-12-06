@@ -1,170 +1,622 @@
-{% extends "tutor/base_tutor.html" %}
-
-{% set active_page = 'dashboard' %}
-
-{% block title %}Dashboard{% endblock %}
-
-{% block content_header %}👋 Tutor Dashboard{% endblock %}
-
-{% block content %}
-    <p class="text-gray-600 mb-8">Manage your teaching schedule and connect with students.</p>
-    
-    {% if not user.is_verified %}
-    <div class="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-6 rounded-lg">
-        <div class="flex items-center">
-            <div class="flex-shrink-0">
-                <i class="fas fa-exclamation-triangle text-yellow-500 text-lg"></i>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutor Dashboard - SenseLearn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar-transition bg-white border-r border-slate-200 w-64 flex flex-col">
+            <!-- Logo Section -->
+            <div class="p-6 border-b border-slate-200">
+                <div class="flex items-center gap-3" id="logo-content">
+                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white flex-shrink-0">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <div id="logo-text" class="sidebar-text">
+                        <h1 class="text-lg font-bold text-slate-800">SenseLearn</h1>
+                        <p class="text-xs text-slate-500">Tutor Portal</p>
+                    </div>
+                </div>
             </div>
-            <div class="ml-3">
-                <p class="text-sm text-yellow-800">
+
+            <!-- Navigation Menu -->
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <a href="#" data-section="dashboard" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 text-blue-700 font-medium hover:bg-blue-100 transition">
+                    <i class="fas fa-home w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Dashboard</span>
+                </a>
+                <a href="#" data-section="profile" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-user w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Profile</span>
+                </a>
+                <a href="#" data-section="students" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-users w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">My Students</span>
+                </a>
+                <a href="#" data-section="sessions" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-calendar w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Sessions</span>
+                </a>
+                <a href="#" data-section="earnings" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-dollar-sign w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Earnings</span>
+                </a>
+                <a href="#" data-section="verification" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-shield-alt w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Verification</span>
+                </a>
+                <a href="#" data-section="settings" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-cog w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Settings</span>
+                </a>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <div class="p-4 border-t border-slate-200">
+                <div class="bg-blue-50 rounded-lg p-3 text-xs text-blue-700 sidebar-text">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <strong>Need help?</strong>
+                    <p class="mt-1">Contact support anytime</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Header -->
+            <header class="bg-white border-b border-slate-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <!-- Sidebar Toggle & Page Title -->
+                    <div class="flex items-center gap-4">
+                        <button id="sidebar-toggle" class="p-2 rounded-lg hover:bg-slate-100 transition text-slate-600">
+                            <i class="fas fa-bars text-lg"></i>
+                        </button>
+                        <div>
+                            <h2 id="page-title" class="text-xl font-bold text-slate-800">Dashboard</h2>
+                            <p class="text-sm text-slate-500">Welcome back, {{ user.full_name }}</p>
+                        </div>
+                    </div>
+
+                    <!-- User Menu -->
+                    <div class="flex items-center gap-4">
+                        <!-- Notifications -->
+                        <button class="relative p-2 rounded-lg hover:bg-slate-100 transition text-slate-600">
+                            <i class="fas fa-bell"></i>
+                            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                        </button>
+
+                        <!-- User Dropdown -->
+                        <div class="relative" id="user-menu-container">
+                            <button id="user-menu-button" class="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-slate-100 transition">
+                                <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                    {{ user.full_name[0].upper() }}
+                                </div>
+                                <div class="text-left hidden md:block">
+                                    <p class="text-sm font-medium text-slate-800">{{ user.full_name }}</p>
+                                    <p class="text-xs text-slate-500">Tutor</p>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-400 text-xs"></i>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50">
+                                <div class="px-4 py-3 border-b border-slate-200">
+                                    <p class="text-sm font-semibold text-slate-800">{{ user.full_name }}</p>
+                                    <p class="text-xs text-slate-500">{{ user.email }}</p>
+                                </div>
+                                <a href="#" data-section="profile" class="nav-link flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition">
+                                    <i class="fas fa-user w-4"></i>
+                                    <span>My Profile</span>
+                                </a>
+                                <a href="#" data-section="settings" class="nav-link flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition">
+                                    <i class="fas fa-cog w-4"></i>
+                                    <span>Settings</span>
+                                </a>
+                                <div class="border-t border-slate-200 my-1"></div>
+                                <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition">
+                                    <i class="fas fa-sign-out-alt w-4"></i>
+                                    <span>Logout</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content - All Sections -->
+            <main class="flex-1 overflow-y-auto p-6">
+                <!-- Dashboard Section -->
+                <div id="section-dashboard" class="content-section active">
+    {% if not user.is_verified %}
+                    <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded-lg">
+        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle text-yellow-500 text-lg mr-3"></i>
+                            <div>
+                                <p class="text-sm text-yellow-800 font-medium">
                     Your tutor account is not verified yet. 
-                    <a href="/tutor/verification" class="font-bold underline hover:text-yellow-900">Complete verification →</a>
+                                    <a href="#" data-section="verification" class="nav-link font-bold underline hover:text-yellow-900">Complete verification →</a>
                 </p>
             </div>
         </div>
     </div>
     {% endif %}
     
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 transition duration-300 hover:shadow-xl">
-            <div class="flex items-center">
-                <div class="p-3 bg-blue-100 rounded-full mr-4">
-                    <i class="fas fa-users text-blue-600 text-2xl"></i>
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-600 mb-1">Total Students</p>
+                                    <p class="text-3xl font-bold text-slate-800" id="total-students">0</p>
                 </div>
-                <div>
-                    <p class="text-gray-500 text-sm font-semibold">Total Students</p>
-                    <p class="text-3xl font-bold text-gray-900" id="total-students">0</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 transition duration-300 hover:shadow-xl">
-            <div class="flex items-center">
-                <div class="p-3 bg-green-100 rounded-full mr-4">
-                    <i class="fas fa-dollar-sign text-green-600 text-2xl"></i>
-                </div>
-                <div>
-                    <p class="text-gray-500 text-sm font-semibold">Total Earnings</p>
-                    <p class="text-3xl font-bold text-gray-900">$<span id="total-earnings">0</span></p>
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-users text-blue-600 text-xl"></i>
                 </div>
             </div>
         </div>
         
-        <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 transition duration-300 hover:shadow-xl">
-            <div class="flex items-center">
-                <div class="p-3 bg-purple-100 rounded-full mr-4">
-                    <i class="fas fa-star text-purple-600 text-2xl"></i>
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-600 mb-1">Total Earnings</p>
+                                    <p class="text-3xl font-bold text-slate-800">$<span id="total-earnings">0.00</span></p>
                 </div>
+                                <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-dollar-sign text-emerald-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm font-semibold">Avg. Rating</p>
-                    <p class="text-3xl font-bold text-gray-900" id="avg-rating">0.0</p>
+                                    <p class="text-sm text-slate-600 mb-1">Avg. Rating</p>
+                                    <p class="text-3xl font-bold text-slate-800" id="avg-rating">0.0</p>
                     <div class="flex items-center mt-1">
-                        {% for i in range(5) %}
-                        <i class="fas fa-star text-yellow-400 text-sm mr-0.5"></i>
-                        {% endfor %}
+                                        <i class="fas fa-star text-yellow-400 text-sm"></i>
+                                        <i class="fas fa-star text-yellow-400 text-sm"></i>
+                                        <i class="fas fa-star text-yellow-400 text-sm"></i>
+                                        <i class="fas fa-star text-yellow-400 text-sm"></i>
+                                        <i class="fas fa-star text-yellow-400 text-sm"></i>
+                                    </div>
+                                </div>
+                                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-star text-purple-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Content Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Left Column -->
+                        <div class="lg:col-span-2 space-y-6">
+                            <!-- Today's Sessions -->
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <div class="flex items-center justify-between mb-6">
+                                    <h3 class="text-lg font-bold text-slate-800">Today's Sessions</h3>
+                                    <a href="#" data-section="sessions" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                        View All <i class="fas fa-arrow-right ml-1"></i>
+                                    </a>
+                                </div>
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between p-4 border border-blue-100 bg-blue-50 rounded-lg">
+                                        <div>
+                                            <h4 class="font-semibold text-slate-800">No sessions scheduled</h4>
+                                            <p class="text-sm text-slate-600 mt-1">Your scheduled sessions will appear here</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div class="lg:col-span-2">
-            <div class="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">🗓️ Today's Sessions</h2>
-                <div class="space-y-4">
-                    {% for i in range(2) %}
-                    <div class="flex items-center justify-between p-4 border border-blue-100 bg-blue-50 rounded-lg hover:shadow-md transition duration-200">
-                        <div>
-                            <h3 class="font-semibold text-lg text-gray-800">Mathematics Session</h3>
-                            <p class="text-sm text-gray-600 mt-1">
-                                <i class="far fa-clock w-4 mr-2"></i>3:00 PM - 4:30 PM
-                            </p>
-                            <p class="text-sm text-gray-600 mt-1">
-                                <i class="fas fa-user w-4 mr-2"></i>With: John Smith
-                            </p>
+                            <!-- Your Subjects -->
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4">Your Subjects</h3>
+                                <div class="flex flex-wrap gap-3">
+                                    {% if user.subjects %}
+                                        {% for subject in user.subjects.split(',') %}
+                                        <span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium border border-blue-200">
+                                            {{ subject.strip() }}
+                                        </span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <p class="text-slate-500 text-sm">No subjects added yet</p>
+                                    {% endif %}
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <button class="px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-semibold hover:bg-blue-700 transition duration-200 shadow-md">
-                                <i class="fas fa-video mr-1"></i> Start Session
-                            </button>
+
+                        <!-- Right Column -->
+                        <div class="space-y-6">
+                            <!-- Profile Summary -->
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <div class="flex items-center justify-between mb-6">
+                                    <h3 class="text-lg font-bold text-slate-800">Profile Summary</h3>
+                                    <a href="#" data-section="profile" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                        Edit <i class="fas fa-arrow-right ml-1"></i>
+                                    </a>
+                                </div>
+                                <div class="space-y-4">
+                                    <div class="flex justify-between items-center pb-3 border-b border-slate-200">
+                                        <span class="text-slate-600 text-sm">Hourly Rate:</span>
+                                        <span class="font-bold text-blue-600">${{ "%.2f"|format(user.hourly_rate) if user.hourly_rate else '0.00' }}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center pb-3 border-b border-slate-200">
+                                        <span class="text-slate-600 text-sm">Experience:</span>
+                                        <span class="font-bold text-slate-800">{{ user.experience_years or 0 }} years</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-slate-600 text-sm">Status:</span>
+                                        <span class="font-bold {% if user.is_verified %}text-emerald-600{% else %}text-yellow-600{% endif %}">
+                                            <i class="fas {% if user.is_verified %}fa-check-circle{% else %}fa-clock{% endif %} mr-1"></i>
+                                            {% if user.is_verified %}Verified{% else %}Pending{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Actions -->
+                            <div class="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6">
+                                <h3 class="text-lg font-bold text-blue-800 mb-4">Quick Actions</h3>
+                                <div class="space-y-3">
+                                    <a href="#" data-section="sessions" class="nav-link flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-300 hover:bg-blue-100 transition">
+                                        <i class="fas fa-calendar-plus text-blue-600"></i>
+                                        <span class="font-medium text-slate-800 text-sm">Schedule Session</span>
+                                    </a>
+                                    <a href="#" data-section="students" class="nav-link flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-300 hover:bg-blue-100 transition">
+                                        <i class="fas fa-users text-blue-600"></i>
+                                        <span class="font-medium text-slate-800 text-sm">View Students</span>
+                                    </a>
+                                    <a href="#" data-section="earnings" class="nav-link flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-300 hover:bg-blue-100 transition">
+                                        <i class="fas fa-chart-line text-blue-600"></i>
+                                        <span class="font-medium text-slate-800 text-sm">View Earnings</span>
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
+
+                <!-- Profile Section -->
+                <div id="section-profile" class="content-section">
+                    <div class="max-w-3xl mx-auto">
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                            <h3 class="text-2xl font-bold text-slate-800 mb-6">Edit Profile</h3>
+                            
+                            <div id="profile-message" class="mb-4"></div>
+                            
+                            <form id="profile-form" class="space-y-5">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-2">Full Name <span class="text-red-500">*</span></label>
+                                        <input type="text" name="full_name" id="profile-full-name" value="{{ user.full_name }}" 
+                                               class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                               required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-2">Phone Number</label>
+                                        <input type="tel" name="phone_number" id="profile-phone" value="{{ user.phone_number or '' }}" 
+                                               class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+                                    <input type="email" value="{{ user.email }}" 
+                                           class="w-full border border-slate-300 rounded-lg px-4 py-3 bg-slate-100"
+                                           disabled>
+                                    <p class="text-xs text-slate-500 mt-1">Email cannot be changed</p>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2">Qualifications <span class="text-red-500">*</span></label>
+                                    <textarea name="qualifications" id="profile-qualifications" rows="3"
+                                              class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                              required>{{ user.qualifications or '' }}</textarea>
             </div>
             
-            <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">📚 Your Subjects</h2>
-                <div class="flex flex-wrap gap-3">
-                    {% for subject in user.subjects.split(',') %}
-                    <span class="px-4 py-1.5 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium border border-indigo-200">
-                        {{ subject.strip() }}
-                    </span>
-                    {% endfor %}
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-2">Years of Experience <span class="text-red-500">*</span></label>
+                                        <input type="number" name="experience_years" id="profile-experience" value="{{ user.experience_years or 0 }}" 
+                                               class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                               min="0" required>
                 </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-2">Hourly Rate ($) <span class="text-red-500">*</span></label>
+                                        <input type="number" name="hourly_rate" id="profile-hourly-rate" value="{{ user.hourly_rate or 0 }}" 
+                                               class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                               min="0" step="0.01" required>
             </div>
         </div>
         
         <div>
-            <div class="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">👤 Profile Summary</h2>
-                <div class="space-y-4">
-                    <div class="flex justify-between items-center border-b pb-2">
-                        <span class="text-gray-600">Hourly Rate:</span>
-                        <span class="font-bold text-blue-600">${{ "%.2f"|format(user.hourly_rate) }}</span>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2">Subjects (comma separated) <span class="text-red-500">*</span></label>
+                                    <input type="text" name="subjects" id="profile-subjects" value="{{ user.subjects or '' }}" 
+                                           class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                           placeholder="e.g., Mathematics, Physics, Computer Science" required>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2">Bio <span class="text-red-500">*</span></label>
+                                    <textarea name="bio" id="profile-bio" rows="4"
+                                              class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                              required>{{ user.bio or '' }}</textarea>
+                                </div>
+                                
+                                <div class="flex gap-4 pt-4">
+                                    <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium">
+                                        Update Profile
+                                    </button>
+                                    <button type="button" data-section="dashboard" class="nav-link bg-slate-200 text-slate-700 px-6 py-3 rounded-lg hover:bg-slate-300 transition font-medium">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <div class="bg-slate-50 rounded-xl p-6">
+                            <h3 class="font-semibold text-slate-700 mb-4">Account Information</h3>
+                            <div class="space-y-2 text-sm text-slate-600">
+                                <p>Account created: {{ user.created_at.strftime('%B %d, %Y at %I:%M %p') if user.created_at else 'N/A' }}</p>
+                                <p>User ID: {{ user.id }}</p>
+                                <p>Verification status: <span class="font-medium {% if user.is_verified %}text-emerald-600{% else %}text-yellow-600{% endif %}">
+                                    {% if user.is_verified %}Verified{% else %}Not Verified{% endif %}
+                                </span></p>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex justify-between items-center border-b pb-2">
-                        <span class="text-gray-600">Experience:</span>
-                        <span class="font-bold text-gray-800">{{ user.experience_years }} years</span>
+                </div>
+
+                <!-- Students Section -->
+                <div id="section-students" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6">My Students</h3>
+                        <div class="text-center py-12">
+                            <i class="fas fa-users text-6xl text-slate-300 mb-4"></i>
+                            <p class="text-slate-600">No students assigned yet</p>
+                            <p class="text-sm text-slate-500 mt-2">Your students will appear here once they book sessions</p>
+                        </div>
                     </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Status:</span>
-                        <span class="font-bold {% if user.is_verified %}text-green-600{% else %}text-yellow-600{% endif %}">
-                            <i class="fas {% if user.is_verified %}fa-check-circle{% else %}fa-clock{% endif %} mr-1"></i>
-                            {% if user.is_verified %}Verified{% else %}Pending Verification{% endif %}
-                        </span>
+                </div>
+
+                <!-- Sessions Section -->
+                <div id="section-sessions" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6">My Sessions</h3>
+                        <div class="text-center py-12">
+                            <i class="fas fa-calendar text-6xl text-slate-300 mb-4"></i>
+                            <p class="text-slate-600">No sessions scheduled</p>
+                            <p class="text-sm text-slate-500 mt-2">Schedule your first teaching session</p>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="mt-6">
-                    <a href="/tutor/profile" class="block text-center w-full py-3 bg-indigo-500 text-white rounded-lg font-semibold hover:bg-indigo-600 transition duration-200 shadow-md">
-                        Edit Profile Details
-                    </a>
+                <!-- Earnings Section -->
+                <div id="section-earnings" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6">Earnings Overview</h3>
+                        <div class="text-center py-12">
+                            <i class="fas fa-dollar-sign text-6xl text-slate-300 mb-4"></i>
+                            <p class="text-slate-600">No earnings data available</p>
+                            <p class="text-sm text-slate-500 mt-2">Your earnings will be tracked as you complete sessions</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Verification Section -->
+                <div id="section-verification" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6">Account Verification</h3>
+                        {% if user.is_verified %}
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-6 text-center">
+                            <i class="fas fa-check-circle text-6xl text-emerald-600 mb-4"></i>
+                            <h4 class="text-xl font-bold text-emerald-800 mb-2">Your account is verified!</h4>
+                            <p class="text-emerald-700">You can now start teaching and accepting students.</p>
+                        </div>
+                        {% else %}
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                            <div class="flex items-start gap-4">
+                                <i class="fas fa-clock text-4xl text-yellow-600"></i>
+                                <div class="flex-1">
+                                    <h4 class="text-xl font-bold text-yellow-800 mb-2">Verification Pending</h4>
+                                    <p class="text-yellow-700 mb-4">Your tutor account is currently under review. Our team will verify your credentials and qualifications.</p>
+                                    <div class="bg-white rounded-lg p-4 mb-4">
+                                        <p class="text-sm font-semibold text-slate-700 mb-2">What we're reviewing:</p>
+                                        <ul class="text-sm text-slate-600 space-y-1">
+                                            <li><i class="fas fa-check text-emerald-600 mr-2"></i>Your qualifications</li>
+                                            <li><i class="fas fa-check text-emerald-600 mr-2"></i>Your experience</li>
+                                            <li><i class="fas fa-check text-emerald-600 mr-2"></i>Your profile information</li>
+                                        </ul>
+                                    </div>
+                                    <p class="text-sm text-yellow-700">We'll notify you once your account is verified. This usually takes 1-2 business days.</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
                 </div>
             </div>
             
-            <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 shadow-lg">
-                <h3 class="text-2xl font-bold text-blue-800 mb-4">⚡ Quick Actions</h3>
+                <!-- Settings Section -->
+                <div id="section-settings" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6">Settings</h3>
+                        <div class="space-y-6">
+                            <div>
+                                <h4 class="font-semibold text-slate-700 mb-3">Notification Preferences</h4>
                 <div class="space-y-3">
-                    <a href="#" class="flex items-center p-3 bg-white rounded-lg border border-blue-300 hover:bg-blue-100 transition duration-200 shadow-sm">
-                        <i class="fas fa-calendar-plus text-blue-600 text-lg w-5 mr-3"></i>
-                        <span class="font-medium text-gray-800">Set New Availability</span>
-                    </a>
-                    <a href="#" class="flex items-center p-3 bg-white rounded-lg border border-blue-300 hover:bg-blue-100 transition duration-200 shadow-sm">
-                        <i class="fas fa-bell text-blue-600 text-lg w-5 mr-3"></i>
-                        <span class="font-medium text-gray-800">Notifications Center</span>
-                    </a>
-                    <a href="#" class="flex items-center p-3 bg-white rounded-lg border border-blue-300 hover:bg-blue-100 transition duration-200 shadow-sm">
-                        <i class="fas fa-question-circle text-blue-600 text-lg w-5 mr-3"></i>
-                        <span class="font-medium text-gray-800">Support / FAQ</span>
-                    </a>
+                                    <label class="flex items-center gap-3">
+                                        <input type="checkbox" class="w-4 h-4 text-blue-600 border-slate-300 rounded">
+                                        <span class="text-slate-700">Email notifications</span>
+                                    </label>
+                                    <label class="flex items-center gap-3">
+                                        <input type="checkbox" class="w-4 h-4 text-blue-600 border-slate-300 rounded" checked>
+                                        <span class="text-slate-700">Session reminders</span>
+                                    </label>
+                                    <label class="flex items-center gap-3">
+                                        <input type="checkbox" class="w-4 h-4 text-blue-600 border-slate-300 rounded" checked>
+                                        <span class="text-slate-700">New student requests</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="border-t border-slate-200 pt-6">
+                                <h4 class="font-semibold text-slate-700 mb-3">Privacy</h4>
+                                <p class="text-sm text-slate-600">Manage your privacy settings and data preferences.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </main>
         </div>
     </div>
-{% endblock %}
 
-{% block scripts %}
-    {{ super() }} <script>
+    <script>
+        // Page titles mapping
+        const pageTitles = {
+            'dashboard': 'Dashboard',
+            'profile': 'Profile',
+            'students': 'My Students',
+            'sessions': 'My Sessions',
+            'earnings': 'Earnings',
+            'verification': 'Verification',
+            'settings': 'Settings'
+        };
+
+        // Navigation handler
+        function showSection(sectionName) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show selected section
+            const targetSection = document.getElementById(`section-${sectionName}`);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+            
+            // Update page title
+            document.getElementById('page-title').textContent = pageTitles[sectionName] || 'Dashboard';
+            
+            // Update active nav link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('bg-blue-50', 'text-blue-700', 'font-medium');
+                link.classList.add('text-slate-700');
+            });
+            
+            const activeLink = document.querySelector(`[data-section="${sectionName}"]`);
+            if (activeLink) {
+                activeLink.classList.add('bg-blue-50', 'text-blue-700', 'font-medium');
+                activeLink.classList.remove('text-slate-700');
+            }
+            
+            // Close user dropdown if open
+            document.getElementById('user-dropdown').classList.add('hidden');
+        }
+
+        // Setup navigation links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = link.getAttribute('data-section');
+                if (section) {
+                    showSection(section);
+                }
+            });
+        });
+
+        // Profile form submission
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const messageDiv = document.getElementById('profile-message');
+            
+            messageDiv.innerHTML = '<div class="p-3 bg-blue-100 text-blue-700 rounded-lg">Updating profile...</div>';
+            
+            try {
+                const response = await fetch('/tutor/profile', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    messageDiv.innerHTML = '<div class="p-3 bg-emerald-100 text-emerald-700 rounded-lg">Profile updated successfully!</div>';
+                    // Reload page after 1.5 seconds to show updated data
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    messageDiv.innerHTML = '<div class="p-3 bg-red-100 text-red-700 rounded-lg">Failed to update profile. Please try again.</div>';
+                }
+            } catch (error) {
+                messageDiv.innerHTML = '<div class="p-3 bg-red-100 text-red-700 rounded-lg">Network error. Please try again.</div>';
+            }
+        });
+
+        // Sidebar Toggle
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const sidebarTexts = document.querySelectorAll('.sidebar-text');
+        let sidebarCollapsed = false;
+
+        sidebarToggle.addEventListener('click', () => {
+            sidebarCollapsed = !sidebarCollapsed;
+            
+            if (sidebarCollapsed) {
+                sidebar.style.width = '80px';
+                sidebarTexts.forEach(text => {
+                    text.style.display = 'none';
+                });
+            } else {
+                sidebar.style.width = '256px';
+                sidebarTexts.forEach(text => {
+                    text.style.display = 'block';
+                });
+            }
+        });
+
+        // User Menu Dropdown
+        const userMenuButton = document.getElementById('user-menu-button');
+        const userDropdown = document.getElementById('user-dropdown');
+
+        userMenuButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!userMenuButton.contains(e.target) && !userDropdown.contains(e.target)) {
+                userDropdown.classList.add('hidden');
+            }
+        });
+
         // Load dashboard stats
-        fetch('{{ APP_CONFIG.TUTOR_API_PREFIX }}/stats')
+        fetch('/tutor/api/stats')
             .then(response => response.json())
             .then(data => {
-                document.getElementById('total-students').textContent = data.total_students;
-                document.getElementById('total-earnings').textContent = data.total_earnings.toFixed(2);
-                document.getElementById('avg-rating').textContent = data.avg_rating;
+                document.getElementById('total-students').textContent = data.total_students || 0;
+                document.getElementById('total-earnings').textContent = (data.total_earnings || 0).toFixed(2);
+                document.getElementById('avg-rating').textContent = (data.avg_rating || 0).toFixed(1);
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                console.error('Error loading stats:', error);
+            });
     </script>
-{% endblock %}
+</body>
+</html>
