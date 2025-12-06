@@ -186,6 +186,7 @@ def login():
     data = request.get_json() or {}
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
+    remember = data.get("remember", False)  # Default to False if not provided
 
     if not email or not password:
         return jsonify({"message": "Email and password are required"}), 400
@@ -201,8 +202,8 @@ def login():
     if not verify_password(password, user.password_hash):
         return jsonify({"message": "Invalid email or password"}), 401
 
-    # Login the user
-    login_user(user, remember=True)
+    # Login the user with remember me option
+    login_user(user, remember=remember)
     
     # Return success with user info
     return jsonify({
