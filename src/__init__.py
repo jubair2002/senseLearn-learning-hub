@@ -119,16 +119,8 @@ def create_app() -> Flask:
                     return redirect(url_for('student.dashboard'))
                 elif current_user.user_type == 'tutor':
                     return redirect(url_for('tutor.dashboard'))
-        # Use render_template for better caching and performance
-        index_path = os.path.join(project_root, "templates", "index.html")
-        if os.path.exists(index_path):
-            return render_template("index.html")
-        # Fallback to static file
-        static_index = os.path.join(project_root, "static", "index.html")
-        if os.path.exists(static_index):
-            return send_file(static_index)
-        # Last resort: return simple response
-        return "Welcome to SenseLearn", 200
+        # Render the index template
+        return render_template("index.html")
 
     @app.route("/login")
     @app.route("/auth")
