@@ -5,6 +5,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy.exc import SQLAlchemyError
 
 from src import db
+from src.config import config
 from src.auth import auth_bp
 from src.auth.models import PasswordResetCode, User
 from src.auth.utils import (
@@ -18,12 +19,18 @@ from src.auth.utils import (
 
 @auth_bp.route("/", methods=["GET"])
 def auth_root():
-    """Simple health/info endpoint for /api/auth."""
+    """Simple health/info endpoint for auth API."""
+    base_path = config.AUTH_API_PREFIX
     return jsonify(
         {
             "status": "ok",
             "message": "Auth API is running",
-            "endpoints": ["/register", "/login", "/forgot", "/reset"],
+            "endpoints": [
+                f"{base_path}/register",
+                f"{base_path}/login",
+                f"{base_path}/forgot",
+                f"{base_path}/reset",
+            ],
         }
     ), 200
 
@@ -53,8 +60,10 @@ def register():
             return jsonify({"message": "Please provide a valid email address"}), 400
 
         # Validate user type
-        if user_type not in ["student", "tutor"]:
-            return jsonify({"message": "Invalid user type. Must be 'student' or 'tutor'"}), 400
+        if user_type not in config.VALID_USER_TYPES:
+            return jsonify({
+                "message": f"Invalid user type. Must be one of: {', '.join(config.VALID_USER_TYPES)}"
+            }), 400
 
         ok, error = validate_password(password)
         if not ok:
@@ -74,9 +83,10 @@ def register():
             if not disability_type:
                 return jsonify({"message": "Disability type is required for students"}), 400
             
-            valid_disabilities = ["Deaf", "Mute", "Blind", "Other"]
-            if disability_type not in valid_disabilities:
-                return jsonify({"message": "Invalid disability type selected"}), 400
+            if disability_type not in config.VALID_DISABILITY_TYPES:
+                return jsonify({
+                    "message": f"Invalid disability type. Must be one of: {', '.join(config.VALID_DISABILITY_TYPES)}"
+                }), 400
 
         # Tutor-specific validation
         if user_type == "tutor":
@@ -229,8 +239,12 @@ def forgot_password():
 
     PasswordResetCode.query.filter_by(user_id=user.id).delete()
 
-    code = generate_reset_code()
-    reset_obj = PasswordResetCode.create_for_user(user, code)
+    code = generate_reset_code(length=config.RESET_CODE_LENGTH)
+    reset_obj = PasswordResetCode.create_for_user(
+        user, 
+        code, 
+        minutes_valid=config.RESET_CODE_VALIDITY_MINUTES
+    )
     db.session.add(reset_obj)
     db.session.commit()
 

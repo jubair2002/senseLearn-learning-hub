@@ -1,8 +1,10 @@
 import random
 import re
 import string
+from typing import Optional
 
 from passlib.hash import bcrypt
+from src.config import config
 
 
 EMAIL_REGEX = re.compile(r"^[^@]+@[^@]+\.[^@]+$")
@@ -40,14 +42,20 @@ def validate_password(password: str) -> tuple[bool, str | None]:
     Basic server-side password validation.
     Returns (is_valid, error_message).
     """
-    if len(password) < 8:
-        return False, "Password must be at least 8 characters long"
+    min_length = config.MIN_PASSWORD_LENGTH
+    if len(password) < min_length:
+        return False, f"Password must be at least {min_length} characters long"
     
     # The 72-byte truncation is handled consistently in hash_password() and verify_password().
 
     return True, None
 
 
-def generate_reset_code(length: int = 6) -> str:
-    """Generate a numeric reset code (e.g. 6 digits)."""
+def generate_reset_code(length: Optional[int] = None) -> str:
+    """
+    Generate a numeric reset code.
+    Default length is read from configuration.
+    """
+    if length is None:
+        length = config.RESET_CODE_LENGTH
     return "".join(random.choices(string.digits, k=length))

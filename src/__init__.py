@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from flask_migrate import Migrate
 import os
 
+from src.config import config
+
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
@@ -16,6 +18,15 @@ def create_app() -> Flask:
     and registers blueprints.
     """
     load_dotenv()
+    
+    # Re-initialize config after loading .env file
+    # This ensures .env values are picked up
+    from src.config import Config
+    global config
+    config = Config()
+    
+    # Validate configuration
+    config.validate()
 
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -25,25 +36,26 @@ def create_app() -> Flask:
         static_folder=os.path.join(project_root, "static"),
     )
 
-    # Basic configuration from environment
-    secret_key = os.getenv("SECRET_KEY")
-    if not secret_key:
-        raise RuntimeError(
-            "SECRET_KEY environment variable is required. "
-            "Set it in your .env file, e.g. SECRET_KEY=your-random-secret"
-        )
-    app.config["SECRET_KEY"] = secret_key
-
-    db_user = os.getenv("DB_USER", "root")
-    db_password = os.getenv("DB_PASSWORD", "")
-    db_host = os.getenv("DB_HOST", "127.0.0.1")
-    db_port = os.getenv("DB_PORT", "3306")
-    db_name = os.getenv("DB_NAME", "senselearn_db")
-
-    app.config[
-        "SQLALCHEMY_DATABASE_URI"
-    ] = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    # Load configuration from config module
+    app.config["SECRET_KEY"] = config.SECRET_KEY
+    app.config["SQLALCHEMY_DATABASE_URI"] = config.SQLALCHEMY_DATABASE_URI
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = config.SQLALCHEMY_TRACK_MODIFICATIONS
+    app.config["SQLALCHEMY_ECHO"] = config.SQLALCHEMY_ECHO
+    app.config["SESSION_COOKIE_SECURE"] = config.SESSION_COOKIE_SECURE
+    app.config["SESSION_COOKIE_HTTPONLY"] = config.SESSION_COOKIE_HTTPONLY
+    app.config["SESSION_COOKIE_SAMESITE"] = config.SESSION_COOKIE_SAMESITE
+    
+    # Make config available to templates via context processor
+    @app.context_processor
+    def inject_config():
+        return {
+            "APP_CONFIG": {
+                "API_BASE_URL": config.API_BASE_URL or config.API_PREFIX,
+                "AUTH_API_PREFIX": config.AUTH_API_PREFIX,
+                "STUDENT_API_PREFIX": config.STUDENT_API_PREFIX,
+                "TUTOR_API_PREFIX": config.TUTOR_API_PREFIX,
+            }
+        }
 
     # Initialize extensions
     db.init_app(app)

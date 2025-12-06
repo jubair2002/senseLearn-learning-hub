@@ -158,7 +158,7 @@
 {% block scripts %}
     {{ super() }} <script>
         // Load dashboard stats
-        fetch('/tutor/api/stats')
+        fetch('{{ APP_CONFIG.TUTOR_API_PREFIX }}/stats')
             .then(response => response.json())
             .then(data => {
                 document.getElementById('total-students').textContent = data.total_students;

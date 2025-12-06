@@ -142,7 +142,7 @@
 
     <script>
         // Load dashboard stats
-        fetch('/student/api/stats')
+        fetch('{{ APP_CONFIG.STUDENT_API_PREFIX }}/stats')
             .then(response => response.json())
             .then(data => {
                 document.getElementById('total-sessions').textContent = data.total_sessions;

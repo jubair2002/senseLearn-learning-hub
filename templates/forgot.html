@@ -49,7 +49,7 @@
     </div>
 
     <script>
-        const API_BASE = '/api/auth';
+        const API_BASE = '{{ APP_CONFIG.AUTH_API_PREFIX }}';
 
         document.getElementById('forgot-form').addEventListener('submit', async (e) => {
             e.preventDefault();
