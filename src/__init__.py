@@ -5,6 +5,9 @@ from dotenv import load_dotenv
 from flask_migrate import Migrate
 import os
 
+# Load environment variables early so config is available for blueprint creation
+load_dotenv()
+
 from src.config import config
 
 db = SQLAlchemy()
@@ -17,10 +20,7 @@ def create_app() -> Flask:
     Loads environment variables, configures the database,
     and registers blueprints.
     """
-    load_dotenv()
-    
-    # Re-initialize config after loading .env file
-    # This ensures .env values are picked up
+    # Re-initialize config to ensure latest .env values are loaded
     from src.config import Config
     global config
     config = Config()

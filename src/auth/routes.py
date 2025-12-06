@@ -44,7 +44,7 @@ def register():
         
         # Common fields
         full_name = (data.get("full_name") or "").strip()
-        user_type = (data.get("user_type") or "student").strip().lower()
+        user_type = (data.get("user_type") or config.DEFAULT_USER_TYPE).strip().lower()
         
         # Optional common fields
         username = (data.get("username") or "").strip() or None
@@ -137,8 +137,8 @@ def register():
         
         # Prepare success message based on user type
         success_message = {
-            "student": "Student account created successfully!",
-            "tutor": "Tutor account created successfully! Your account will be verified soon."
+            "student": config.MSG_STUDENT_REGISTER_SUCCESS,
+            "tutor": config.MSG_TUTOR_REGISTER_SUCCESS
         }.get(user_type, "Account created successfully!")
         
     except SQLAlchemyError as exc:  # DB or connection error
@@ -199,7 +199,7 @@ def login():
     
     # Return success with user info
     return jsonify({
-        "message": "Login successful",
+        "message": config.MSG_LOGIN_SUCCESS,
         "user": {
             "id": user.id,
             "email": user.email,
@@ -215,7 +215,7 @@ def login():
 def logout_route():
     """Logout route."""
     logout_user()
-    return jsonify({"message": "Logged out successfully"}), 200
+    return jsonify({"message": config.MSG_LOGOUT_SUCCESS}), 200
 
 
 @auth_bp.route("/forgot", methods=["POST"])
@@ -302,4 +302,4 @@ def reset_password():
     PasswordResetCode.query.filter_by(user_id=user.id).delete()
     db.session.commit()
 
-    return jsonify({"message": "Password has been reset successfully"}), 200
+    return jsonify({"message": config.MSG_PASSWORD_RESET_SUCCESS}), 200
