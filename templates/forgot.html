@@ -10,7 +10,7 @@
     <div class="max-w-md w-full bg-white shadow-xl rounded-2xl p-8 space-y-6">
         <div>
             <h1 class="text-2xl font-bold mb-1">Reset Password</h1>
-            <p class="text-sm text-slate-500">Enter your email to receive a reset code, then set a new password.</p>
+            <p class="text-sm text-slate-500">Enter your email to receive a reset OTP via email, then set a new password.</p>
         </div>
 
         <!-- Step 1: Request Reset Code -->
@@ -23,7 +23,7 @@
                 </div>
                 <button type="submit" id="forgot-btn"
                         class="w-full bg-emerald-600 text-white rounded-lg py-2 font-semibold hover:bg-emerald-700 transition-colors disabled:bg-slate-400 disabled:cursor-not-allowed">
-                    Send Reset Code
+                    Send OTP to Email
                 </button>
             </form>
             <p id="forgot-msg" class="mt-1 text-sm min-h-[24px]"></p>
@@ -40,8 +40,8 @@
                            required autocomplete="email" readonly />
                 </div>
                 <div>
-                    <label class="block text-xs text-slate-600 mb-1">Reset Code</label>
-                    <input id="reset-code" type="text" placeholder="Enter reset code"
+                    <label class="block text-xs text-slate-600 mb-1">OTP Code</label>
+                    <input id="reset-code" type="text" placeholder="Enter OTP from email"
                            class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                            required autocomplete="off" maxlength="10" />
                 </div>
@@ -121,14 +121,10 @@
                     msg.textContent = data.message || 'Failed to send reset code';
                     msg.className = 'mt-1 text-sm text-red-600';
                     btn.disabled = false;
-                    btn.textContent = 'Send Reset Code';
+                    btn.textContent = 'Send OTP to Email';
                 } else {
-                    // Show success message with code
-                    let successMsg = data.message || 'Reset code sent successfully!';
-                    if (data.code) {
-                        successMsg += ` Your reset code is: ${data.code}`;
-                    }
-                    msg.textContent = successMsg;
+                    // Show success message - OTP sent via email
+                    msg.textContent = data.message || 'Password reset OTP has been sent to your email. Please check your inbox.';
                     msg.className = 'mt-1 text-sm text-emerald-600 font-medium';
                     
                     // Auto-fill email in reset form and show step 2 with animation
@@ -147,7 +143,7 @@
                     }, 100);
                     
                     btn.disabled = false;
-                    btn.textContent = 'Send Reset Code';
+                    btn.textContent = 'Send OTP to Email';
                 }
             } catch (err) {
                 msg.textContent = 'Network error. Please check your connection and try again.';
@@ -193,7 +189,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         email: email,
-                        code: code,
+                        otp: code,  // Using 'otp' for consistency with backend
                         new_password: password,
                     }),
                 });

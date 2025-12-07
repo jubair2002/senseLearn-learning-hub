@@ -66,9 +66,12 @@ def profile():
             return redirect(url_for('student.profile'))
         
         try:
+            # Use direct assignment (faster than merge for existing objects)
             current_user.full_name = full_name
             current_user.phone_number = phone_number
             current_user.disability_type = disability_type
+            # Flush before commit to catch errors early
+            db.session.flush()
             db.session.commit()
             
             if is_ajax:

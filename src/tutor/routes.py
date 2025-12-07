@@ -5,15 +5,23 @@ from src import db
 from src.tutor import tutor_bp
 
 @tutor_bp.route('/dashboard')
+@tutor_bp.route('/dashboard/<section>')
 @login_required
-def dashboard():
-    """Tutor dashboard page."""
+def dashboard(section=None):
+    """Tutor dashboard page with optional section."""
     # Check if user is actually a tutor
     if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
         flash('This page is only for tutors.', 'error')
         return redirect(url_for('index'))
     
-    return render_template('tutor/dashboard.html', user=current_user)
+    # Validate section name
+    valid_sections = ['dashboard', 'profile', 'students', 'verification', 'settings']
+    if section and section not in valid_sections:
+        section = 'dashboard'
+    elif not section:
+        section = 'dashboard'
+    
+    return render_template('tutor/dashboard.html', user=current_user, default_section=section)
 
 @tutor_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -24,14 +32,43 @@ def profile():
         return redirect(url_for('index'))
     
     if request.method == 'POST':
-        # Update profile
-        full_name = request.form.get('full_name', '').strip()
-        phone_number = request.form.get('phone_number', '').strip() or None
-        qualifications = request.form.get('qualifications', '').strip()
-        experience_years = request.form.get('experience_years', '0').strip()
-        subjects = request.form.get('subjects', '').strip()
-        hourly_rate = request.form.get('hourly_rate', '0').strip()
-        bio = request.form.get('bio', '').strip()
+        # Check if this is an AJAX request first
+        accept_header = request.headers.get('Accept', '')
+        content_type = request.headers.get('Content-Type', '')
+        is_ajax = (
+            'application/json' in accept_header or 
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+            'application/json' in content_type
+        )
+        
+        # Get data from JSON or form data
+        if 'application/json' in content_type:
+            try:
+                json_data = request.get_json() or {}
+                full_name = json_data.get('full_name', '').strip()
+                phone_number = json_data.get('phone_number', '').strip() or None
+                qualifications = json_data.get('qualifications', '').strip()
+                experience_years = json_data.get('experience_years', '0').strip()
+                subjects = json_data.get('subjects', '').strip()
+                hourly_rate = json_data.get('hourly_rate', '0').strip()
+                bio = json_data.get('bio', '').strip()
+            except Exception:
+                # Fallback to form data if JSON parsing fails
+                full_name = request.form.get('full_name', '').strip()
+                phone_number = request.form.get('phone_number', '').strip() or None
+                qualifications = request.form.get('qualifications', '').strip()
+                experience_years = request.form.get('experience_years', '0').strip()
+                subjects = request.form.get('subjects', '').strip()
+                hourly_rate = request.form.get('hourly_rate', '0').strip()
+                bio = request.form.get('bio', '').strip()
+        else:
+            full_name = request.form.get('full_name', '').strip()
+            phone_number = request.form.get('phone_number', '').strip() or None
+            qualifications = request.form.get('qualifications', '').strip()
+            experience_years = request.form.get('experience_years', '0').strip()
+            subjects = request.form.get('subjects', '').strip()
+            hourly_rate = request.form.get('hourly_rate', '0').strip()
+            bio = request.form.get('bio', '').strip()
         
         # Validation
         errors = []
@@ -49,9 +86,15 @@ def profile():
             errors.append('Bio is required.')
         
         if errors:
+            error_msg = ' '.join(errors)
+            if is_ajax:
+                return jsonify({'success': False, 'error': error_msg}), 400
             for error in errors:
                 flash(error, 'error')
-        else:
+            return redirect(url_for('tutor.profile'))
+        
+        try:
+            # Use direct assignment (faster than merge for existing objects)
             current_user.full_name = full_name
             current_user.phone_number = phone_number
             current_user.qualifications = qualifications
@@ -59,10 +102,32 @@ def profile():
             current_user.subjects = subjects
             current_user.hourly_rate = Decimal(hourly_rate)
             current_user.bio = bio
+            # Flush before commit to catch errors early
+            db.session.flush()
             db.session.commit()
+            
+            if is_ajax:
+                return jsonify({
+                    'success': True,
+                    'message': 'Profile updated successfully!',
+                    'data': {
+                        'full_name': full_name,
+                        'phone_number': phone_number or '',
+                        'qualifications': qualifications,
+                        'experience_years': int(experience_years),
+                        'subjects': subjects,
+                        'hourly_rate': str(hourly_rate),
+                        'bio': bio
+                    }
+                }), 200
+            
             flash('Profile updated successfully!', 'success')
-        
-        return redirect(url_for('tutor.profile'))
+            return redirect(url_for('tutor.profile'))
+        except Exception as e:
+            if is_ajax:
+                return jsonify({'success': False, 'error': f'Database error: {str(e)}'}), 500
+            flash(f'Error updating profile: {str(e)}', 'error')
+            return redirect(url_for('tutor.profile'))
     
     return render_template('tutor/profile.html', user=current_user)
 

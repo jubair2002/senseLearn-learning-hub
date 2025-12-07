@@ -113,13 +113,43 @@
             <input id="register-password" type="password" placeholder="Password (min 8 chars) *"
                    class="w-full border rounded-lg px-3 py-2" required />
             
+            <p id="register-msg" class="mt-1 text-sm"></p>
+            
             <button type="submit"
                     class="w-full bg-slate-900 text-white rounded-lg py-3 font-semibold hover:bg-black mt-4">
                 Create account
             </button>
         </form>
 
-        <p id="register-msg" class="mt-1 text-sm"></p>
+        <!-- OTP Verification Section (Hidden initially) -->
+        <div id="otp-verification-section" class="hidden space-y-4">
+            <div>
+                <h2 class="text-xl font-bold mb-1">Verify Your Email</h2>
+                <p class="text-sm text-slate-500">Enter the OTP code sent to your email address.</p>
+            </div>
+            
+            <form id="otp-verify-form" class="space-y-4">
+                <input type="hidden" id="otp-email" />
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">OTP Code</label>
+                    <input id="otp-code" type="text" placeholder="Enter 6-digit OTP code"
+                           class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                           required maxlength="6" pattern="[0-9]{6}" />
+                </div>
+                
+                <button type="submit"
+                        class="w-full bg-emerald-600 text-white rounded-lg py-2 font-semibold hover:bg-emerald-700">
+                    Verify & Complete Registration
+                </button>
+                
+                <button type="button" id="resend-otp-btn"
+                        class="w-full text-emerald-600 font-semibold hover:text-emerald-700 text-sm">
+                    Resend OTP
+                </button>
+            </form>
+            
+            <p id="otp-msg" class="mt-1 text-sm"></p>
+        </div>
 
         <p class="text-xs text-slate-500 text-center">
             Already have an account?
@@ -235,17 +265,107 @@
                     msg.textContent = text;
                     msg.className = 'mt-1 text-sm text-red-600';
                 } else {
-                    msg.textContent = responseData.message || 'Registration successful!';
-                    msg.className = 'mt-1 text-sm text-emerald-600';
-                    
-                    // Redirect after successful registration
-                    setTimeout(() => {
-                        window.location.href = '/login';
-                    }, 2000);
+                    // Registration submitted, show OTP verification step
+                    if (responseData.email_verification_required) {
+                        msg.textContent = responseData.message || 'Please check your email for the OTP code.';
+                        msg.className = 'mt-1 text-sm text-emerald-600';
+                        
+                        // Hide registration form and show OTP verification
+                        const registerForm = document.getElementById('register-form');
+                        const otpSection = document.getElementById('otp-verification-section');
+                        const registerEmail = data.email;
+                        
+                        if (registerForm && otpSection) {
+                            registerForm.style.display = 'none';
+                            otpSection.classList.remove('hidden');
+                            document.getElementById('otp-email').value = registerEmail;
+                        }
+                    } else {
+                        // Old flow - redirect
+                        msg.textContent = responseData.message || 'Registration successful!';
+                        msg.className = 'mt-1 text-sm text-emerald-600';
+                        setTimeout(() => {
+                            window.location.href = '/login';
+                        }, 2000);
+                    }
                 }
             } catch (err) {
                 msg.textContent = 'Network error: ' + err.message;
                 msg.className = 'mt-1 text-sm text-red-600';
+            }
+        });
+
+        // OTP Verification Form
+        document.getElementById('otp-verify-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const otpMsg = document.getElementById('otp-msg');
+            const btn = document.querySelector('#otp-verify-form button[type="submit"]');
+            const email = document.getElementById('otp-email').value;
+            const otp = document.getElementById('otp-code').value.trim();
+
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+            otpMsg.textContent = 'Verifying OTP...';
+            otpMsg.className = 'mt-1 text-sm text-slate-600';
+
+            try {
+                const res = await fetch(API_BASE + '/verify-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, otp: otp }),
+                });
+
+                const responseData = await res.json();
+                
+                if (!res.ok) {
+                    otpMsg.textContent = responseData.message || 'Invalid OTP. Please try again.';
+                    otpMsg.className = 'mt-1 text-sm text-red-600';
+                    btn.disabled = false;
+                    btn.textContent = 'Verify & Complete Registration';
+                } else {
+                    otpMsg.textContent = responseData.message || 'Registration completed successfully!';
+                    otpMsg.className = 'mt-1 text-sm text-emerald-600';
+                    
+                    // Redirect to dashboard/home after successful registration
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1500);
+                }
+            } catch (err) {
+                otpMsg.textContent = 'Network error: ' + err.message;
+                otpMsg.className = 'mt-1 text-sm text-red-600';
+                btn.disabled = false;
+                btn.textContent = 'Verify & Complete Registration';
+            }
+        });
+
+        // Resend OTP
+        document.getElementById('resend-otp-btn').addEventListener('click', async () => {
+            const otpMsg = document.getElementById('otp-msg');
+            const email = document.getElementById('otp-email').value;
+
+            otpMsg.textContent = 'Sending OTP...';
+            otpMsg.className = 'mt-1 text-sm text-slate-600';
+
+            try {
+                const res = await fetch(API_BASE + '/resend-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, purpose: 'verification' }),
+                });
+
+                const responseData = await res.json();
+                
+                if (!res.ok) {
+                    otpMsg.textContent = responseData.message || 'Failed to resend OTP.';
+                    otpMsg.className = 'mt-1 text-sm text-red-600';
+                } else {
+                    otpMsg.textContent = responseData.message || 'OTP has been resent to your email.';
+                    otpMsg.className = 'mt-1 text-sm text-emerald-600';
+                }
+            } catch (err) {
+                otpMsg.textContent = 'Network error: ' + err.message;
+                otpMsg.className = 'mt-1 text-sm text-red-600';
             }
         });
     </script>
