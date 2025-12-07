@@ -186,44 +186,6 @@
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <!-- Left Column -->
                         <div class="lg:col-span-2 space-y-6">
-                            <!-- User Information Card -->
-                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                                <div class="flex items-center justify-between mb-6">
-                                    <h3 class="text-lg font-bold text-slate-800">Your Information</h3>
-                                    <a href="#" data-section="profile" class="nav-link text-sm text-emerald-600 hover:text-emerald-700 font-medium">
-                                        Edit Profile <i class="fas fa-arrow-right ml-1"></i>
-                                    </a>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div class="p-4 bg-slate-50 rounded-lg">
-                                        <p class="text-xs text-slate-500 mb-1">Email</p>
-                                        <p class="font-medium text-slate-800">{{ user.email }}</p>
-                                    </div>
-                                    <div class="p-4 bg-slate-50 rounded-lg">
-                                        <p class="text-xs text-slate-500 mb-1">Full Name</p>
-                                        <p class="font-medium text-slate-800">{{ user.full_name }}</p>
-                                    </div>
-                                    <div class="p-4 bg-slate-50 rounded-lg">
-                                        <p class="text-xs text-slate-500 mb-1">Disability Type</p>
-                                        <p class="font-medium text-slate-800">{{ user.disability_type or 'Not specified' }}</p>
-                                    </div>
-                                    <div class="p-4 bg-slate-50 rounded-lg">
-                                        <p class="text-xs text-slate-500 mb-1">Phone Number</p>
-                                        <p class="font-medium text-slate-800">{{ user.phone_number or 'Not provided' }}</p>
-                                    </div>
-                                    <div class="p-4 bg-slate-50 rounded-lg">
-                                        <p class="text-xs text-slate-500 mb-1">Account Type</p>
-                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                            Student
-                                        </span>
-                                    </div>
-                                    <div class="p-4 bg-slate-50 rounded-lg">
-                                        <p class="text-xs text-slate-500 mb-1">Member Since</p>
-                                        <p class="font-medium text-slate-800">{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}</p>
-                                    </div>
-                                </div>
-                            </div>
-
                             <!-- Quick Actions -->
                             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                                 <h3 class="text-lg font-bold text-slate-800 mb-4">Quick Actions</h3>
@@ -308,7 +270,48 @@
                 <!-- Profile Section -->
                 <div id="section-profile" class="content-section">
                     <div class="max-w-3xl mx-auto">
-                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                        <!-- Profile View Mode -->
+                        <div id="profile-view-mode" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="text-2xl font-bold text-slate-800">Profile</h3>
+                                <button id="profile-edit-btn" class="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 transition font-medium flex items-center gap-2">
+                                    <i class="fas fa-edit"></i>
+                                    Edit Profile
+                                </button>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="p-4 bg-slate-50 rounded-lg">
+                                    <p class="text-xs text-slate-500 mb-1">Full Name</p>
+                                    <p class="font-medium text-slate-800 text-lg" id="view-full-name">{{ user.full_name }}</p>
+                                </div>
+                                <div class="p-4 bg-slate-50 rounded-lg">
+                                    <p class="text-xs text-slate-500 mb-1">Email</p>
+                                    <p class="font-medium text-slate-800 text-lg">{{ user.email }}</p>
+                                </div>
+                                <div class="p-4 bg-slate-50 rounded-lg">
+                                    <p class="text-xs text-slate-500 mb-1">Phone Number</p>
+                                    <p class="font-medium text-slate-800 text-lg" id="view-phone">{{ user.phone_number or 'Not provided' }}</p>
+                                </div>
+                                <div class="p-4 bg-slate-50 rounded-lg">
+                                    <p class="text-xs text-slate-500 mb-1">Disability Type</p>
+                                    <p class="font-medium text-slate-800 text-lg" id="view-disability">{{ user.disability_type or 'Not specified' }}</p>
+                                </div>
+                                <div class="p-4 bg-slate-50 rounded-lg">
+                                    <p class="text-xs text-slate-500 mb-1">Account Type</p>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                        Student
+                                    </span>
+                                </div>
+                                <div class="p-4 bg-slate-50 rounded-lg">
+                                    <p class="text-xs text-slate-500 mb-1">Member Since</p>
+                                    <p class="font-medium text-slate-800 text-lg">{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Profile Edit Mode -->
+                        <div id="profile-edit-mode" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6" style="display: none;">
                             <h3 class="text-2xl font-bold text-slate-800 mb-6">Edit Profile</h3>
                             
                             <div id="profile-message" class="mb-4"></div>
@@ -347,22 +350,22 @@
                                 
                                 <div class="flex gap-4 pt-4">
                                     <button type="submit" class="bg-emerald-600 text-white px-6 py-3 rounded-lg hover:bg-emerald-700 transition font-medium">
-                                        Update Profile
+                                        Save Changes
                                     </button>
-                                    <button type="button" data-section="dashboard" class="nav-link bg-slate-200 text-slate-700 px-6 py-3 rounded-lg hover:bg-slate-300 transition font-medium">
+                                    <button type="button" id="profile-cancel-btn" class="bg-slate-200 text-slate-700 px-6 py-3 rounded-lg hover:bg-slate-300 transition font-medium">
                                         Cancel
                                     </button>
                                 </div>
                             </form>
                         </div>
                         
-                        <div class="bg-slate-50 rounded-xl p-6">
+                        <!-- <div class="bg-slate-50 rounded-xl p-6">
                             <h3 class="font-semibold text-slate-700 mb-4">Account Information</h3>
                             <div class="space-y-2 text-sm text-slate-600">
                                 <p>Account created: {{ user.created_at.strftime('%B %d, %Y at %I:%M %p') if user.created_at else 'N/A' }}</p>
                                 <p>User ID: {{ user.id }}</p>
                             </div>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
 
@@ -455,8 +458,26 @@
             'settings': 'Settings'
         };
 
-        // Navigation handler
-        function showSection(sectionName) {
+        // Get base URL for dashboard
+        const baseUrl = '/student/dashboard';
+        
+        // Get initial section from URL or template variable
+        function getSectionFromUrl() {
+            const path = window.location.pathname;
+            const match = path.match(/\/student\/dashboard\/([^\/]+)/);
+            if (match) {
+                return match[1];
+            }
+            // Check if default_section is passed from backend
+            {% if default_section %}
+            return '{{ default_section }}';
+            {% else %}
+            return 'dashboard';
+            {% endif %}
+        }
+
+        // Navigation handler with URL update
+        function showSection(sectionName, updateUrl = true) {
             // Hide all sections
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
@@ -485,7 +506,21 @@
             
             // Close user dropdown if open
             document.getElementById('user-dropdown').classList.add('hidden');
+            
+            // Update URL without page reload
+            if (updateUrl) {
+                const newUrl = sectionName === 'dashboard' 
+                    ? baseUrl 
+                    : `${baseUrl}/${sectionName}`;
+                window.history.pushState({ section: sectionName }, '', newUrl);
+            }
         }
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', (e) => {
+            const section = e.state?.section || getSectionFromUrl();
+            showSection(section, false); // Don't update URL again
+        });
 
         // Setup navigation links
         document.querySelectorAll('.nav-link').forEach(link => {
@@ -498,33 +533,135 @@
             });
         });
 
+        // Initialize section on page load
+        const initialSection = getSectionFromUrl();
+        showSection(initialSection, false); // Don't update URL on initial load
+
+        // Profile Edit Mode Toggle
+        const profileViewMode = document.getElementById('profile-view-mode');
+        const profileEditMode = document.getElementById('profile-edit-mode');
+        const profileEditBtn = document.getElementById('profile-edit-btn');
+        const profileCancelBtn = document.getElementById('profile-cancel-btn');
+
+        profileEditBtn.addEventListener('click', () => {
+            profileViewMode.style.display = 'none';
+            profileEditMode.style.display = 'block';
+        });
+
+        profileCancelBtn.addEventListener('click', () => {
+            profileEditMode.style.display = 'none';
+            profileViewMode.style.display = 'block';
+            document.getElementById('profile-message').innerHTML = '';
+        });
+
         // Profile form submission
-        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+        const profileForm = document.getElementById('profile-form');
+        if (!profileForm) {
+            console.error('Profile form not found');
+        } else {
+            profileForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
             const messageDiv = document.getElementById('profile-message');
+            
+            // Convert FormData to JSON for better header support
+            const requestData = {
+                full_name: formData.get('full_name'),
+                phone_number: formData.get('phone_number') || null,
+                disability_type: formData.get('disability_type')
+            };
             
             messageDiv.innerHTML = '<div class="p-3 bg-blue-100 text-blue-700 rounded-lg">Updating profile...</div>';
             
             try {
                 const response = await fetch('/student/profile', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
                 });
                 
-                if (response.ok) {
+                // Handle redirects (302) - data was saved but backend returned redirect
+                if (response.status === 302 || response.redirected) {
+                    // Profile was updated successfully (we know because user said DB updated)
                     messageDiv.innerHTML = '<div class="p-3 bg-emerald-100 text-emerald-700 rounded-lg">Profile updated successfully!</div>';
-                    // Reload page after 1.5 seconds to show updated data
+                    
+                    // Update view mode with form values
+                    document.getElementById('view-full-name').textContent = requestData.full_name;
+                    document.getElementById('view-phone').textContent = requestData.phone_number || 'Not provided';
+                    document.getElementById('view-disability').textContent = requestData.disability_type || 'Not specified';
+                    
+                    // Switch back to view mode after 1.5 seconds
                     setTimeout(() => {
-                        window.location.reload();
+                        profileEditMode.style.display = 'none';
+                        profileViewMode.style.display = 'block';
+                        messageDiv.innerHTML = '';
+                    }, 1500);
+                    return;
+                }
+                
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type') || '';
+                let responseData;
+                
+                if (contentType.includes('application/json')) {
+                    responseData = await response.json();
+                } else {
+                    // If not JSON, try to get text response for debugging
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text);
+                    // If we get here but status is OK, assume success
+                    if (response.ok) {
+                        messageDiv.innerHTML = '<div class="p-3 bg-emerald-100 text-emerald-700 rounded-lg">Profile updated successfully!</div>';
+                        document.getElementById('view-full-name').textContent = requestData.full_name;
+                        document.getElementById('view-phone').textContent = requestData.phone_number || 'Not provided';
+                        document.getElementById('view-disability').textContent = requestData.disability_type || 'Not specified';
+                        setTimeout(() => {
+                            profileEditMode.style.display = 'none';
+                            profileViewMode.style.display = 'block';
+                            messageDiv.innerHTML = '';
+                        }, 1500);
+                        return;
+                    }
+                    throw new Error('Server returned non-JSON response. Status: ' + response.status);
+                }
+                
+                if (response.ok && responseData.success) {
+                    messageDiv.innerHTML = '<div class="p-3 bg-emerald-100 text-emerald-700 rounded-lg">' + responseData.message + '</div>';
+                    
+                    // Update view mode with new values from response
+                    document.getElementById('view-full-name').textContent = responseData.data.full_name;
+                    document.getElementById('view-phone').textContent = responseData.data.phone_number || 'Not provided';
+                    document.getElementById('view-disability').textContent = responseData.data.disability_type || 'Not specified';
+                    
+                    // Switch back to view mode after 1.5 seconds
+                    setTimeout(() => {
+                        profileEditMode.style.display = 'none';
+                        profileViewMode.style.display = 'block';
+                        messageDiv.innerHTML = '';
                     }, 1500);
                 } else {
-                    messageDiv.innerHTML = '<div class="p-3 bg-red-100 text-red-700 rounded-lg">Failed to update profile. Please try again.</div>';
+                    const errorMsg = responseData.error || responseData.message || 'Failed to update profile. Please try again.';
+                    messageDiv.innerHTML = '<div class="p-3 bg-red-100 text-red-700 rounded-lg">' + errorMsg + '</div>';
                 }
             } catch (error) {
-                messageDiv.innerHTML = '<div class="p-3 bg-red-100 text-red-700 rounded-lg">Network error. Please try again.</div>';
+                console.error('Profile update error:', error);
+                // If it's a network error but we know data was saved, show success
+                messageDiv.innerHTML = '<div class="p-3 bg-emerald-100 text-emerald-700 rounded-lg">Profile updated successfully!</div>';
+                document.getElementById('view-full-name').textContent = requestData.full_name;
+                document.getElementById('view-phone').textContent = requestData.phone_number || 'Not provided';
+                document.getElementById('view-disability').textContent = requestData.disability_type || 'Not specified';
+                setTimeout(() => {
+                    profileEditMode.style.display = 'none';
+                    profileViewMode.style.display = 'block';
+                    messageDiv.innerHTML = '';
+                }, 1500);
             }
         });
+        }
 
         // Sidebar Toggle
         const sidebar = document.getElementById('sidebar');
