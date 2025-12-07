@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from dotenv import load_dotenv
 from flask_migrate import Migrate
+from flask_compress import Compress
 import os
 
 # Load environment variables early so config is available for blueprint creation
@@ -13,6 +14,7 @@ from src.config import config
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
+compress = Compress()
 
 def create_app() -> Flask:
     """
@@ -51,12 +53,23 @@ def create_app() -> Flask:
         "pool_recycle": 3600,
         "pool_pre_ping": True,
         "max_overflow": 20,
+        "pool_reset_on_return": "commit",  # Reset connections on return for better performance
         "connect_args": {
             "connect_timeout": 5,
             "read_timeout": 10,
             "write_timeout": 10,
+            "charset": "utf8mb4",
+            "autocommit": False,
         }
     }
+    
+    # Response compression settings
+    app.config["COMPRESS_MIMETYPES"] = [
+        'text/html', 'text/css', 'text/xml', 'application/json',
+        'application/javascript', 'text/javascript'
+    ]
+    app.config["COMPRESS_LEVEL"] = 6  # Balance between compression and CPU
+    app.config["COMPRESS_MIN_SIZE"] = 500  # Only compress responses > 500 bytes
     app.config["SESSION_COOKIE_SECURE"] = config.SESSION_COOKIE_SECURE
     app.config["SESSION_COOKIE_HTTPONLY"] = config.SESSION_COOKIE_HTTPONLY
     app.config["SESSION_COOKIE_SAMESITE"] = config.SESSION_COOKIE_SAMESITE
@@ -78,6 +91,7 @@ def create_app() -> Flask:
     migrate.init_app(app, db)
     login_manager.init_app(app)
     login_manager.login_view = 'login_page'  # This is the function name in __init__.py
+    compress.init_app(app)  # Enable response compression
     
     # Add response headers for caching and performance
     @app.after_request

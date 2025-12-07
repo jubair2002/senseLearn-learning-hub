@@ -6,3 +6,4 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.3.0
 Flask-Migrate==4.1.0
 Flask-Login==0.6.3
+Flask-Compress==1.14

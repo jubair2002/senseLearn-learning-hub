@@ -59,3 +59,13 @@ def generate_reset_code(length: Optional[int] = None) -> str:
     if length is None:
         length = config.RESET_CODE_LENGTH
     return "".join(random.choices(string.digits, k=length))
+
+
+def generate_otp(length: Optional[int] = None) -> str:
+    """
+    Generate a numeric OTP code.
+    Default length is read from configuration.
+    """
+    if length is None:
+        length = config.OTP_LENGTH
+    return "".join(random.choices(string.digits, k=length))

@@ -84,6 +84,20 @@ class Config:
         self.SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
         sqlalchemy_echo = os.getenv("SQLALCHEMY_ECHO", "")
         self.SQLALCHEMY_ECHO: bool = sqlalchemy_echo.lower() == "true" if sqlalchemy_echo else False
+        
+        # Email Configuration (SMTP)
+        self.SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+        self.SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+        self.SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
+        self.SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+        self.SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "")
+        self.SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+        
+        # OTP Configuration
+        otp_length = os.getenv("OTP_LENGTH", "")
+        self.OTP_LENGTH: int = int(otp_length) if otp_length else 6
+        otp_validity = os.getenv("OTP_VALIDITY_MINUTES", "")
+        self.OTP_VALIDITY_MINUTES: int = int(otp_validity) if otp_validity else 10
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
