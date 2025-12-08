@@ -8,3 +8,7 @@ run flask db migrate
 flask db init (run once)
 flask db migrate -m "Added new fields to User model" <commit messages>
 flask db stamp head
+
+
+INSERT INTO users (email, password_hash, full_name, user_type, email_verified) 
+VALUES ('admin@example.com', '<hashed_password>', 'Admin Name', 'admin', 1);

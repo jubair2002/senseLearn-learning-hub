@@ -133,6 +133,8 @@ def create_app() -> Flask:
                     return redirect(url_for('student.dashboard'))
                 elif current_user.user_type == 'tutor':
                     return redirect(url_for('tutor.dashboard'))
+                elif current_user.user_type == 'admin':
+                    return redirect(url_for('admin.dashboard'))
         # Use render_template for better caching and performance
         index_path = os.path.join(project_root, "templates", "index.html")
         if os.path.exists(index_path):
@@ -182,6 +184,10 @@ def create_app() -> Flask:
     # Register tutor blueprint
     from src.tutor import tutor_bp
     app.register_blueprint(tutor_bp)
+
+    # Register admin blueprint
+    from src.admin import admin_bp
+    app.register_blueprint(admin_bp)
 
     # Create tables if they do not exist
     with app.app_context():

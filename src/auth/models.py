@@ -42,6 +42,9 @@ class User(db.Model, UserMixin):
     
     def is_tutor(self) -> bool:
         return self.user_type == "tutor"
+    
+    def is_admin(self) -> bool:
+        return self.user_type == "admin"
 
 
 class PasswordResetCode(db.Model):
