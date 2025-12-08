@@ -46,3 +46,17 @@ def tutor_verified_required(f):
             return redirect(url_for('tutor.verification'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def admin_required(f):
+    """Decorator to require admin role for a route."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('Please log in to access this page.', 'error')
+            return redirect(url_for('login_page'))
+        if not hasattr(current_user, 'user_type') or current_user.user_type != 'admin':
+            flash('This page is only accessible to administrators.', 'error')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
