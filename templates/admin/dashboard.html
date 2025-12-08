@@ -437,4 +437,336 @@
             </main>
         </div>
     </div>
+<script>
+        // Notification system
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            
+            const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+            notification.innerHTML = `
+                <i class="fas ${icon} text-xl"></i>
+                <span class="flex-1">${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-2 hover:opacity-80">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.style.animation = 'slideIn 0.3s ease-out reverse';
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // Confirmation modal system
+        function showConfirmation(message, title = 'Confirm Action') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirmation-modal');
+                const titleEl = document.getElementById('confirmation-title');
+                const messageEl = document.getElementById('confirmation-message');
+                const confirmBtn = document.getElementById('confirmation-confirm');
+                const cancelBtn = document.getElementById('confirmation-cancel');
+                
+                titleEl.textContent = title;
+                messageEl.textContent = message;
+                
+                modal.classList.remove('hidden');
+                
+                const cleanup = () => {
+                    modal.classList.add('hidden');
+                    confirmBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                };
+                
+                confirmBtn.onclick = () => {
+                    cleanup();
+                    resolve(true);
+                };
+                
+                cancelBtn.onclick = () => {
+                    cleanup();
+                    resolve(false);
+                };
+                
+                // Close on overlay click
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        cleanup();
+                        resolve(false);
+                    }
+                };
+            });
+        }
+
+        // Sidebar toggle
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        let sidebarCollapsed = false;
+
+        sidebarToggle?.addEventListener('click', () => {
+            sidebarCollapsed = !sidebarCollapsed;
+            if (sidebarCollapsed) {
+                sidebar.classList.add('w-20');
+                document.querySelectorAll('.sidebar-text').forEach(el => el.style.display = 'none');
+            } else {
+                sidebar.classList.remove('w-20');
+                document.querySelectorAll('.sidebar-text').forEach(el => el.style.display = '');
+            }
+        });
+
+        // User menu toggle
+        const userMenuButton = document.getElementById('user-menu-button');
+        const userDropdown = document.getElementById('user-dropdown');
+        userMenuButton?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown?.classList.toggle('hidden');
+        });
+        document.addEventListener('click', () => {
+            userDropdown?.classList.add('hidden');
+        });
+        userDropdown?.addEventListener('click', (e) => e.stopPropagation());
+
+        // Navigation
+        const defaultSection = '{{ default_section or "dashboard" }}';
+        const pageTitles = {
+            'dashboard': 'Dashboard',
+            'tutors': 'Tutor Management',
+            'students': 'Student Management',
+            'create-account': 'Create Account',
+            'settings': 'Settings'
+        };
+
+        function getSectionFromUrl() {
+            const path = window.location.pathname;
+            const match = path.match(/\/dashboard\/([^\/]+)/);
+            return match ? match[1] : defaultSection;
+        }
+
+        function showSection(section) {
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('bg-purple-50', 'text-purple-700', 'font-medium'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.add('text-slate-700'));
+
+            const sectionEl = document.getElementById(`section-${section}`);
+            if (sectionEl) {
+                sectionEl.classList.add('active');
+            }
+
+            const navLink = document.querySelector(`[data-section="${section}"]`);
+            if (navLink) {
+                navLink.classList.add('bg-purple-50', 'text-purple-700', 'font-medium');
+                navLink.classList.remove('text-slate-700');
+            }
+
+            document.getElementById('page-title').textContent = pageTitles[section] || 'Dashboard';
+            
+            // Update URL without reload
+            const newUrl = `/admin/dashboard/${section}`;
+            window.history.pushState({section}, '', newUrl);
+
+            // Load data for specific sections
+            if (section === 'tutors') {
+                loadTutors();
+            } else if (section === 'students') {
+                loadStudents();
+            } else if (section === 'dashboard') {
+                loadStats();
+            }
+        }
+
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = link.getAttribute('data-section');
+                if (section) {
+                    showSection(section);
+                }
+            });
+        });
+
+        // Handle browser back/forward
+        window.addEventListener('popstate', () => {
+            const section = getSectionFromUrl();
+            showSection(section);
+        });
+
+        // Initialize
+        const initialSection = getSectionFromUrl();
+        showSection(initialSection);
+
+        // Account type toggle
+        document.getElementById('account-type')?.addEventListener('change', (e) => {
+            const type = e.target.value;
+            document.getElementById('student-fields').classList.toggle('hidden', type !== 'student');
+            document.getElementById('tutor-fields').classList.toggle('hidden', type !== 'tutor');
+        });
+
+        // Create account form
+        document.getElementById('create-account-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Remove empty optional fields
+            if (!data.username) delete data.username;
+            if (!data.phone_number) delete data.phone_number;
+
+            try {
+                const response = await fetch('/admin/api/create-account', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    e.target.reset();
+                    document.getElementById('student-fields').classList.add('hidden');
+                    document.getElementById('tutor-fields').classList.add('hidden');
+                    // Refresh lists if on relevant sections
+                    if (document.getElementById('section-tutors').classList.contains('active')) {
+                        loadTutors();
+                    } else if (document.getElementById('section-students').classList.contains('active')) {
+                        loadStudents();
+                    }
+                    loadStats(); // Refresh stats
+                } else {
+                    showNotification('Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error creating account: ' + error.message, 'error');
+            }
+        });
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const response = await fetch('/admin/api/stats');
+                const stats = await response.json();
+                document.getElementById('stat-total-students').textContent = stats.total_students || 0;
+                document.getElementById('stat-total-tutors').textContent = stats.total_tutors || 0;
+                document.getElementById('stat-verified-tutors').textContent = stats.verified_tutors || 0;
+                document.getElementById('stat-pending-tutors').textContent = stats.pending_tutors || 0;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Load tutors
+        async function loadTutors() {
+            const listEl = document.getElementById('tutors-list');
+            listEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading tutors...</p></div>';
+            
+            try {
+                const response = await fetch('/admin/api/tutors');
+                const result = await response.json();
+                
+                if (result.success && result.tutors.length > 0) {
+                    listEl.innerHTML = result.tutors.map(tutor => `
+                        <div class="border border-slate-200 rounded-lg p-6 hover:shadow-md transition">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <h4 class="text-lg font-bold text-slate-800">${tutor.full_name}</h4>
+                                        ${tutor.is_verified ? '<span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-medium"><i class="fas fa-check-circle mr-1"></i>Verified</span>' : '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium"><i class="fas fa-clock mr-1"></i>Pending</span>'}
+                                    </div>
+                                    <p class="text-sm text-slate-600 mb-1"><i class="fas fa-envelope mr-2"></i>${tutor.email}</p>
+                                    ${tutor.phone_number ? `<p class="text-sm text-slate-600 mb-1"><i class="fas fa-phone mr-2"></i>${tutor.phone_number}</p>` : ''}
+                                    <p class="text-sm text-slate-600 mb-1"><i class="fas fa-book mr-2"></i>${tutor.subjects || 'N/A'}</p>
+                                    <p class="text-sm text-slate-600 mb-1"><i class="fas fa-dollar-sign mr-2"></i>$${tutor.hourly_rate || '0'}/hour</p>
+                                    <p class="text-sm text-slate-600 mb-3"><i class="fas fa-briefcase mr-2"></i>${tutor.experience_years || 0} years experience</p>
+                                    <p class="text-sm text-slate-500 line-clamp-2">${tutor.bio || 'No bio provided'}</p>
+                                </div>
+                                <div class="ml-4">
+                                    ${!tutor.is_verified ? `<button onclick="verifyTutor(${tutor.id}, true)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition mb-2"><i class="fas fa-check mr-2"></i>Verify</button>` : `<button onclick="verifyTutor(${tutor.id}, false)" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition"><i class="fas fa-times mr-2"></i>Unverify</button>`}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-chalkboard-teacher text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No tutors found</p></div>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading tutors</p></div>';
+            }
+        }
+
+        // Load students
+        async function loadStudents() {
+            const listEl = document.getElementById('students-list');
+            listEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading students...</p></div>';
+            
+            try {
+                const response = await fetch('/admin/api/students');
+                const result = await response.json();
+                
+                if (result.success && result.students.length > 0) {
+                    listEl.innerHTML = result.students.map(student => `
+                        <div class="border border-slate-200 rounded-lg p-6 hover:shadow-md transition">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <h4 class="text-lg font-bold text-slate-800 mb-2">${student.full_name}</h4>
+                                    <p class="text-sm text-slate-600 mb-1"><i class="fas fa-envelope mr-2"></i>${student.email}</p>
+                                    ${student.phone_number ? `<p class="text-sm text-slate-600 mb-1"><i class="fas fa-phone mr-2"></i>${student.phone_number}</p>` : ''}
+                                    <p class="text-sm text-slate-600 mb-1"><i class="fas fa-user-tag mr-2"></i>${student.disability_type || 'N/A'}</p>
+                                    <p class="text-xs text-slate-500 mt-2">Joined: ${new Date(student.created_at).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-user-graduate text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No students found</p></div>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading students</p></div>';
+            }
+        }
+
+        // Verify tutor
+        async function verifyTutor(tutorId, verify) {
+            const action = verify ? 'verify' : 'unverify';
+            const actionText = verify ? 'verify' : 'unverify';
+            const confirmMsg = `Are you sure you want to ${actionText} this tutor?`;
+            const confirmTitle = verify ? 'Verify Tutor' : 'Unverify Tutor';
+            
+            // Show custom confirmation modal
+            const confirmed = await showConfirmation(confirmMsg, confirmTitle);
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/api/verify-tutor', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({tutor_id: tutorId, verify: verify})
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    loadTutors();
+                    loadStats();
+                } else {
+                    showNotification('Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error verifying tutor: ' + error.message, 'error');
+            }
+        }
+
+        // Load stats on dashboard
+        if (defaultSection === 'dashboard') {
+            loadStats();
+        }
+    </script>
+</body>
+</html>
 
