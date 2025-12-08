@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>SenseLearn | Auth</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-50 min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full bg-white shadow-xl rounded-2xl overflow-hidden">
+        <div class="border-b border-slate-100 flex">
+            <button id="tab-login"
+                class="flex-1 py-3 text-sm font-semibold text-slate-900 border-b-2 border-emerald-500">
+                Login
+            </button>
+            <button id="tab-register"
+                class="flex-1 py-3 text-sm font-semibold text-slate-500 hover:text-slate-900 border-b-2 border-transparent">
+                Register
+            </button>
+            <button id="tab-forgot"
+                class="flex-1 py-3 text-sm font-semibold text-slate-500 hover:text-slate-900 border-b-2 border-transparent">
+                Forgot
+            </button>
+        </div>
+
+        <div id="view-login" class="p-8 space-y-4">
+            <div>
+                <h1 class="text-2xl font-bold mb-2">Welcome back</h1>
+                <p class="text-sm text-slate-500">Sign in to continue learning with SenseLearn.</p>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <input id="login-email" type="email" placeholder="Email" class="w-full border rounded-lg px-3 py-2"
+                    required />
+                <input id="login-password" type="password" placeholder="Password"
+                    class="w-full border rounded-lg px-3 py-2" required />
+                <button type="submit"
+                    class="w-full bg-emerald-600 text-white rounded-lg py-2 font-semibold hover:bg-emerald-700">
+                    Login
+                </button>
+            </form>
+            <p id="login-msg" class="mt-1 text-sm"></p>
+            <p class="text-xs text-slate-500 text-center">
+                New here?
+                <button type="button" id="link-to-register" class="text-emerald-600 font-semibold hover:underline">
+                    Create an account
+                </button>
+            </p>
+        </div>
+
+        <div id="view-register" class="p-8 space-y-4 hidden">
+            <div>
+                <h1 class="text-2xl font-bold mb-2">Create account</h1>
+                <p class="text-sm text-slate-500">Join SenseLearn to access inclusive learning experiences.</p>
+            </div>
+            <form id="tab-register-form" class="space-y-3">
+                <input id="tab-register-email" type="email" placeholder="Email"
+                    class="w-full border rounded-lg px-3 py-2" required />
+                <input id="tab-register-password" type="password" placeholder="Password"
+                    class="w-full border rounded-lg px-3 py-2" required />
+                <button type="submit"
+                    class="w-full bg-slate-900 text-white rounded-lg py-2 font-semibold hover:bg-black">
+                    Create account
+                </button>
+            </form>
+            <p id="tab-register-msg" class="mt-1 text-sm"></p>
+            <p class="text-xs text-slate-500 text-center">
+                Already have an account?
+                <button type="button" id="link-to-login" class="text-emerald-600 font-semibold hover:underline">
+                    Log in
+                </button>
+            </p>
+        </div>
+
+        <div id="view-forgot" class="p-8 space-y-5 hidden">
+            <div>
+                <h1 class="text-2xl font-bold mb-2">Reset password</h1>
+                <p class="text-sm text-slate-500">Request a reset OTP via email, then set a new password.</p>
+            </div>
+
+            <div class="space-y-2">
+                <h2 class="text-sm font-semibold">1. Get a reset code</h2>
+                <form id="forgot-form" class="space-y-2">
+                    <input id="forgot-email" type="email" placeholder="Email" class="w-full border rounded-lg px-3 py-2"
+                        required />
+                    <button type="submit"
+                        class="w-full bg-amber-500 text-white rounded-lg py-2 font-semibold hover:bg-amber-600">
+                        Send OTP to Email
+                    </button>
+                </form>
+                <p id="forgot-msg" class="mt-1 text-sm"></p>
+            </div>
+
+            <div class="space-y-2 border-t pt-4">
+                <h2 class="text-sm font-semibold">2. Set a new password</h2>
+                <form id="reset-form" class="space-y-2 mt-1">
+                    <input id="reset-email" type="email" placeholder="Email" class="w-full border rounded-lg px-3 py-2"
+                        required />
+                    <input id="reset-code" type="text" placeholder="OTP from email"
+                        class="w-full border rounded-lg px-3 py-2" required />
+                    <input id="reset-password" type="password" placeholder="New password"
+                        class="w-full border rounded-lg px-3 py-2" required />
+                    <button type="submit"
+                        class="w-full bg-indigo-600 text-white rounded-lg py-2 font-semibold hover:bg-indigo-700">
+                        Reset password
+                    </button>
+                </form>
+                <p id="reset-msg" class="mt-1 text-sm"></p>
+            </div>
+
+            <p class="text-xs text-slate-500 text-center pt-2">
+                Remembered your password?
+                <button type="button" id="link-to-login-from-forgot"
+                    class="text-emerald-600 font-semibold hover:underline">
+                    Go to login
+                </button>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Simple tab/view switching
+        const tabs = {
+            login: document.getElementById('tab-login'),
+            register: document.getElementById('tab-register'),
+            forgot: document.getElementById('tab-forgot'),
+        };
+        const views = {
+            login: document.getElementById('view-login'),
+            register: document.getElementById('view-register'),
+            forgot: document.getElementById('view-forgot'),
+        };
+
+        function setActiveTab(name) {
+            Object.keys(views).forEach((key) => {
+                views[key].classList.toggle('hidden', key !== name);
+            });
+            Object.keys(tabs).forEach((key) => {
+                const isActive = key === name;
+                tabs[key].classList.toggle('text-slate-900', isActive);
+                tabs[key].classList.toggle('text-slate-500', !isActive);
+                tabs[key].classList.toggle('border-emerald-500', isActive);
+                tabs[key].classList.toggle('border-transparent', !isActive);
+            });
+        }
+
+        tabs.login.addEventListener('click', () => setActiveTab('login'));
+        tabs.register.addEventListener('click', () => setActiveTab('register'));
+        tabs.forgot.addEventListener('click', () => setActiveTab('forgot'));
+
+        document.getElementById('link-to-register').addEventListener('click', () => setActiveTab('register'));
+        document.getElementById('link-to-login').addEventListener('click', () => setActiveTab('login'));
+        document.getElementById('link-to-login-from-forgot').addEventListener('click', () => setActiveTab('login'));
+
+        // Default: show login
+        setActiveTab('login');
+
+        // Use relative path so it works in any environment (k8s, different domains, etc.)
+        const API_BASE = '/api/auth';
+
+        async function handleForm(formId, url, method, bodyBuilder, msgId) {
+            const form = document.getElementById(formId);
+            const msg = document.getElementById(msgId);
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                msg.textContent = 'Loading...';
+                msg.className = 'mt-2 text-sm text-slate-600';
+                try {
+                    const res = await fetch(API_BASE + url, {
+                        method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(bodyBuilder()),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                        msg.textContent = data.message || 'Request failed';
+                        msg.className = 'mt-2 text-sm text-red-600';
+                    } else {
+                        msg.textContent = data.message || 'Success';
+                        msg.className = 'mt-2 text-sm text-emerald-600';
+                        // OTP is sent via email, not displayed in UI
+                    }
+                } catch (err) {
+                    msg.textContent = 'Network error';
+                    msg.className = 'mt-2 text-sm text-red-600';
+                }
+            });
+        }
+
+        handleForm('login-form', '/login', 'POST', () => ({
+            email: document.getElementById('login-email').value,
+            password: document.getElementById('login-password').value,
+        }), 'login-msg');
+
+        // FIXED: Using new unique IDs for the registration form in the tabbed view
+        handleForm('tab-register-form', '/register', 'POST', () => ({
+            email: document.getElementById('tab-register-email').value,
+            password: document.getElementById('tab-register-password').value,
+        }), 'tab-register-msg');
+
+        handleForm('forgot-form', '/forgot', 'POST', () => ({
+            email: document.getElementById('forgot-email').value,
+        }), 'forgot-msg');
+
+        handleForm('reset-form', '/reset', 'POST', () => ({
+            email: document.getElementById('reset-email').value,
+            otp: document.getElementById('reset-code').value,  // Using 'otp' for consistency with backend
+            new_password: document.getElementById('reset-password').value,
+        }), 'reset-msg');
+    </script>
+</body>
+
+</html>
