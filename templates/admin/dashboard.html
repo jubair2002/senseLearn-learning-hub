@@ -91,3 +91,350 @@
         }
     </style>
 </head>
+<body class="bg-slate-50 min-h-screen">
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+    
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 text-xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800" id="confirmation-title">Confirm Action</h3>
+            </div>
+            <p class="text-slate-600 mb-6" id="confirmation-message">Are you sure you want to perform this action?</p>
+            <div class="flex items-center gap-3 justify-end">
+                <button id="confirmation-cancel" class="px-5 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition font-medium">
+                    Cancel
+                </button>
+                <button id="confirmation-confirm" class="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar-transition bg-white border-r border-slate-200 w-64 flex flex-col">
+            <!-- Logo Section -->
+            <div class="p-6 border-b border-slate-200">
+                <div class="flex items-center gap-3" id="logo-content">
+                    <div class="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center text-white flex-shrink-0">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div id="logo-text" class="sidebar-text">
+                        <h1 class="text-lg font-bold text-slate-800">SenseLearn</h1>
+                        <p class="text-xs text-slate-500">Admin Portal</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <a href="#" data-section="dashboard" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg bg-purple-50 text-purple-700 font-medium hover:bg-purple-100 transition">
+                    <i class="fas fa-home w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Dashboard</span>
+                </a>
+                <a href="#" data-section="tutors" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-chalkboard-teacher w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Tutors</span>
+                </a>
+                <a href="#" data-section="students" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-user-graduate w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Students</span>
+                </a>
+                <a href="#" data-section="create-account" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-user-plus w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Create Account</span>
+                </a>
+                <a href="#" data-section="settings" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-cog w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Settings</span>
+                </a>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <div class="p-4 border-t border-slate-200">
+                <div class="bg-purple-50 rounded-lg p-3 text-xs text-purple-700 sidebar-text">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <strong>Admin Panel</strong>
+                    <p class="mt-1">Manage users & verify tutors</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Header -->
+            <header class="bg-white border-b border-slate-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <!-- Sidebar Toggle & Page Title -->
+                    <div class="flex items-center gap-4">
+                        <button id="sidebar-toggle" class="p-2 rounded-lg hover:bg-slate-100 transition text-slate-600">
+                            <i class="fas fa-bars text-lg"></i>
+                        </button>
+                        <div>
+                            <h2 id="page-title" class="text-xl font-bold text-slate-800">Dashboard</h2>
+                            <p class="text-sm text-slate-500">Welcome back, {{ user.full_name }}</p>
+                        </div>
+                    </div>
+
+                    <!-- User Menu -->
+                    <div class="flex items-center gap-4">
+                        <!-- User Dropdown -->
+                        <div class="relative" id="user-menu-container">
+                            <button id="user-menu-button" class="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-slate-100 transition">
+                                <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                    {{ user.full_name[0].upper() }}
+                                </div>
+                                <div class="text-left hidden md:block">
+                                    <p class="text-sm font-medium text-slate-800">{{ user.full_name }}</p>
+                                    <p class="text-xs text-slate-500">Administrator</p>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-400 text-xs"></i>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50">
+                                <div class="px-4 py-3 border-b border-slate-200">
+                                    <p class="text-sm font-semibold text-slate-800">{{ user.full_name }}</p>
+                                    <p class="text-xs text-slate-500">{{ user.email }}</p>
+                                </div>
+                                <a href="#" data-section="settings" class="nav-link flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition">
+                                    <i class="fas fa-cog w-4"></i>
+                                    <span>Settings</span>
+                                </a>
+                                <div class="border-t border-slate-200 my-1"></div>
+                                <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition">
+                                    <i class="fas fa-sign-out-alt w-4"></i>
+                                    <span>Logout</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content - All Sections -->
+            <main class="flex-1 overflow-y-auto p-6">
+                <!-- Dashboard Section -->
+                <div id="section-dashboard" class="content-section active">
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500 mb-1">Total Students</p>
+                                    <p id="stat-total-students" class="text-3xl font-bold text-slate-800">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-user-graduate text-blue-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500 mb-1">Total Tutors</p>
+                                    <p id="stat-total-tutors" class="text-3xl font-bold text-slate-800">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-chalkboard-teacher text-emerald-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500 mb-1">Verified Tutors</p>
+                                    <p id="stat-verified-tutors" class="text-3xl font-bold text-emerald-600">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-check-circle text-emerald-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500 mb-1">Pending Verification</p>
+                                    <p id="stat-pending-tutors" class="text-3xl font-bold text-yellow-600">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+                        <h3 class="text-xl font-bold text-slate-800 mb-4">Quick Actions</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <a href="#" data-section="tutors" class="nav-link flex items-center gap-4 p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-chalkboard-teacher text-purple-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-slate-800">Manage Tutors</p>
+                                    <p class="text-sm text-slate-500">View and verify tutors</p>
+                                </div>
+                            </a>
+                            <a href="#" data-section="create-account" class="nav-link flex items-center gap-4 p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-user-plus text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-slate-800">Create Account</p>
+                                    <p class="text-sm text-slate-500">Add new student or tutor</p>
+                                </div>
+                            </a>
+                            <a href="#" data-section="students" class="nav-link flex items-center gap-4 p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                                <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-user-graduate text-emerald-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-slate-800">Manage Students</p>
+                                    <p class="text-sm text-slate-500">View all students</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tutors Section -->
+                <div id="section-tutors" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-2xl font-bold text-slate-800">Tutor Management</h3>
+                            <button onclick="loadTutors()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                                <i class="fas fa-sync-alt mr-2"></i>Refresh
+                            </button>
+                        </div>
+                        <div id="tutors-list" class="space-y-4">
+                            <div class="text-center py-12">
+                                <i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i>
+                                <p class="text-slate-600">Loading tutors...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Students Section -->
+                <div id="section-students" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-2xl font-bold text-slate-800">Student Management</h3>
+                            <button onclick="loadStudents()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-sync-alt mr-2"></i>Refresh
+                            </button>
+                        </div>
+                        <div id="students-list" class="space-y-4">
+                            <div class="text-center py-12">
+                                <i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i>
+                                <p class="text-slate-600">Loading students...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create Account Section -->
+                <div id="section-create-account" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6">Create New Account</h3>
+                        <form id="create-account-form" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Account Type *</label>
+                                    <select id="account-type" name="user_type" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" required>
+                                        <option value="">Select type...</option>
+                                        <option value="student">Student</option>
+                                        <option value="tutor">Tutor</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Email *</label>
+                                    <input type="email" id="account-email" name="email" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Full Name *</label>
+                                    <input type="text" id="account-full-name" name="full_name" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Username (Optional)</label>
+                                    <input type="text" id="account-username" name="username" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Phone Number (Optional)</label>
+                                    <input type="tel" id="account-phone" name="phone_number" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                </div>
+                            </div>
+
+                            <!-- Student Specific Fields -->
+                            <div id="student-fields" class="hidden space-y-4 border-t pt-6">
+                                <h4 class="text-lg font-semibold text-slate-800">Student Information</h4>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Disability Type *</label>
+                                    <select id="disability-type" name="disability_type" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                        <option value="">Select disability type...</option>
+                                        <option value="visual">Visual Impairment</option>
+                                        <option value="hearing">Hearing Impairment</option>
+                                        <option value="mobility">Mobility Impairment</option>
+                                        <option value="cognitive">Cognitive Impairment</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Tutor Specific Fields -->
+                            <div id="tutor-fields" class="hidden space-y-4 border-t pt-6">
+                                <h4 class="text-lg font-semibold text-slate-800">Tutor Information</h4>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Qualifications *</label>
+                                    <textarea id="tutor-qualifications" name="qualifications" rows="3" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Enter qualifications and certifications"></textarea>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">Years of Experience *</label>
+                                        <input type="number" id="tutor-experience" name="experience_years" min="0" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">Hourly Rate ($) *</label>
+                                        <input type="number" id="tutor-hourly-rate" name="hourly_rate" min="0" step="0.01" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Subjects *</label>
+                                    <input type="text" id="tutor-subjects" name="subjects" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Comma-separated subjects">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Bio *</label>
+                                    <textarea id="tutor-bio" name="bio" rows="4" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Short bio/description"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-4 pt-4 border-t">
+                                <button type="submit" class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
+                                    <i class="fas fa-user-plus mr-2"></i>Create Account
+                                </button>
+                                <button type="reset" class="px-6 py-3 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
+                                    Reset Form
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Settings Section -->
+                <div id="section-settings" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6">Settings</h3>
+                        <p class="text-slate-600">Admin settings will be available here.</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
