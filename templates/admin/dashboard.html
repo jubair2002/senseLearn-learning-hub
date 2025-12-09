@@ -526,6 +526,13 @@
                     </select>
                     <p class="text-xs text-slate-500 mt-1">Hold Ctrl/Cmd to select multiple tutors. Only verified tutors are shown.</p>
                 </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Assign Students (Optional)</label>
+                    <select id="course-students" name="student_ids" multiple class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" style="min-height: 100px;">
+                        <!-- Students will be loaded dynamically -->
+                    </select>
+                    <p class="text-xs text-slate-500 mt-1">Hold Ctrl/Cmd to select multiple students.</p>
+                </div>
                 <div class="flex gap-3 pt-4">
                     <button type="submit" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
                         <i class="fas fa-plus mr-2"></i>Create Course
@@ -1051,12 +1058,34 @@
             } catch (error) {
                 console.error('Error loading tutors:', error);
             }
+            
+            // Load students for selection
+            try {
+                const response = await fetch('/admin/api/students');
+                const result = await response.json();
+                const studentSelect = document.getElementById('course-students');
+                
+                if (result.success && result.students) {
+                    studentSelect.innerHTML = result.students.map(student => 
+                        `<option value="${student.id}">${student.full_name} (${student.email}) - ${student.disability_type || 'N/A'}</option>`
+                    ).join('');
+                    
+                    if (result.students.length === 0) {
+                        studentSelect.innerHTML = '<option disabled>No students available</option>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading students:', error);
+            }
         }
 
         // Close create course modal
         function closeCreateCourseModal() {
             document.getElementById('create-course-modal').classList.add('hidden');
             document.getElementById('create-course-form').reset();
+            // Clear selections
+            document.getElementById('course-tutors').selectedIndex = -1;
+            document.getElementById('course-students').selectedIndex = -1;
         }
 
         // Create course form handler
@@ -1069,6 +1098,8 @@
             const targetDisabilityTypes = document.getElementById('course-disability-types').value;
             const tutorSelect = document.getElementById('course-tutors');
             const tutorIds = Array.from(tutorSelect.selectedOptions).map(opt => parseInt(opt.value));
+            const studentSelect = document.getElementById('course-students');
+            const studentIds = Array.from(studentSelect.selectedOptions).map(opt => parseInt(opt.value));
             
             if (!name) {
                 showNotification('Course name is required', 'error');
@@ -1092,7 +1123,8 @@
                         name: name,
                         description: description,
                         target_disability_types: targetDisabilityTypes,
-                        tutor_ids: tutorIds
+                        tutor_ids: tutorIds,
+                        student_ids: studentIds
                     })
                 });
                 
@@ -1185,7 +1217,12 @@
                                                 <p class="font-medium text-slate-800">${student.full_name}</p>
                                                 <p class="text-sm text-slate-500">${student.email} • ${student.disability_type || 'N/A'}</p>
                                             </div>
-                                            <span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs">${student.status}</span>
+                                            <div class="flex items-center gap-2">
+                                                <span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs">${student.status}</span>
+                                                <button onclick="removeStudentFromCourse(${courseId}, ${student.id})" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
+                                                    <i class="fas fa-times mr-1"></i>Remove
+                                                </button>
+                                            </div>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -1330,6 +1367,28 @@
                             showNotification('Error: ' + assignResult.error, 'error');
                         }
                     }
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Remove student from course
+        async function removeStudentFromCourse(courseId, studentId) {
+            const confirmed = await showConfirmation('Are you sure you want to remove this student from the course?', 'Remove Student');
+            if (!confirmed) return;
+            
+            try {
+                const response = await fetch(`/admin/api/courses/${courseId}/students/${studentId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    viewCourseDetails(courseId);
+                } else {
+                    showNotification('Error: ' + result.error, 'error');
                 }
             } catch (error) {
                 showNotification('Error: ' + error.message, 'error');

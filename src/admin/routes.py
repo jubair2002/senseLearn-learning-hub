@@ -441,6 +441,7 @@ def create_course():
         description = (data.get('description') or '').strip()
         target_disability_types = data.get('target_disability_types', 'All')  # Default to 'All'
         tutor_ids = data.get('tutor_ids', [])  # List of tutor IDs to assign
+        student_ids = data.get('student_ids', [])  # List of student IDs to assign
         
         if not name:
             return jsonify({'success': False, 'error': 'Course name is required'}), 400
@@ -489,8 +490,30 @@ def create_course():
                             course_id=course.id,
                             tutor_id=tutor_id,
                             assigned_by=current_user.id
-                        )
                     )
+                )
+        
+        # Assign students if provided
+        if student_ids:
+            for student_id in student_ids:
+                student = User.query.filter_by(id=student_id, user_type='student').first()
+                if not student:
+                    continue
+                
+                # Check if already enrolled
+                existing_enrollment = CourseStudent.query.filter_by(
+                    course_id=course.id,
+                    student_id=student_id
+                ).first()
+                
+                if not existing_enrollment:
+                    enrollment = CourseStudent(
+                        course_id=course.id,
+                        student_id=student_id,
+                        status='enrolled',
+                        assigned_by=current_user.id
+                    )
+                    db.session.add(enrollment)
         
         db.session.commit()
         
@@ -701,4 +724,33 @@ def remove_tutor_from_course(course_id, tutor_id):
         db.session.rollback()
         current_app.logger.exception(f"Error removing tutor {tutor_id} from course {course_id}")
         return jsonify({'success': False, 'error': 'Failed to remove tutor'}), 500
+
+
+@admin_bp.route('/api/courses/<int:course_id>/students/<int:student_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def remove_student_from_course(course_id, student_id):
+    """API endpoint to remove a student from a course."""
+    try:
+        course = Course.query.get_or_404(course_id)
+        student = User.query.filter_by(id=student_id, user_type='student').first_or_404()
+        
+        # Remove enrollment
+        enrollment = CourseStudent.query.filter_by(
+            course_id=course_id,
+            student_id=student_id
+        ).first_or_404()
+        
+        db.session.delete(enrollment)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Student removed from course'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception(f"Error removing student {student_id} from course {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to remove student'}), 500
 

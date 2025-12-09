@@ -430,12 +430,19 @@
                                 <i class="fas fa-sync-alt mr-2"></i>Refresh
                             </button>
                         </div>
-                        <div id="courses-list" class="space-y-4">
-                            <div class="text-center py-12">
+                        <div id="courses-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div class="text-center py-12 col-span-full">
                                 <i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i>
                                 <p class="text-slate-600">Loading courses...</p>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Course View Section (loaded dynamically) -->
+                <div id="section-course-view" class="content-section">
+                    <div id="course-view-content">
+                        <!-- Course content will be loaded here -->
                     </div>
                 </div>
 
@@ -579,12 +586,29 @@
         </div>
     </div>
 
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 max-w-md w-full">
+            <h3 id="confirmation-title" class="text-xl font-bold text-slate-800 mb-4">Confirm Action</h3>
+            <div id="confirmation-message" class="mb-6 text-slate-600"></div>
+            <div class="flex gap-3 justify-end">
+                <button id="confirmation-cancel" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
+                    Cancel
+                </button>
+                <button id="confirmation-confirm" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Page titles mapping
         const pageTitles = {
             'dashboard': 'Dashboard',
             'profile': 'Profile',
             'courses': 'My Courses',
+            'course-view': 'Course',
             'students': 'My Students',
             'verification': 'Verification',
             'settings': 'Settings'
@@ -1024,7 +1048,7 @@
             const listEl = document.getElementById('courses-list');
             if (!listEl) return;
             
-            listEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading courses...</p></div>';
+            listEl.innerHTML = '<div class="text-center py-12 col-span-full"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading courses...</p></div>';
             
             try {
                 const response = await fetch('/tutor/api/courses');
@@ -1033,35 +1057,41 @@
                 if (result.success) {
                     if (result.courses && result.courses.length > 0) {
                         listEl.innerHTML = result.courses.map(course => `
-                            <div class="border border-slate-200 rounded-lg p-6 hover:shadow-md transition">
-                                <div class="flex items-start justify-between">
-                                    <div class="flex-1">
-                                        <h4 class="text-lg font-bold text-slate-800 mb-2">${course.name}</h4>
-                                        ${course.description ? `<p class="text-sm text-slate-600 mb-3">${course.description}</p>` : ''}
-                                        <div class="flex items-center gap-4 text-sm text-slate-500">
-                                            <span><i class="fas fa-user-graduate mr-1"></i>${course.student_count} Student${course.student_count !== 1 ? 's' : ''}</span>
-                                            ${course.pending_requests > 0 ? `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium"><i class="fas fa-bell mr-1"></i>${course.pending_requests} Pending Request${course.pending_requests !== 1 ? 's' : ''}</span>` : ''}
-                                        </div>
+                            <div class="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200 flex flex-col">
+                                <div class="flex-1">
+                                    <h4 class="text-xl font-bold text-slate-800 mb-3">${course.name}</h4>
+                                    ${course.description ? `<p class="text-sm text-slate-600 mb-4 line-clamp-3">${course.description}</p>` : '<p class="text-sm text-slate-400 mb-4">No description</p>'}
+                                    <div class="flex items-center gap-4 text-sm text-slate-500 mb-4">
+                                        <span class="flex items-center gap-1">
+                                            <i class="fas fa-user-graduate"></i>
+                                            <span>${course.student_count} Student${course.student_count !== 1 ? 's' : ''}</span>
+                                        </span>
+                                        ${course.pending_requests > 0 ? `
+                                            <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium flex items-center gap-1">
+                                                <i class="fas fa-bell"></i>
+                                                <span>${course.pending_requests}</span>
+                                            </span>
+                                        ` : ''}
                                     </div>
-                                    <div class="ml-4 flex flex-col gap-2">
-                                        <button onclick="viewCourseDetails(${course.id})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                                            <i class="fas fa-eye mr-2"></i>View Details
-                                        </button>
-                                        ${course.pending_requests > 0 ? `<button onclick="viewCourseRequests(${course.id})" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
-                                            <i class="fas fa-bell mr-2"></i>View Requests (${course.pending_requests})
-                                        </button>` : ''}
-                                    </div>
+                                </div>
+                                <div class="flex flex-col gap-2 pt-4 border-t border-slate-200">
+                                    <button onclick="openCourse(${course.id})" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-center font-medium">
+                                        <i class="fas fa-door-open mr-2"></i>Open
+                                    </button>
+                                    <button onclick="viewCourseDetails(${course.id})" class="w-full px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition font-medium">
+                                        <i class="fas fa-info-circle mr-2"></i>View Details
+                                    </button>
                                 </div>
                             </div>
                         `).join('');
                     } else {
-                        listEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-book text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No courses assigned yet</p><p class="text-sm text-slate-500 mt-2">You will see courses here once an admin assigns you to them</p></div>';
+                        listEl.innerHTML = '<div class="text-center py-12 col-span-full"><i class="fas fa-book text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No courses assigned yet</p><p class="text-sm text-slate-500 mt-2">You will see courses here once an admin assigns you to them</p></div>';
                     }
                 } else {
-                    listEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading courses</p></div>';
+                    listEl.innerHTML = '<div class="text-center py-12 text-red-600 col-span-full"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading courses</p></div>';
                 }
             } catch (error) {
-                listEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading courses: ' + error.message + '</p></div>';
+                listEl.innerHTML = '<div class="text-center py-12 text-red-600 col-span-full"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading courses: ' + error.message + '</p></div>';
             }
         }
 
@@ -1074,9 +1104,15 @@
                 if (result.success && result.course) {
                     const course = result.course;
                     
+                    // Also load requests
+                    const requestsResponse = await fetch(`/tutor/api/courses/${courseId}/requests`);
+                    const requestsResult = await requestsResponse.json();
+                    const requests = requestsResult.success ? requestsResult.requests : [];
+                    const pendingRequests = requests.filter(r => r.status === 'pending');
+                    
                     // Create modal content
                     const modalContent = `
-                        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 max-w-4xl mx-auto max-h-[90vh] overflow-y-auto">
+                        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 max-w-5xl mx-auto max-h-[90vh] overflow-y-auto">
                             <div class="flex items-center justify-between mb-6">
                                 <h3 class="text-2xl font-bold text-slate-800">${course.name}</h3>
                                 <button onclick="closeCourseModal()" class="text-slate-400 hover:text-slate-600">
@@ -1089,6 +1125,35 @@
                                 <p class="text-slate-600">${course.description}</p>
                             </div>` : ''}
                             
+                            <!-- Student Requests Section -->
+                            <div class="mb-6">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="font-semibold text-slate-800">Student Requests ${pendingRequests.length > 0 ? `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium ml-2">${pendingRequests.length} Pending</span>` : ''}</h4>
+                                </div>
+                                ${pendingRequests.length > 0 ? `
+                                    <div class="space-y-2 mb-4">
+                                        ${pendingRequests.map(req => `
+                                            <div class="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                                <div class="flex-1">
+                                                    <p class="font-medium text-slate-800">${req.student_name}</p>
+                                                    <p class="text-sm text-slate-500">${req.student_email} • ${req.disability_type || 'N/A'}</p>
+                                                    <p class="text-xs text-slate-400 mt-1">Requested: ${new Date(req.requested_at).toLocaleString()}</p>
+                                                </div>
+                                                <div class="flex gap-2">
+                                                    <button onclick="respondToRequest(${req.id}, ${courseId}, 'accept')" class="px-3 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-sm">
+                                                        <i class="fas fa-check mr-1"></i>Accept
+                                                    </button>
+                                                    <button onclick="respondToRequest(${req.id}, ${courseId}, 'reject')" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
+                                                        <i class="fas fa-times mr-1"></i>Reject
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : '<p class="text-slate-500 text-sm mb-4">No pending requests</p>'}
+                            </div>
+                            
+                            <!-- Enrolled Students Section -->
                             <div class="mb-6">
                                 <div class="flex items-center justify-between mb-3">
                                     <h4 class="font-semibold text-slate-800">Enrolled Students (${course.students.length})</h4>
@@ -1104,6 +1169,9 @@
                                                     <p class="font-medium text-slate-800">${student.full_name}</p>
                                                     <p class="text-sm text-slate-500">${student.email} • ${student.disability_type || 'N/A'}</p>
                                                 </div>
+                                                <button onclick="removeStudentFromCourse(${courseId}, ${student.id})" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
+                                                    <i class="fas fa-times mr-1"></i>Remove
+                                                </button>
                                             </div>
                                         `).join('')}
                                     </div>
@@ -1111,8 +1179,8 @@
                             </div>
                             
                             <div class="flex gap-3 justify-end">
-                                <button onclick="viewCourseRequests(${courseId})" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
-                                    <i class="fas fa-bell mr-2"></i>View Requests
+                                <button onclick="openCourse(${courseId}); closeCourseModal();" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                    <i class="fas fa-door-open mr-2"></i>Open Course
                                 </button>
                                 <button onclick="closeCourseModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
                                     Close
@@ -1263,34 +1331,301 @@
                         `<option value="${student.id}">${student.full_name} (${student.email}) - ${student.disability_type || 'N/A'}</option>`
                     ).join('');
                     
-                    const studentIdsStr = prompt(`Select student IDs (comma-separated):\n\n${result.students.map(s => `${s.id}: ${s.full_name} - ${s.disability_type || 'N/A'}`).join('\\n')}`);
+                    // Create a simple confirmation modal for student selection
+                    const confirmed = await showConfirmation(
+                        `<div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Select Students</label>
+                            <select id="assign-students-select" multiple class="w-full border border-slate-300 rounded-lg px-4 py-2" style="min-height: 200px;">
+                                ${studentOptions}
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">Hold Ctrl/Cmd to select multiple students</p>
+                        </div>`,
+                        'Add Students to Course'
+                    );
                     
-                    if (!studentIdsStr) return;
-                    
-                    const studentIds = studentIdsStr.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
-                    
-                    if (studentIds.length === 0) {
-                        alert('Please enter valid student IDs');
-                        return;
-                    }
-                    
-                    const assignResponse = await fetch(`/tutor/api/courses/${courseId}/students`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({student_ids: studentIds})
-                    });
-                    
-                    const assignResult = await assignResponse.json();
-                    if (assignResult.success) {
-                        alert(assignResult.message);
-                        viewCourseDetails(courseId);
-                    } else {
-                        alert('Error: ' + assignResult.error);
+                    if (confirmed) {
+                        const select = document.getElementById('assign-students-select');
+                        const studentIds = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+                        
+                        if (studentIds.length === 0) {
+                            alert('Please select at least one student');
+                            return;
+                        }
+                        
+                        const assignResponse = await fetch(`/tutor/api/courses/${courseId}/students`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({student_ids: studentIds})
+                        });
+                        
+                        const assignResult = await assignResponse.json();
+                        if (assignResult.success) {
+                            alert(assignResult.message);
+                            viewCourseDetails(courseId);
+                            loadCourses(); // Refresh course list
+                        } else {
+                            alert('Error: ' + assignResult.error);
+                        }
                     }
                 }
             } catch (error) {
                 alert('Error: ' + error.message);
             }
+        }
+
+        // Remove student from course
+        async function removeStudentFromCourse(courseId, studentId) {
+            if (!confirm('Are you sure you want to remove this student from the course?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/students/${studentId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    viewCourseDetails(courseId);
+                    loadCourses(); // Refresh course list
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Open course - load course content within dashboard
+        async function openCourse(courseId) {
+            // Switch to course-view section
+            showSection('course-view');
+            
+            const contentEl = document.getElementById('course-view-content');
+            contentEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading course...</p></div>';
+            
+            try {
+                // Load course content via AJAX
+                const url = `/tutor/api/courses/${courseId}/view`;
+                console.log('Fetching course view from:', url);
+                
+                const response = await fetch(url);
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                // Check content type first
+                const contentType = response.headers.get('content-type') || '';
+                console.log('Content-Type:', contentType);
+                
+                let result;
+                
+                if (contentType.includes('application/json')) {
+                    // Parse JSON even for error status codes
+                    result = await response.json();
+                    console.log('Parsed JSON result:', result);
+                } else {
+                    // Non-JSON response - try to get text for debugging
+                    const text = await response.text();
+                    console.error('Non-JSON response received:', text.substring(0, 500));
+                    throw new Error('Server returned non-JSON response. Status: ' + response.status + '. Response: ' + text.substring(0, 200));
+                }
+                
+                if (result.success && result.html) {
+                    contentEl.innerHTML = result.html;
+                } else {
+                    // Show error message from server
+                    const errorMsg = result.error || 'Unknown error';
+                    contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading course: ' + errorMsg + '</p></div>';
+                }
+            } catch (error) {
+                console.error('Error loading course:', error);
+                contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error: ' + error.message + '</p><p class="text-sm mt-2">Check browser console for details.</p></div>';
+            }
+        }
+
+        // Course view functions (used by loaded course_view.html)
+        async function loadCourseView(courseId) {
+            const contentEl = document.getElementById('course-view-content');
+            contentEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Refreshing...</p></div>';
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/view`);
+                
+                // Check content type first
+                const contentType = response.headers.get('content-type');
+                let result;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    // Parse JSON even for error status codes
+                    result = await response.json();
+                } else {
+                    // Non-JSON response (shouldn't happen, but handle gracefully)
+                    const text = await response.text();
+                    throw new Error('Server returned non-JSON response: ' + text.substring(0, 100));
+                }
+                
+                if (result.success && result.html) {
+                    contentEl.innerHTML = result.html;
+                } else {
+                    // Show error message from server
+                    const errorMsg = result.error || 'Unknown error';
+                    contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><p>Error loading course: ' + errorMsg + '</p></div>';
+                }
+            } catch (error) {
+                console.error('Error loading course:', error);
+                contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><p>Error: ' + error.message + '</p></div>';
+            }
+        }
+
+        async function respondToRequestView(courseId, requestId, action) {
+            if (!confirm(`Are you sure you want to ${action} this request?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/requests/${requestId}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: action})
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    loadCourseView(courseId);
+                    if (typeof loadCourses === 'function') {
+                        loadCourses(); // Refresh course list
+                    }
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function removeStudentFromCourseView(courseId, studentId) {
+            if (!confirm('Are you sure you want to remove this student from the course?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/students/${studentId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    loadCourseView(courseId);
+                    if (typeof loadCourses === 'function') {
+                        loadCourses(); // Refresh course list
+                    }
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function assignStudentsToCourseView(courseId) {
+            try {
+                const response = await fetch('/admin/api/students');
+                const result = await response.json();
+                
+                if (result.success && result.students) {
+                    const studentOptions = result.students.map(student => 
+                        `<option value="${student.id}">${student.full_name} (${student.email}) - ${student.disability_type || 'N/A'}</option>`
+                    ).join('');
+                    
+                    const confirmed = await showConfirmation(
+                        `<div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Select Students</label>
+                            <select id="assign-students-select-view" multiple class="w-full border border-slate-300 rounded-lg px-4 py-2" style="min-height: 200px;">
+                                ${studentOptions}
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">Hold Ctrl/Cmd to select multiple students</p>
+                        </div>`,
+                        'Add Students to Course'
+                    );
+                    
+                    if (confirmed) {
+                        const select = document.getElementById('assign-students-select-view');
+                        const studentIds = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+                        
+                        if (studentIds.length === 0) {
+                            alert('Please select at least one student');
+                            return;
+                        }
+                        
+                        const assignResponse = await fetch(`/tutor/api/courses/${courseId}/students`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({student_ids: studentIds})
+                        });
+                        
+                        const assignResult = await assignResponse.json();
+                        if (assignResult.success) {
+                            alert(assignResult.message);
+                            loadCourseView(courseId);
+                            if (typeof loadCourses === 'function') {
+                                loadCourses(); // Refresh course list
+                            }
+                        } else {
+                            alert('Error: ' + assignResult.error);
+                        }
+                    }
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Confirmation modal system
+        function showConfirmation(message, title = 'Confirm Action') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirmation-modal');
+                const titleEl = document.getElementById('confirmation-title');
+                const messageEl = document.getElementById('confirmation-message');
+                const confirmBtn = document.getElementById('confirmation-confirm');
+                const cancelBtn = document.getElementById('confirmation-cancel');
+                
+                titleEl.textContent = title;
+                // Support both HTML and text content
+                if (message.includes('<')) {
+                    messageEl.innerHTML = message;
+                } else {
+                    messageEl.textContent = message;
+                }
+                
+                modal.classList.remove('hidden');
+                
+                const cleanup = () => {
+                    modal.classList.add('hidden');
+                    confirmBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                };
+                
+                confirmBtn.onclick = () => {
+                    cleanup();
+                    resolve(true);
+                };
+                
+                cancelBtn.onclick = () => {
+                    cleanup();
+                    resolve(false);
+                };
+                
+                // Close on overlay click
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        cleanup();
+                        resolve(false);
+                    }
+                };
+            });
         }
         
         // Clear cache on upload/delete

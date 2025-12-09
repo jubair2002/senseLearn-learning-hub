@@ -337,6 +337,76 @@ def list_assigned_courses():
         return jsonify({'success': False, 'error': 'Failed to load courses'}), 500
 
 
+@tutor_bp.route('/api/courses/<int:course_id>/view', methods=['GET'])
+@login_required
+def get_course_view(course_id):
+    """API endpoint to get course view HTML content for dashboard."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        # Verify tutor is assigned to this course
+        assignment = db.session.query(course_tutors).filter_by(
+            course_id=course_id,
+            tutor_id=current_user.id
+        ).first()
+        
+        if not assignment:
+            return jsonify({'success': False, 'error': 'Course not found or not assigned'}), 404
+        
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found'}), 404
+        
+        # Get enrolled students
+        enrollments = CourseStudent.query.filter_by(course_id=course_id, status='enrolled').all()
+        students_data = []
+        for enrollment in enrollments:
+            student = enrollment.student
+            if student:
+                students_data.append({
+                    'id': student.id,
+                    'full_name': student.full_name,
+                    'email': student.email,
+                    'disability_type': student.disability_type
+                })
+        
+        # Get requests
+        requests = CourseRequest.query.filter_by(
+            course_id=course_id,
+            tutor_id=current_user.id
+        ).order_by(CourseRequest.requested_at.desc()).all()
+        
+        requests_data = []
+        for req in requests:
+            student = req.student
+            if student:
+                requests_data.append({
+                    'id': req.id,
+                    'student_id': student.id,
+                    'student_name': student.full_name,
+                    'student_email': student.email,
+                    'disability_type': student.disability_type,
+                    'status': req.status,
+                    'requested_at': req.requested_at.isoformat() if req.requested_at else None,
+                    'responded_at': req.responded_at.isoformat() if req.responded_at else None
+                })
+        
+        # Render course view template
+        html = render_template('tutor/course_view.html', 
+                              course=course, 
+                              students=students_data, 
+                              requests=requests_data,
+                              course_id=course_id)
+        
+        return jsonify({'success': True, 'html': html}), 200
+        
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.exception(f"Error getting course view for {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to load course: ' + str(e)}), 500
+
+
 @tutor_bp.route('/api/courses/<int:course_id>')
 @login_required
 def get_course_details(course_id):
@@ -354,7 +424,9 @@ def get_course_details(course_id):
         if not assignment:
             return jsonify({'success': False, 'error': 'Course not found or not assigned'}), 404
         
-        course = Course.query.get_or_404(course_id)
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found'}), 404
         
         # Get enrolled students
         enrollments = CourseStudent.query.filter_by(course_id=course_id, status='enrolled').all()
@@ -561,3 +633,44 @@ def assign_students_to_course(course_id):
         from flask import current_app
         current_app.logger.exception(f"Error assigning students to course {course_id}")
         return jsonify({'success': False, 'error': 'Failed to assign students'}), 500
+
+
+@tutor_bp.route('/api/courses/<int:course_id>/students/<int:student_id>', methods=['DELETE'])
+@login_required
+def remove_student_from_course(course_id, student_id):
+    """API endpoint for tutor to remove a student from a course."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        # Verify tutor is assigned to this course
+        assignment = db.session.query(course_tutors).filter_by(
+            course_id=course_id,
+            tutor_id=current_user.id
+        ).first()
+        
+        if not assignment:
+            return jsonify({'success': False, 'error': 'Course not found or not assigned'}), 404
+        
+        # Find enrollment
+        enrollment = CourseStudent.query.filter_by(
+            course_id=course_id,
+            student_id=student_id
+        ).first()
+        
+        if not enrollment:
+            return jsonify({'success': False, 'error': 'Enrollment not found'}), 404
+        
+        db.session.delete(enrollment)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Student removed from course'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.exception(f"Error removing student {student_id} from course {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to remove student'}), 500
