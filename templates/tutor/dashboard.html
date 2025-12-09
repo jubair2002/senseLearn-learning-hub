@@ -519,8 +519,8 @@
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-slate-700 mb-1">Select File</label>
-                                        <input type="file" id="document-file" name="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                                        <p class="text-xs text-slate-500 mt-1">Accepted: PDF, DOC, DOCX, JPG, JPEG, PNG (Max 10MB)</p>
+                                        <input type="file" id="document-file" name="file" accept=".pdf,.PDF,.doc,.DOC,.docx,.DOCX,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.ppt,.PPT,.pptx,.PPTX,.gif,.GIF,.txt,.TXT" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                        <p class="text-xs text-slate-500 mt-1">Accepted: PDF, DOC, DOCX, JPG, JPEG, PNG, PPT, PPTX, GIF, TXT (Max 10MB)</p>
                                     </div>
                                 </div>
                                 <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
@@ -602,7 +602,81 @@
         </div>
     </div>
 
+    <!-- Create Module Modal (persistent - outside content sections) -->
+    <div id="create-module-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 max-w-md w-full">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-slate-800">Create New Module</h3>
+                <button onclick="closeCreateModuleModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="create-module-form" onsubmit="event.preventDefault(); createModule(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Module Name *</label>
+                    <input type="text" id="module-name" required class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Introduction to Sign Language">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Description (Optional)</label>
+                    <textarea id="module-description" rows="3" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Brief description of this module..."></textarea>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" onclick="closeCreateModuleModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                        Create Module
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add File Modal (persistent - outside content sections) -->
+    <div id="add-file-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 max-w-md w-full">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-slate-800">
+                    <i class="fas fa-file-upload mr-2"></i>Upload File
+                </h3>
+                <button onclick="closeAddFileModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="add-file-form" onsubmit="event.preventDefault(); addFileToModule(event)">
+                <input type="hidden" id="current-module-id">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        <i class="fas fa-file-upload mr-1"></i>Select File to Upload
+                    </label>
+                    <div id="drop-zone" class="border-2 border-dashed border-blue-400 rounded-lg p-6 text-center hover:border-blue-500 hover:bg-blue-50 transition cursor-pointer bg-slate-50" onclick="document.getElementById('module-file-input').click()">
+                        <input type="file" id="module-file-input" required class="hidden" accept=".pdf,.PDF,.pptx,.PPTX,.ppt,.PPT,.doc,.DOC,.docx,.DOCX,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.gif,.GIF,.txt,.TXT">
+                        <i class="fas fa-cloud-upload-alt text-5xl text-blue-500 mb-3" id="upload-icon"></i>
+                        <p class="text-base font-semibold text-slate-700 mb-1" id="drop-text">Click to browse or drag and drop</p>
+                        <p class="text-xs text-slate-500 font-medium" id="file-name-display">No file selected</p>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Supported: PDF, PPTX, PPT, DOC, DOCX, JPG, PNG, GIF, TXT (Max 10MB)
+                    </p>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" onclick="closeAddFileModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-upload mr-2"></i>Upload File
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        // Declare module management variables at the very top to avoid initialization errors
+        let currentSelectedModuleId = null;
+        let currentCourseIdForModule = null;
+        
         // Page titles mapping
         const pageTitles = {
             'dashboard': 'Dashboard',
@@ -1051,8 +1125,22 @@
             listEl.innerHTML = '<div class="text-center py-12 col-span-full"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading courses...</p></div>';
             
             try {
+                console.log('Fetching courses from /tutor/api/courses');
                 const response = await fetch('/tutor/api/courses');
-                const result = await response.json();
+                console.log('Response status:', response.status);
+                
+                const contentType = response.headers.get('content-type') || '';
+                console.log('Content-Type:', contentType);
+                
+                let result;
+                if (contentType.includes('application/json')) {
+                    result = await response.json();
+                    console.log('Parsed JSON result:', result);
+                } else {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text.substring(0, 500));
+                    throw new Error('Server returned non-JSON response');
+                }
                 
                 if (result.success) {
                     if (result.courses && result.courses.length > 0) {
@@ -1088,10 +1176,14 @@
                         listEl.innerHTML = '<div class="text-center py-12 col-span-full"><i class="fas fa-book text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No courses assigned yet</p><p class="text-sm text-slate-500 mt-2">You will see courses here once an admin assigns you to them</p></div>';
                     }
                 } else {
-                    listEl.innerHTML = '<div class="text-center py-12 text-red-600 col-span-full"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading courses</p></div>';
+                    const errorMsg = result.error || 'Unknown error';
+                    const details = result.details ? '<p class="text-xs mt-2 text-red-400">' + result.details + '</p>' : '';
+                    listEl.innerHTML = `<div class="text-center py-12 text-red-600 col-span-full"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading courses: ${errorMsg}</p>${details}</div>`;
+                    console.error('Server error:', result);
                 }
             } catch (error) {
-                listEl.innerHTML = '<div class="text-center py-12 text-red-600 col-span-full"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading courses: ' + error.message + '</p></div>';
+                console.error('Error loading courses:', error);
+                listEl.innerHTML = `<div class="text-center py-12 text-red-600 col-span-full"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading courses: ${error.message}</p><p class="text-sm mt-2">Check browser console for details.</p></div>`;
             }
         }
 
@@ -1436,7 +1528,9 @@
                 } else {
                     // Show error message from server
                     const errorMsg = result.error || 'Unknown error';
-                    contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading course: ' + errorMsg + '</p></div>';
+                    const details = result.details ? '<p class="text-xs mt-2 text-red-400">' + result.details + '</p>' : '';
+                    contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading course: ' + errorMsg + '</p>' + details + '</div>';
+                    console.error('Server error details:', result);
                 }
             } catch (error) {
                 console.error('Error loading course:', error);
@@ -1700,6 +1794,443 @@
                     submitBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>Upload Document';
                 }
             });
+        }
+        
+        // Module management functions
+        function selectModule(courseId, moduleId) {
+            currentSelectedModuleId = moduleId;
+            
+            // Update active state in sidebar
+            document.querySelectorAll('.module-item').forEach(item => {
+                item.classList.remove('bg-blue-50', 'border-blue-300');
+                item.classList.add('border-slate-200');
+            });
+            const selectedItem = document.querySelector(`[data-module-id="${moduleId}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('bg-blue-50', 'border-blue-300');
+                selectedItem.classList.remove('border-slate-200');
+            }
+            
+            // Load module files
+            loadModuleFiles(courseId, moduleId);
+        }
+        
+        async function loadModuleFiles(courseId, moduleId) {
+            const contentEl = document.getElementById('module-content');
+            if (!contentEl) return;
+            
+            contentEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading module...</p></div>';
+            
+            try {
+                const response = await fetch(`/tutor/api/modules/${moduleId}/files`);
+                
+                // Check content type before parsing
+                const contentType = response.headers.get('content-type') || '';
+                let result;
+                
+                if (contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text.substring(0, 500));
+                    throw new Error('Server returned non-JSON response. Status: ' + response.status);
+                }
+                
+                if (result.success) {
+                    const files = result.files || [];
+                    const moduleItem = document.querySelector(`[data-module-id="${moduleId}"]`);
+                    const moduleName = moduleItem ? moduleItem.querySelector('h4').textContent : 'Module';
+                    const moduleDesc = moduleItem ? (moduleItem.querySelector('p.text-xs.text-slate-500')?.textContent || '') : '';
+                    
+                    if (files.length > 0) {
+                        contentEl.innerHTML = `
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200">
+                                    <div>
+                                        <h3 class="text-2xl font-bold text-slate-800 mb-1">${moduleName}</h3>
+                                        ${moduleDesc ? `<p class="text-sm text-slate-600">${moduleDesc}</p>` : ''}
+                                    </div>
+                                    <button onclick="showAddFileModal(${moduleId})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                                        <i class="fas fa-plus"></i>
+                                        <span>Add File</span>
+                                    </button>
+                                </div>
+                                <div class="mb-4">
+                                    <p class="text-sm text-slate-600">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        ${files.length} file${files.length !== 1 ? 's' : ''} in this module
+                                    </p>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    ${files.map(file => `
+                                        <div class="border border-slate-200 rounded-lg p-4 hover:shadow-lg transition-all bg-white">
+                                            <div class="flex items-start justify-between mb-3">
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-2 mb-2">
+                                                        <i class="fas fa-file-${getFileIcon(file.file_type)} text-3xl text-blue-600"></i>
+                                                        <div class="flex-1 min-w-0">
+                                                            <h4 class="font-semibold text-slate-800 text-sm truncate" title="${file.file_name}">${file.file_name}</h4>
+                                                            <p class="text-xs text-slate-500">${formatFileSize(file.file_size)} • ${file.file_type.toUpperCase()}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button onclick="deleteModuleFile(${moduleId}, ${file.id}, ${courseId})" class="ml-2 text-red-600 hover:text-red-700 p-1 rounded hover:bg-red-50 transition" title="Delete file">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                            <div class="flex gap-2 mt-3">
+                                                <a href="${file.url}" target="_blank" class="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm text-center hover:bg-blue-700 transition flex items-center justify-center gap-1">
+                                                    <i class="fas fa-eye"></i>
+                                                    <span>View</span>
+                                                </a>
+                                                <a href="${file.url}" download class="flex-1 px-3 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm text-center hover:bg-slate-300 transition flex items-center justify-center gap-1">
+                                                    <i class="fas fa-download"></i>
+                                                    <span>Download</span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        contentEl.innerHTML = `
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center">
+                                <h3 class="text-2xl font-bold text-slate-800 mb-2">${moduleName}</h3>
+                                ${moduleDesc ? `<p class="text-sm text-slate-600 mb-4">${moduleDesc}</p>` : ''}
+                                <div class="py-8">
+                                    <i class="fas fa-folder-open text-6xl text-slate-300 mb-4"></i>
+                                    <p class="text-slate-500 mb-2 text-lg">No files in this module yet</p>
+                                    <p class="text-sm text-slate-400 mb-6">Upload PDFs, presentations, documents, or images to share with students</p>
+                                    <button onclick="showAddFileModal(${moduleId})" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-base font-medium">
+                                        <i class="fas fa-plus mr-2"></i>Upload File
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><p>Error loading module files</p></div>';
+                }
+            } catch (error) {
+                console.error('Error loading module files:', error);
+                contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><p>Error: ' + error.message + '</p></div>';
+            }
+        }
+        
+        function getFileIcon(fileType) {
+            const type = fileType.toLowerCase();
+            if (type === 'pdf') return 'pdf';
+            if (['ppt', 'pptx'].includes(type)) return 'powerpoint';
+            if (['doc', 'docx'].includes(type)) return 'word';
+            if (['jpg', 'jpeg', 'png', 'gif'].includes(type)) return 'image';
+            return 'alt';
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        function showCreateModuleModal(courseId) {
+            currentCourseIdForModule = courseId;
+            const modal = document.getElementById('create-module-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('module-name').value = '';
+                document.getElementById('module-description').value = '';
+            }
+        }
+        
+        function closeCreateModuleModal() {
+            document.getElementById('create-module-modal').classList.add('hidden');
+        }
+        
+        async function createModule(event) {
+            event.preventDefault();
+            
+            if (!currentCourseIdForModule) {
+                alert('Course ID not found. Please try again.');
+                return;
+            }
+            
+            const name = document.getElementById('module-name').value.trim();
+            const description = document.getElementById('module-description').value.trim();
+            
+            if (!name) {
+                alert('Module name is required');
+                return;
+            }
+            
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
+            
+            try {
+                const courseId = currentCourseIdForModule;
+                const url = `/tutor/api/courses/${courseId}/modules`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, description})
+                });
+                
+                const contentType = response.headers.get('content-type') || '';
+                let result;
+                
+                if (contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    const text = await response.text();
+                    throw new Error(`Server returned non-JSON response. Status: ${response.status}. Response: ${text.substring(0, 200)}`);
+                }
+                
+                if (result.success) {
+                    alert('Module created successfully!');
+                    closeCreateModuleModal();
+                    loadCourseView(courseId); // Reload course view to show new module
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to create module'));
+                }
+            } catch (error) {
+                console.error('Error creating module:', error);
+                alert('Error: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        }
+        
+        function showAddFileModal(moduleId) {
+            const modal = document.getElementById('add-file-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('current-module-id').value = moduleId;
+                const fileInput = document.getElementById('module-file-input');
+                if (fileInput) {
+                    fileInput.value = '';
+                    
+                    // Reset file name display
+                    const displayEl = document.getElementById('file-name-display');
+                    if (displayEl) {
+                        displayEl.textContent = 'No file selected';
+                        displayEl.className = 'text-xs text-slate-500 font-medium';
+                    }
+                    
+                    // Reset drop zone styling
+                    const dropZone = document.getElementById('drop-zone');
+                    if (dropZone) {
+                        dropZone.classList.remove('border-green-500', 'bg-green-50', 'border-blue-500', 'bg-blue-50');
+                        dropZone.classList.add('border-blue-400', 'bg-slate-50');
+                    }
+                    
+                    // Reset text
+                    const dropText = document.getElementById('drop-text');
+                    if (dropText) {
+                        dropText.textContent = 'Click to browse or drag and drop';
+                    }
+                    
+                    // Ensure change listener is attached
+                    fileInput.onchange = function(e) {
+                        handleFileSelect(e.target.files[0]);
+                    };
+                }
+                
+                // Setup drag and drop handlers
+                setupDragAndDrop();
+            }
+        }
+        
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('module-file-input');
+            if (!dropZone || !fileInput) return;
+            
+            // Prevent default drag behaviors
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            // Highlight drop zone when item is dragged over it
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, function(e) {
+                    dropZone.classList.remove('border-blue-400', 'bg-slate-50');
+                    dropZone.classList.add('border-green-500', 'bg-green-50');
+                    const dropText = document.getElementById('drop-text');
+                    if (dropText) {
+                        dropText.textContent = 'Drop file here';
+                    }
+                }, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, function(e) {
+                    dropZone.classList.remove('border-green-500', 'bg-green-50');
+                    dropZone.classList.add('border-blue-400', 'bg-slate-50');
+                    const dropText = document.getElementById('drop-text');
+                    if (dropText) {
+                        dropText.textContent = 'Click to browse or drag and drop';
+                    }
+                }, false);
+            });
+            
+            // Handle dropped files
+            dropZone.addEventListener('drop', function(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    handleFileSelect(files[0]);
+                    // Set the file input
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(files[0]);
+                    fileInput.files = dataTransfer.files;
+                }
+            }, false);
+        }
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        function handleFileSelect(file) {
+            if (!file) return;
+            
+            const displayEl = document.getElementById('file-name-display');
+            if (displayEl) {
+                displayEl.textContent = file.name;
+                displayEl.className = 'text-xs text-blue-600 font-medium';
+            }
+            
+            // Update drop zone to show file is selected
+            const dropZone = document.getElementById('drop-zone');
+            if (dropZone) {
+                dropZone.classList.remove('border-green-500', 'bg-green-50');
+                dropZone.classList.add('border-blue-500', 'bg-blue-50');
+            }
+        }
+        
+        function closeAddFileModal() {
+            document.getElementById('add-file-modal').classList.add('hidden');
+        }
+        
+        async function addFileToModule(event) {
+            event.preventDefault();
+            
+            const moduleId = parseInt(document.getElementById('current-module-id').value);
+            const fileInput = document.getElementById('module-file-input');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Please select a file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Uploading...';
+            
+            try {
+                const response = await fetch(`/tutor/api/modules/${moduleId}/files`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                // Check content type before parsing
+                const contentType = response.headers.get('content-type') || '';
+                let result;
+                
+                if (contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text.substring(0, 500));
+                    throw new Error('Server returned non-JSON response. Status: ' + response.status);
+                }
+                
+                if (result.success) {
+                    // Show success notification
+                    const notification = document.createElement('div');
+                    notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2';
+                    notification.innerHTML = '<i class="fas fa-check-circle"></i><span>File uploaded successfully!</span>';
+                    document.body.appendChild(notification);
+                    setTimeout(() => notification.remove(), 3000);
+                    
+                    closeAddFileModal();
+                    // Get courseId from the course view container
+                    const courseViewContainer = document.querySelector('#course-view-content [data-course-id]');
+                    if (courseViewContainer) {
+                        const courseId = parseInt(courseViewContainer.dataset.courseId);
+                        loadModuleFiles(courseId, moduleId);
+                        loadCourseView(courseId); // Reload to update file counts in sidebar
+                    } else {
+                        // Fallback: try to get courseId from URL or reload module files
+                        const courseIdMatch = window.location.href.match(/course[_-]?id[=:](\d+)/i);
+                        if (courseIdMatch) {
+                            const courseId = parseInt(courseIdMatch[1]);
+                            loadModuleFiles(courseId, moduleId);
+                            loadCourseView(courseId);
+                        } else {
+                            // Last resort: try to find courseId from module item's parent
+                            const moduleItem = document.querySelector(`[data-module-id="${moduleId}"]`);
+                            if (moduleItem) {
+                                const parentContainer = moduleItem.closest('[data-course-id]');
+                                if (parentContainer) {
+                                    const courseId = parseInt(parentContainer.dataset.courseId);
+                                    loadModuleFiles(courseId, moduleId);
+                                    loadCourseView(courseId);
+                                } else {
+                                    // Just reload module files (will work without courseId)
+                                    loadModuleFiles(null, moduleId);
+                                }
+                            } else {
+                                // Last resort: reload module files only
+                                loadModuleFiles(null, moduleId);
+                            }
+                        }
+                    }
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to upload file'));
+                }
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                alert('Error: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Upload File';
+            }
+        }
+        
+        async function deleteModuleFile(moduleId, fileId, courseId) {
+            if (!confirm('Are you sure you want to delete this file?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/tutor/api/modules/${moduleId}/files/${fileId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('File deleted successfully!');
+                    loadModuleFiles(courseId, moduleId);
+                    loadCourseView(courseId); // Reload to update file counts
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
         }
     </script>
 </body>

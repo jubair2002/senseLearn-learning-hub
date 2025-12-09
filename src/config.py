@@ -102,7 +102,9 @@ class Config:
         # File Upload Configuration
         self.UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "D:/uploads")  # Default to D:/uploads for local testing
         self.MAX_FILE_SIZE: int = int(os.getenv("MAX_FILE_SIZE", "10485760"))  # Default 10MB in bytes
-        self.ALLOWED_EXTENSIONS: set = set(os.getenv("ALLOWED_EXTENSIONS", "pdf,doc,docx,jpg,jpeg,png").split(","))
+        # Convert extensions to lowercase for case-insensitive matching
+        allowed_exts_str = os.getenv("ALLOWED_EXTENSIONS", "pdf,doc,docx,jpg,jpeg,png,ppt,pptx,gif,txt")
+        self.ALLOWED_EXTENSIONS: set = set(ext.strip().lower() for ext in allowed_exts_str.split(","))
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:

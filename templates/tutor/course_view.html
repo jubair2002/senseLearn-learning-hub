@@ -1,85 +1,100 @@
-<div class="max-w-6xl mx-auto">
-    <!-- Course Info Card -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-2xl font-bold text-slate-800">{{ course.name }}</h3>
-            <button onclick="showSection('courses')" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
+<div class="flex h-full" data-course-id="{{ course_id }}">
+    <!-- Left Sidebar - Modules -->
+    <div class="w-80 bg-white border-r border-slate-200 flex flex-col">
+        <!-- Sidebar Header -->
+        <div class="p-4 border-b border-slate-200">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-lg font-bold text-slate-800">Modules</h3>
+                <button onclick="showCreateModuleModal({{ course_id }})" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+                    <i class="fas fa-plus mr-1"></i>New
+                </button>
+            </div>
+            <button onclick="showSection('courses')" class="w-full px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-sm">
                 <i class="fas fa-arrow-left mr-2"></i>Back to Courses
             </button>
         </div>
-        {% if course.description %}
-        <p class="text-slate-600 mb-4">{{ course.description }}</p>
-        {% else %}
-        <p class="text-slate-400 italic mb-4">No description provided</p>
-        {% endif %}
-        <div class="flex items-center gap-4 text-sm text-slate-500">
-            <span><i class="fas fa-calendar mr-1"></i>Created: {{ course.created_at.strftime('%B %d, %Y') if course.created_at else 'N/A' }}</span>
-            {% if course.target_disability_types %}
-            <span><i class="fas fa-users mr-1"></i>For: {{ course.target_disability_types }}</span>
+        
+        <!-- Modules List -->
+        <div class="flex-1 overflow-y-auto p-2">
+            {% if modules %}
+                {% for module in modules %}
+                <div onclick="selectModule({{ course_id }}, {{ module.id }})" class="module-item p-3 mb-2 rounded-lg cursor-pointer hover:bg-slate-50 border border-slate-200 transition" data-module-id="{{ module.id }}">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-slate-800 mb-1">{{ module.name }}</h4>
+                            {% if module.description %}
+                            <p class="text-xs text-slate-500 line-clamp-2">{{ module.description }}</p>
+                            {% endif %}
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-xs text-slate-400">
+                                    <i class="fas fa-file mr-1"></i>{{ module.file_count }} file{{ 's' if module.file_count != 1 else '' }}
+                                </span>
+                                {% if module.file_count > 0 %}
+                                <span class="text-xs text-blue-600">
+                                    <i class="fas fa-check-circle"></i>
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-8 text-slate-400">
+                    <i class="fas fa-folder-open text-4xl mb-2"></i>
+                    <p class="text-sm">No modules yet</p>
+                    <p class="text-xs mt-1">Click "New" to create one</p>
+                </div>
             {% endif %}
         </div>
     </div>
-
-    <!-- Students Section -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-xl font-bold text-slate-800">Enrolled Students</h3>
-            <div class="flex gap-2">
-                <button onclick="loadCourseView({{ course_id }})" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
-                    <i class="fas fa-sync-alt mr-1"></i>Refresh
-                </button>
-                <button onclick="assignStudentsToCourseView({{ course_id }})" class="px-3 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-sm">
-                    <i class="fas fa-plus mr-1"></i>Add Students
-                </button>
+    
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Course Header -->
+        <div class="bg-white border-b border-slate-200 p-4">
+            <h2 class="text-2xl font-bold text-slate-800">{{ course.name }}</h2>
+            {% if course.description %}
+            <p class="text-slate-600 mt-1">{{ course.description }}</p>
+            {% else %}
+            <p class="text-slate-400 italic mt-1">No description provided</p>
+            {% endif %}
+            <div class="flex items-center gap-4 text-sm text-slate-500 mt-2">
+                <span><i class="fas fa-calendar mr-1"></i>Created: {{ course.created_at.strftime('%B %d, %Y') if course.created_at else 'N/A' }}</span>
+                {% if course.target_disability_types %}
+                <span><i class="fas fa-users mr-1"></i>For: {{ course.target_disability_types }}</span>
+                {% endif %}
             </div>
         </div>
-        <div id="course-students-list" class="space-y-2">
-            {% if students %}
-                {% for student in students %}
-                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <div>
-                        <p class="font-medium text-slate-800">{{ student.full_name }}</p>
-                        <p class="text-sm text-slate-500">{{ student.email }} • {{ student.disability_type or 'N/A' }}</p>
-                    </div>
-                    <button onclick="removeStudentFromCourseView({{ course_id }}, {{ student.id }})" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
-                        <i class="fas fa-times mr-1"></i>Remove
-                    </button>
-                </div>
-                {% endfor %}
+        
+        <!-- Module Content Area -->
+        <div id="module-content" class="flex-1 overflow-y-auto p-6 bg-slate-50">
+            {% if modules and modules|length > 0 %}
+                <!-- Auto-select first module on load -->
+                <script>
+                    (function() {
+                        // Wait for functions to be available
+                        function trySelectModule() {
+                            if (typeof selectModule === 'function' && typeof currentSelectedModuleId !== 'undefined') {
+                                const firstModule = {{ modules[0].id if modules else 'null' }};
+                                if (firstModule) {
+                                    selectModule({{ course_id }}, firstModule);
+                                }
+                            } else {
+                                setTimeout(trySelectModule, 50);
+                            }
+                        }
+                        setTimeout(trySelectModule, 200);
+                    })();
+                </script>
             {% else %}
-                <p class="text-slate-500 text-sm text-center py-4">No students enrolled yet</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Requests Section -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <h3 class="text-xl font-bold text-slate-800 mb-4">Student Requests</h3>
-        <div id="course-requests-list" class="space-y-2">
-            {% set pending_requests = requests | selectattr('status', 'equalto', 'pending') | list %}
-            {% if pending_requests %}
-                {% for req in pending_requests %}
-                <div class="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div class="flex-1">
-                        <p class="font-medium text-slate-800">{{ req.student_name }}</p>
-                        <p class="text-sm text-slate-500">{{ req.student_email }} • {{ req.disability_type or 'N/A' }}</p>
-                        <p class="text-xs text-slate-400 mt-1">Requested: {% if req.requested_at %}{{ req.requested_at[:19].replace('T', ' ') }}{% else %}N/A{% endif %}</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="respondToRequestView({{ course_id }}, {{ req.id }}, 'accept')" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
-                            <i class="fas fa-check mr-1"></i>Accept
-                        </button>
-                        <button onclick="respondToRequestView({{ course_id }}, {{ req.id }}, 'reject')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-                            <i class="fas fa-times mr-1"></i>Reject
-                        </button>
-                    </div>
+                <div class="text-center py-12 text-slate-400">
+                    <i class="fas fa-book-open text-6xl mb-4"></i>
+                    <p class="text-lg">Select a module from the sidebar</p>
+                    <p class="text-sm mt-2">or create a new module to get started</p>
                 </div>
-                {% endfor %}
-            {% else %}
-                <p class="text-slate-500 text-sm text-center py-4">No pending requests</p>
             {% endif %}
         </div>
     </div>
 </div>
-
-
+<!-- Note: Modals are defined in dashboard.html for persistence -->

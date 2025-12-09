@@ -1,4 +1,4 @@
-from flask import Flask, render_template, send_file, redirect, url_for, request
+from flask import Flask, render_template, send_file, redirect, url_for, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user, login_required
 from dotenv import load_dotenv
@@ -269,6 +269,46 @@ def create_app() -> Flask:
     from src.student import student_bp
     app.register_blueprint(student_bp)
 
+    # Custom error handler for API routes to return JSON instead of HTML
+    @app.errorhandler(404)
+    def handle_404(e):
+        """Handle 404 errors - return JSON for API routes, HTML for others."""
+        from flask import request, current_app
+        path = request.path
+        method = request.method
+        # Log for debugging
+        try:
+            current_app.logger.warning(f"404 error: {method} {path}")
+        except:
+            pass
+        if path.startswith('/tutor/api/') or path.startswith('/student/api/') or path.startswith('/admin/api/'):
+            return jsonify({
+                'success': False, 
+                'error': f'Route not found: {method} {path}',
+                'path': path,
+                'method': method
+            }), 404
+        return e
+    
+    @app.errorhandler(405)
+    def handle_405(e):
+        """Handle 405 Method Not Allowed - return JSON for API routes."""
+        from flask import request, current_app
+        path = request.path
+        method = request.method
+        try:
+            current_app.logger.warning(f"405 error: {method} {path}")
+        except:
+            pass
+        if path.startswith('/tutor/api/') or path.startswith('/student/api/') or path.startswith('/admin/api/'):
+            return jsonify({
+                'success': False, 
+                'error': f'Method not allowed: {method} {path}',
+                'path': path,
+                'method': method
+            }), 405
+        return e
+    
     # Register tutor blueprint
     from src.tutor import tutor_bp
     app.register_blueprint(tutor_bp)

@@ -11,7 +11,22 @@ def allowed_file(filename: str) -> bool:
     if '.' not in filename:
         return False
     ext = filename.rsplit('.', 1)[1].lower()
-    return ext in config.ALLOWED_EXTENSIONS
+    
+    # Default allowed extensions (always supported)
+    default_exts = {'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'gif', 'txt'}
+    
+    # Check against default first (this ensures backwards compatibility)
+    if ext in default_exts:
+        return True
+    
+    # Also check config.ALLOWED_EXTENSIONS if it exists
+    if hasattr(config, 'ALLOWED_EXTENSIONS') and config.ALLOWED_EXTENSIONS:
+        # Ensure all extensions in config are lowercase
+        allowed_exts = {ext.lower() for ext in config.ALLOWED_EXTENSIONS} if isinstance(config.ALLOWED_EXTENSIONS, (list, tuple, set)) else config.ALLOWED_EXTENSIONS
+        return ext in allowed_exts
+    
+    # Fallback: only allow default extensions
+    return ext in default_exts
 
 
 def get_file_extension(filename: str) -> str:

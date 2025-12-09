@@ -129,7 +129,7 @@ class TutorDocument(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tutor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     file_name = db.Column(db.String(255), nullable=False)  # Original filename
-    file_path = db.Column(db.String(500), nullable=False, unique=True)  # Path relative to uploads directory
+    file_path = db.Column(db.String(500), nullable=False)  # Path relative to uploads directory (unique constraint via migration index)
     file_type = db.Column(db.String(50), nullable=False, index=True)  # e.g., 'certificate', 'recommendation', 'vendor_cert'
     file_size = db.Column(db.Integer, nullable=False)  # Size in bytes
     mime_type = db.Column(db.String(100), nullable=True)  # MIME type (e.g., 'application/pdf')
@@ -233,3 +233,53 @@ class CourseRequest(db.Model):
     
     def __repr__(self) -> str:
         return f"<CourseRequest course={self.course_id} student={self.student_id} tutor={self.tutor_id} status={self.status}>"
+
+
+class CourseModule(db.Model):
+    """Model for course modules/lessons."""
+    __tablename__ = "course_modules"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey("courses.id", ondelete='CASCADE'), nullable=False, index=True)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    order_index = db.Column(db.Integer, nullable=False, default=0, index=True)  # For ordering modules
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='SET NULL'), nullable=False)  # Tutor who created it
+    
+    # Relationships
+    course = db.relationship("Course", backref="modules")
+    creator = db.relationship("User", foreign_keys=[created_by])
+    
+    __table_args__ = (
+        db.Index('ix_course_modules_course_order', 'course_id', 'order_index'),
+    )
+    
+    def __repr__(self) -> str:
+        return f"<CourseModule {self.name} (course={self.course_id})>"
+
+
+class ModuleFile(db.Model):
+    """Model for files within course modules."""
+    __tablename__ = "module_files"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    module_id = db.Column(db.Integer, db.ForeignKey("course_modules.id", ondelete='CASCADE'), nullable=False, index=True)
+    file_name = db.Column(db.String(255), nullable=False)  # Original filename
+    file_path = db.Column(db.String(500), nullable=False)  # Path relative to uploads directory (unique constraint via migration index)
+    file_type = db.Column(db.String(50), nullable=False, index=True)  # pdf, pptx, doc, docx, jpg, png, etc.
+    file_size = db.Column(db.Integer, nullable=False)  # Size in bytes
+    mime_type = db.Column(db.String(100), nullable=True)  # MIME type
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='SET NULL'), nullable=False)  # Tutor who uploaded
+    
+    # Relationships
+    module = db.relationship("CourseModule", backref="files")
+    uploader = db.relationship("User", foreign_keys=[uploaded_by])
+    
+    __table_args__ = (
+        db.Index('ix_module_files_module_uploaded', 'module_id', 'uploaded_at'),
+    )
+    
+    def __repr__(self) -> str:
+        return f"<ModuleFile {self.file_name} (module={self.module_id})>"

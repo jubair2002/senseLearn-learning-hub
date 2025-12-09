@@ -2,7 +2,8 @@ from flask import render_template, jsonify, request, flash, redirect, url_for
 from flask_login import login_required, current_user
 from src import db
 from src.student import student_bp
-from src.auth.models import Course, CourseStudent, CourseRequest, course_tutors, User
+from src.auth.models import Course, CourseStudent, CourseRequest, course_tutors, User, CourseModule, ModuleFile
+from src.common.file_utils import get_file_url
 
 @student_bp.route('/dashboard')
 @student_bp.route('/dashboard/<section>')
@@ -280,3 +281,111 @@ def request_to_join_course(course_id):
         from flask import current_app
         current_app.logger.exception(f"Error creating course request for {course_id}")
         return jsonify({'success': False, 'error': 'Failed to send request'}), 500
+
+
+@student_bp.route('/api/courses/<int:course_id>/modules')
+@login_required
+def get_course_modules(course_id):
+    """API endpoint for students to view modules of an enrolled course."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        # Verify student is enrolled
+        enrollment = CourseStudent.query.filter_by(
+            course_id=course_id,
+            student_id=current_user.id,
+            status='enrolled'
+        ).first()
+        
+        if not enrollment:
+            return jsonify({'success': False, 'error': 'Not enrolled in this course'}), 403
+        
+        # Get course
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found'}), 404
+        
+        # Get modules
+        modules = CourseModule.query.filter_by(course_id=course_id).order_by(CourseModule.order_index, CourseModule.created_at).all()
+        modules_data = []
+        for module in modules:
+            # Get file count
+            file_count = ModuleFile.query.filter_by(module_id=module.id).count()
+            modules_data.append({
+                'id': module.id,
+                'name': module.name,
+                'description': module.description or '',
+                'order_index': module.order_index,
+                'created_at': module.created_at.isoformat() if module.created_at else None,
+                'file_count': file_count
+            })
+        
+        return jsonify({
+            'success': True,
+            'course': {
+                'id': course.id,
+                'name': course.name,
+                'description': course.description or ''
+            },
+            'modules': modules_data
+        }), 200
+        
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.exception(f"Error getting modules for course {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to load modules'}), 500
+
+
+@student_bp.route('/api/modules/<int:module_id>/files')
+@login_required
+def get_module_files(module_id):
+    """API endpoint for students to view files in a module."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        # Get module
+        module = CourseModule.query.get(module_id)
+        if not module:
+            return jsonify({'success': False, 'error': 'Module not found'}), 404
+        
+        # Verify student is enrolled in the course
+        enrollment = CourseStudent.query.filter_by(
+            course_id=module.course_id,
+            student_id=current_user.id,
+            status='enrolled'
+        ).first()
+        
+        if not enrollment:
+            return jsonify({'success': False, 'error': 'Not enrolled in this course'}), 403
+        
+        # Get files
+        files = ModuleFile.query.filter_by(module_id=module_id).order_by(ModuleFile.uploaded_at).all()
+        files_data = []
+        for file_obj in files:
+            files_data.append({
+                'id': file_obj.id,
+                'file_name': file_obj.file_name,
+                'file_path': file_obj.file_path,
+                'file_type': file_obj.file_type,
+                'file_size': file_obj.file_size,
+                'mime_type': file_obj.mime_type,
+                'uploaded_at': file_obj.uploaded_at.isoformat() if file_obj.uploaded_at else None,
+                'url': get_file_url(file_obj.file_path)
+            })
+        
+        return jsonify({
+            'success': True,
+            'module': {
+                'id': module.id,
+                'name': module.name,
+                'description': module.description or ''
+            },
+            'files': files_data
+        }), 200
+        
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.exception(f"Error getting files for module {module_id}")
+        return jsonify({'success': False, 'error': 'Failed to load files'}), 500

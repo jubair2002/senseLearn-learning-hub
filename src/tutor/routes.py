@@ -333,78 +333,15 @@ def list_assigned_courses():
         return jsonify({'success': True, 'courses': courses_data}), 200
     except Exception as e:
         from flask import current_app
+        import traceback
+        error_trace = traceback.format_exc()
         current_app.logger.exception("Error listing assigned courses")
-        return jsonify({'success': False, 'error': 'Failed to load courses'}), 500
-
-
-@tutor_bp.route('/api/courses/<int:course_id>/view', methods=['GET'])
-@login_required
-def get_course_view(course_id):
-    """API endpoint to get course view HTML content for dashboard."""
-    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
-    
-    try:
-        # Verify tutor is assigned to this course
-        assignment = db.session.query(course_tutors).filter_by(
-            course_id=course_id,
-            tutor_id=current_user.id
-        ).first()
-        
-        if not assignment:
-            return jsonify({'success': False, 'error': 'Course not found or not assigned'}), 404
-        
-        course = Course.query.get(course_id)
-        if not course:
-            return jsonify({'success': False, 'error': 'Course not found'}), 404
-        
-        # Get enrolled students
-        enrollments = CourseStudent.query.filter_by(course_id=course_id, status='enrolled').all()
-        students_data = []
-        for enrollment in enrollments:
-            student = enrollment.student
-            if student:
-                students_data.append({
-                    'id': student.id,
-                    'full_name': student.full_name,
-                    'email': student.email,
-                    'disability_type': student.disability_type
-                })
-        
-        # Get requests
-        requests = CourseRequest.query.filter_by(
-            course_id=course_id,
-            tutor_id=current_user.id
-        ).order_by(CourseRequest.requested_at.desc()).all()
-        
-        requests_data = []
-        for req in requests:
-            student = req.student
-            if student:
-                requests_data.append({
-                    'id': req.id,
-                    'student_id': student.id,
-                    'student_name': student.full_name,
-                    'student_email': student.email,
-                    'disability_type': student.disability_type,
-                    'status': req.status,
-                    'requested_at': req.requested_at.isoformat() if req.requested_at else None,
-                    'responded_at': req.responded_at.isoformat() if req.responded_at else None
-                })
-        
-        # Render course view template
-        html = render_template('tutor/course_view.html', 
-                              course=course, 
-                              students=students_data, 
-                              requests=requests_data,
-                              course_id=course_id)
-        
-        return jsonify({'success': True, 'html': html}), 200
-        
-    except Exception as e:
-        from flask import current_app
-        current_app.logger.exception(f"Error getting course view for {course_id}")
-        return jsonify({'success': False, 'error': 'Failed to load course: ' + str(e)}), 500
+        current_app.logger.error(f"Full traceback: {error_trace}")
+        return jsonify({
+            'success': False, 
+            'error': f'Failed to load courses: {str(e)}',
+            'details': str(e) if current_app.debug else None
+        }), 500
 
 
 @tutor_bp.route('/api/courses/<int:course_id>')
