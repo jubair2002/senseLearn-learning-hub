@@ -942,9 +942,26 @@
         showSection = function(sectionName, updateUrl = true) {
             originalShowSection(sectionName, updateUrl);
             if (sectionName === 'verification') {
-                setTimeout(() => loadDocuments(), 100);
+                // Clear cache when switching to verification section to ensure fresh data
+                documentsCache = null;
+                setTimeout(() => {
+                    if (typeof loadDocuments === 'function') {
+                        loadDocuments();
+                    }
+                }, 100);
             }
         };
+        
+        // Load documents if verification section is active on initial page load
+        // This runs after all functions are defined
+        if (initialSection === 'verification') {
+            setTimeout(() => {
+                const listEl = document.getElementById('documents-list');
+                if (listEl && typeof loadDocuments === 'function') {
+                    loadDocuments();
+                }
+            }, 400);
+        }
         
         // Clear cache on upload/delete
         const originalDeleteDocument = deleteDocument;
@@ -973,8 +990,8 @@
         };
         
         // Update upload handler to clear cache
+        const uploadForm = document.getElementById('upload-document-form');
         if (uploadForm) {
-            const originalSubmit = uploadForm.onsubmit;
             uploadForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 

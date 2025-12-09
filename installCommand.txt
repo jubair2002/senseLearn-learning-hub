@@ -12,3 +12,5 @@ flask db stamp head
 --------sql command for admin entity create--------- 
 INSERT INTO users (email, password_hash, full_name, user_type, email_verified) 
 VALUES ('admin@example.com', '<hashed_password>', 'Admin Name', 'admin', 1);
+
+mkdir D:\uploads
