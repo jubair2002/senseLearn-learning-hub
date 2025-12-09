@@ -880,16 +880,18 @@
             });
         }
 
-        // Sidebar Toggle
+        // Sidebar Toggle with localStorage persistence
         const sidebar = document.getElementById('sidebar');
         const sidebarToggle = document.getElementById('sidebar-toggle');
         const sidebarTexts = document.querySelectorAll('.sidebar-text');
-        let sidebarCollapsed = false;
-
-        sidebarToggle.addEventListener('click', () => {
-            sidebarCollapsed = !sidebarCollapsed;
-            
-            if (sidebarCollapsed) {
+        
+        // Load saved sidebar state from localStorage
+        const savedSidebarState = localStorage.getItem('tutorSidebarCollapsed');
+        let sidebarCollapsed = savedSidebarState === 'true';
+        
+        // Apply saved state on page load
+        function applySidebarState(collapsed) {
+            if (collapsed) {
                 sidebar.style.width = '80px';
                 sidebarTexts.forEach(text => {
                     text.style.display = 'none';
@@ -900,6 +902,19 @@
                     text.style.display = 'block';
                 });
             }
+        }
+        
+        // Apply saved state immediately on page load
+        applySidebarState(sidebarCollapsed);
+        
+        sidebarToggle.addEventListener('click', () => {
+            sidebarCollapsed = !sidebarCollapsed;
+            
+            // Save state to localStorage
+            localStorage.setItem('tutorSidebarCollapsed', sidebarCollapsed.toString());
+            
+            // Apply the new state
+            applySidebarState(sidebarCollapsed);
         });
 
         // User Menu Dropdown
@@ -1202,81 +1217,112 @@
                     const requests = requestsResult.success ? requestsResult.requests : [];
                     const pendingRequests = requests.filter(r => r.status === 'pending');
                     
-                    // Create modal content
+                    // Create modal content - Minimal Design
                     const modalContent = `
-                        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 max-w-5xl mx-auto max-h-[90vh] overflow-y-auto">
-                            <div class="flex items-center justify-between mb-6">
-                                <h3 class="text-2xl font-bold text-slate-800">${course.name}</h3>
-                                <button onclick="closeCourseModal()" class="text-slate-400 hover:text-slate-600">
-                                    <i class="fas fa-times text-xl"></i>
-                                </button>
-                            </div>
-                            
-                            ${course.description ? `<div class="mb-6">
-                                <h4 class="font-semibold text-slate-800 mb-2">Description</h4>
-                                <p class="text-slate-600">${course.description}</p>
-                            </div>` : ''}
-                            
-                            <!-- Student Requests Section -->
-                            <div class="mb-6">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h4 class="font-semibold text-slate-800">Student Requests ${pendingRequests.length > 0 ? `<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium ml-2">${pendingRequests.length} Pending</span>` : ''}</h4>
-                                </div>
-                                ${pendingRequests.length > 0 ? `
-                                    <div class="space-y-2 mb-4">
-                                        ${pendingRequests.map(req => `
-                                            <div class="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                                <div class="flex-1">
-                                                    <p class="font-medium text-slate-800">${req.student_name}</p>
-                                                    <p class="text-sm text-slate-500">${req.student_email} • ${req.disability_type || 'N/A'}</p>
-                                                    <p class="text-xs text-slate-400 mt-1">Requested: ${new Date(req.requested_at).toLocaleString()}</p>
-                                                </div>
-                                                <div class="flex gap-2">
-                                                    <button onclick="respondToRequest(${req.id}, ${courseId}, 'accept')" class="px-3 py-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-sm">
-                                                        <i class="fas fa-check mr-1"></i>Accept
-                                                    </button>
-                                                    <button onclick="respondToRequest(${req.id}, ${courseId}, 'reject')" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
-                                                        <i class="fas fa-times mr-1"></i>Reject
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        `).join('')}
+                        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
+                            <!-- Header -->
+                            <div class="px-8 py-6 border-b border-slate-100">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <h3 class="text-2xl font-semibold text-slate-900 mb-2">${course.name}</h3>
+                                        ${course.description ? `<p class="text-slate-600 text-sm leading-relaxed">${course.description}</p>` : ''}
                                     </div>
-                                ` : '<p class="text-slate-500 text-sm mb-4">No pending requests</p>'}
-                            </div>
-                            
-                            <!-- Enrolled Students Section -->
-                            <div class="mb-6">
-                                <div class="flex items-center justify-between mb-3">
-                                    <h4 class="font-semibold text-slate-800">Enrolled Students (${course.students.length})</h4>
-                                    <button onclick="assignStudentsToCourse(${courseId})" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
-                                        <i class="fas fa-plus mr-1"></i>Add Students
+                                    <button onclick="closeCourseModal()" class="ml-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition">
+                                        <i class="fas fa-times text-lg"></i>
                                     </button>
                                 </div>
-                                ${course.students.length > 0 ? `
-                                    <div class="space-y-2">
-                                        ${course.students.map(student => `
-                                            <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                                                <div>
-                                                    <p class="font-medium text-slate-800">${student.full_name}</p>
-                                                    <p class="text-sm text-slate-500">${student.email} • ${student.disability_type || 'N/A'}</p>
-                                                </div>
-                                                <button onclick="removeStudentFromCourse(${courseId}, ${student.id})" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
-                                                    <i class="fas fa-times mr-1"></i>Remove
-                                                </button>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                ` : '<p class="text-slate-500 text-sm">No students enrolled yet</p>'}
                             </div>
                             
-                            <div class="flex gap-3 justify-end">
-                                <button onclick="openCourse(${courseId}); closeCourseModal();" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                                    <i class="fas fa-door-open mr-2"></i>Open Course
-                                </button>
-                                <button onclick="closeCourseModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
-                                    Close
-                                </button>
+                            <!-- Content Scroll Area -->
+                            <div class="flex-1 overflow-y-auto px-8 py-6 space-y-8">
+                                <!-- Student Requests Section -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="flex items-center gap-3">
+                                            <h4 class="text-lg font-medium text-slate-900">Student Requests</h4>
+                                            ${pendingRequests.length > 0 ? `<span class="px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-medium">${pendingRequests.length} pending</span>` : ''}
+                                        </div>
+                                    </div>
+                                    ${pendingRequests.length > 0 ? `
+                                        <div class="space-y-3">
+                                            ${pendingRequests.map(req => `
+                                                <div class="group border border-slate-200 rounded-xl p-4 hover:border-slate-300 hover:shadow-sm transition-all">
+                                                    <div class="flex items-start justify-between gap-4">
+                                                        <div class="flex-1 min-w-0">
+                                                            <p class="font-medium text-slate-900 mb-1">${req.student_name}</p>
+                                                            <p class="text-sm text-slate-600 mb-2">${req.student_email}</p>
+                                                            <div class="flex items-center gap-3 text-xs text-slate-500">
+                                                                ${req.disability_type ? `<span><i class="fas fa-user-tag mr-1"></i>${req.disability_type}</span>` : ''}
+                                                                <span><i class="far fa-clock mr-1"></i>${new Date(req.requested_at).toLocaleDateString()}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex gap-2 flex-shrink-0">
+                                                            <button onclick="respondToRequest(${req.id}, ${courseId}, 'accept')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                                                Accept
+                                                            </button>
+                                                            <button onclick="respondToRequest(${req.id}, ${courseId}, 'reject')" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition text-sm font-medium">
+                                                                Reject
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : `
+                                        <div class="text-center py-12 border border-dashed border-slate-200 rounded-xl">
+                                            <i class="fas fa-inbox text-4xl text-slate-300 mb-3"></i>
+                                            <p class="text-slate-500 text-sm">No pending requests</p>
+                                        </div>
+                                    `}
+                                </div>
+                                
+                                <!-- Enrolled Students Section -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h4 class="text-lg font-medium text-slate-900">Enrolled Students</h4>
+                                        <button onclick="assignStudentsToCourse(${courseId})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                            <i class="fas fa-plus mr-1.5"></i>Add Students
+                                        </button>
+                                    </div>
+                                    ${course.students.length > 0 ? `
+                                        <div class="space-y-2">
+                                            ${course.students.map(student => `
+                                                <div class="group flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:border-slate-300 hover:shadow-sm transition-all">
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="font-medium text-slate-900 mb-1">${student.full_name}</p>
+                                                        <div class="flex items-center gap-3 text-sm text-slate-600">
+                                                            <span>${student.email}</span>
+                                                            ${student.disability_type ? `<span class="text-slate-400">•</span><span>${student.disability_type}</span>` : ''}
+                                                        </div>
+                                                    </div>
+                                                    <button onclick="removeStudentFromCourse(${courseId}, ${student.id})" class="ml-4 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg transition text-sm font-medium">
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : `
+                                        <div class="text-center py-12 border border-dashed border-slate-200 rounded-xl">
+                                            <i class="fas fa-user-friends text-4xl text-slate-300 mb-3"></i>
+                                            <p class="text-slate-500 text-sm mb-2">No students enrolled yet</p>
+                                            <button onclick="assignStudentsToCourse(${courseId})" class="mt-3 px-4 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                                                Add Students
+                                            </button>
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                            
+                            <!-- Footer -->
+                            <div class="px-8 py-5 border-t border-slate-100 bg-slate-50/50">
+                                <div class="flex items-center justify-end gap-3">
+                                    <button onclick="closeCourseModal()" class="px-5 py-2.5 text-slate-700 hover:bg-white border border-slate-300 rounded-lg transition font-medium">
+                                        Close
+                                    </button>
+                                    <button onclick="openCourse(${courseId}); closeCourseModal();" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                                        Open Course
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -1286,8 +1332,14 @@
                     if (!modal) {
                         modal = document.createElement('div');
                         modal.id = 'course-modal';
-                        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+                        modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4';
                         modal.style.display = 'none';
+                        // Close modal when clicking backdrop
+                        modal.addEventListener('click', (e) => {
+                            if (e.target === modal) {
+                                closeCourseModal();
+                            }
+                        });
                         document.body.appendChild(modal);
                     }
                     modal.innerHTML = modalContent;
@@ -1317,51 +1369,70 @@
                 if (result.success && result.requests) {
                     const requests = result.requests;
                     
-                    // Create modal content
+                    // Create modal content - Minimal Design
                     const modalContent = `
-                        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 max-w-4xl mx-auto max-h-[90vh] overflow-y-auto">
-                            <div class="flex items-center justify-between mb-6">
-                                <h3 class="text-2xl font-bold text-slate-800">Student Requests</h3>
-                                <button onclick="closeCourseModal()" class="text-slate-400 hover:text-slate-600">
-                                    <i class="fas fa-times text-xl"></i>
-                                </button>
+                        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
+                            <!-- Header -->
+                            <div class="px-8 py-6 border-b border-slate-100">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-2xl font-semibold text-slate-900">Student Requests</h3>
+                                    <button onclick="closeCourseModal()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition">
+                                        <i class="fas fa-times text-lg"></i>
+                                    </button>
+                                </div>
                             </div>
                             
-                            ${requests.length > 0 ? `
-                                <div class="space-y-4">
-                                    ${requests.map(req => `
-                                        <div class="border border-slate-200 rounded-lg p-4 ${req.status === 'pending' ? 'bg-yellow-50' : req.status === 'accepted' ? 'bg-emerald-50' : 'bg-red-50'}">
-                                            <div class="flex items-start justify-between">
-                                                <div class="flex-1">
-                                                    <h5 class="font-semibold text-slate-800 mb-1">${req.student_name}</h5>
-                                                    <p class="text-sm text-slate-600 mb-1">${req.student_email}</p>
-                                                    <p class="text-xs text-slate-500">Disability Type: ${req.disability_type || 'N/A'}</p>
-                                                    <p class="text-xs text-slate-500 mt-1">Requested: ${new Date(req.requested_at).toLocaleString()}</p>
-                                                </div>
-                                                <div class="ml-4 flex flex-col gap-2">
+                            <!-- Content Scroll Area -->
+                            <div class="flex-1 overflow-y-auto px-8 py-6">
+                                ${requests.length > 0 ? `
+                                    <div class="space-y-3">
+                                        ${requests.map(req => `
+                                            <div class="border border-slate-200 rounded-xl p-4 hover:border-slate-300 hover:shadow-sm transition-all ${req.status === 'pending' ? 'bg-amber-50/50' : req.status === 'accepted' ? 'bg-emerald-50/50' : 'bg-red-50/50'}">
+                                                <div class="flex items-start justify-between gap-4">
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="flex items-center gap-2 mb-2">
+                                                            <h5 class="font-medium text-slate-900">${req.student_name}</h5>
+                                                            ${req.status !== 'pending' ? `
+                                                                <span class="px-2 py-0.5 ${req.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'} rounded-full text-xs font-medium">
+                                                                    ${req.status === 'accepted' ? 'Accepted' : 'Rejected'}
+                                                                </span>
+                                                            ` : ''}
+                                                        </div>
+                                                        <p class="text-sm text-slate-600 mb-2">${req.student_email}</p>
+                                                        <div class="flex items-center gap-3 text-xs text-slate-500">
+                                                            ${req.disability_type ? `<span><i class="fas fa-user-tag mr-1"></i>${req.disability_type}</span>` : ''}
+                                                            <span><i class="far fa-clock mr-1"></i>${new Date(req.requested_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                    </div>
                                                     ${req.status === 'pending' ? `
-                                                        <button onclick="respondToRequest(${req.id}, ${courseId}, 'accept')" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-sm">
-                                                            <i class="fas fa-check mr-1"></i>Accept
-                                                        </button>
-                                                        <button onclick="respondToRequest(${req.id}, ${courseId}, 'reject')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
-                                                            <i class="fas fa-times mr-1"></i>Reject
-                                                        </button>
-                                                    ` : `
-                                                        <span class="px-3 py-1 ${req.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'} rounded text-xs font-medium">
-                                                            ${req.status === 'accepted' ? 'Accepted' : 'Rejected'}
-                                                        </span>
-                                                    `}
+                                                        <div class="flex gap-2 flex-shrink-0">
+                                                            <button onclick="respondToRequest(${req.id}, ${courseId}, 'accept')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                                                Accept
+                                                            </button>
+                                                            <button onclick="respondToRequest(${req.id}, ${courseId}, 'reject')" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition text-sm font-medium">
+                                                                Reject
+                                                            </button>
+                                                        </div>
+                                                    ` : ''}
                                                 </div>
                                             </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : '<div class="text-center py-8"><p class="text-slate-500">No requests found</p></div>'}
+                                        `).join('')}
+                                    </div>
+                                ` : `
+                                    <div class="text-center py-16 border border-dashed border-slate-200 rounded-xl">
+                                        <i class="fas fa-inbox text-4xl text-slate-300 mb-3"></i>
+                                        <p class="text-slate-500 text-sm">No requests found</p>
+                                    </div>
+                                `}
+                            </div>
                             
-                            <div class="flex justify-end mt-6">
-                                <button onclick="closeCourseModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
-                                    Close
-                                </button>
+                            <!-- Footer -->
+                            <div class="px-8 py-5 border-t border-slate-100 bg-slate-50/50">
+                                <div class="flex items-center justify-end">
+                                    <button onclick="closeCourseModal()" class="px-5 py-2.5 text-slate-700 hover:bg-white border border-slate-300 rounded-lg transition font-medium">
+                                        Close
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -1371,8 +1442,14 @@
                     if (!modal) {
                         modal = document.createElement('div');
                         modal.id = 'course-modal';
-                        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+                        modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4';
                         modal.style.display = 'none';
+                        // Close modal when clicking backdrop
+                        modal.addEventListener('click', (e) => {
+                            if (e.target === modal) {
+                                closeCourseModal();
+                            }
+                        });
                         document.body.appendChild(modal);
                     }
                     modal.innerHTML = modalContent;
@@ -1414,8 +1491,16 @@
         // Assign students to course
         async function assignStudentsToCourse(courseId) {
             try {
-                // Load students
-                const response = await fetch('/admin/api/students');
+                // Load students from tutor API
+                const response = await fetch('/tutor/api/students');
+                
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error('Server returned non-JSON response. Status: ' + response.status);
+                }
+                
                 const result = await response.json();
                 
                 if (result.success && result.students) {
@@ -1449,6 +1534,13 @@
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({student_ids: studentIds})
                         });
+                        
+                        // Check if response is JSON
+                        const assignContentType = assignResponse.headers.get('content-type');
+                        if (!assignContentType || !assignContentType.includes('application/json')) {
+                            const text = await assignResponse.text();
+                            throw new Error('Server returned non-JSON response. Status: ' + assignResponse.status);
+                        }
                         
                         const assignResult = await assignResponse.json();
                         if (assignResult.success) {
@@ -1626,7 +1718,15 @@
 
         async function assignStudentsToCourseView(courseId) {
             try {
-                const response = await fetch('/admin/api/students');
+                const response = await fetch('/tutor/api/students');
+                
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error('Server returned non-JSON response. Status: ' + response.status);
+                }
+                
                 const result = await response.json();
                 
                 if (result.success && result.students) {
@@ -1659,6 +1759,13 @@
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({student_ids: studentIds})
                         });
+                        
+                        // Check if response is JSON
+                        const assignContentType2 = assignResponse.headers.get('content-type');
+                        if (!assignContentType2 || !assignContentType2.includes('application/json')) {
+                            const text = await assignResponse.text();
+                            throw new Error('Server returned non-JSON response. Status: ' + assignResponse.status);
+                        }
                         
                         const assignResult = await assignResponse.json();
                         if (assignResult.success) {

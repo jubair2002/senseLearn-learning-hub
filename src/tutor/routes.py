@@ -572,6 +572,31 @@ def assign_students_to_course(course_id):
         return jsonify({'success': False, 'error': 'Failed to assign students'}), 500
 
 
+@tutor_bp.route('/api/students', methods=['GET'])
+@login_required
+def get_students():
+    """API endpoint for tutor to get list of all students."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        students = User.query.filter_by(user_type='student').all()
+        students_data = [{
+            'id': s.id,
+            'full_name': s.full_name,
+            'email': s.email,
+            'disability_type': s.disability_type
+        } for s in students]
+        
+        return jsonify({
+            'success': True,
+            'students': students_data
+        }), 200
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.exception("Error fetching students for tutor")
+        return jsonify({'success': False, 'error': 'Failed to fetch students'}), 500
+
 @tutor_bp.route('/api/courses/<int:course_id>/students/<int:student_id>', methods=['DELETE'])
 @login_required
 def remove_student_from_course(course_id, student_id):
