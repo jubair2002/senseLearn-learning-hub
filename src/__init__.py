@@ -1,4 +1,4 @@
-from flask import Flask, render_template, send_file, redirect, url_for, request, jsonify
+from flask import Flask, render_template, send_file, redirect, url_for, request, jsonify, current_app
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user, login_required
 from dotenv import load_dotenv
@@ -173,6 +173,36 @@ def create_app() -> Flask:
         flash('You have been logged out.', 'info')
         return redirect(url_for('login_page'))
     
+    def serve_file_response(full_path):
+        """Helper function to serve a file with proper headers."""
+        from mimetypes import guess_type
+        import hashlib
+        import os
+        
+        # Determine MIME type for proper browser handling
+        mime_type, _ = guess_type(full_path)
+        if not mime_type:
+            mime_type = 'application/octet-stream'
+        
+        # Send file with proper headers for inline display
+        response = send_file(
+            full_path,
+            mimetype=mime_type,
+            as_attachment=False,  # Display inline instead of downloading
+            conditional=True  # Enable conditional requests (304 Not Modified)
+        )
+        # Add headers for proper display
+        response.headers['Content-Disposition'] = f'inline; filename="{os.path.basename(full_path)}"'
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        # Optimized cache headers - longer cache for static files
+        response.cache_control.max_age = 86400  # 24 hours
+        response.cache_control.public = True
+        # Add ETag for better caching
+        file_stat = os.stat(full_path)
+        etag = hashlib.md5(f"{full_path}{file_stat.st_mtime}{file_stat.st_size}".encode()).hexdigest()
+        response.headers['ETag'] = f'"{etag}"'
+        return response
+    
     @app.route("/uploads/<path:file_path>")
     @login_required
     def serve_upload(file_path):
@@ -204,7 +234,7 @@ def create_app() -> Flask:
                 return "Not a file", 400
             
             # Check if user has permission to view this file
-            # Tutors can view their own files, admins can view all tutor files
+            # Handle tutor files (tutors/{tutor_id}/...)
             if 'tutors' in normalized_path:
                 try:
                     # Extract tutor ID from path (format: tutors/{tutor_id}/...)
@@ -219,31 +249,7 @@ def create_app() -> Flask:
                             is_admin = hasattr(current_user, 'user_type') and current_user.user_type == 'admin'
                             
                             if is_tutor_owner or is_admin:
-                                # Determine MIME type for proper browser handling
-                                from mimetypes import guess_type
-                                mime_type, _ = guess_type(full_path)
-                                if not mime_type:
-                                    mime_type = 'application/octet-stream'
-                                
-                                # Send file with proper headers for inline display
-                                response = send_file(
-                                    full_path,
-                                    mimetype=mime_type,
-                                    as_attachment=False,  # Display inline instead of downloading
-                                    conditional=True  # Enable conditional requests (304 Not Modified)
-                                )
-                                # Add headers for proper PDF display in iframe
-                                response.headers['Content-Disposition'] = f'inline; filename="{os.path.basename(full_path)}"'
-                                response.headers['X-Content-Type-Options'] = 'nosniff'
-                                # Optimized cache headers - longer cache for static files
-                                response.cache_control.max_age = 86400  # 24 hours
-                                response.cache_control.public = True
-                                # Add ETag for better caching
-                                import hashlib
-                                file_stat = os.stat(full_path)
-                                etag = hashlib.md5(f"{full_path}{file_stat.st_mtime}{file_stat.st_size}".encode()).hexdigest()
-                                response.headers['ETag'] = f'"{etag}"'
-                                return response
+                                return serve_file_response(full_path)
                             else:
                                 current_app.logger.warning(f"Access denied: User {current_user.id} tried to access tutor {tutor_id} file")
                                 return "Forbidden", 403
@@ -253,10 +259,54 @@ def create_app() -> Flask:
                     current_app.logger.error(f"Error parsing tutor ID from path {file_path}: {str(e)}")
                     return "Invalid file path", 400
             
+            # Handle course files (courses/{course_id}/modules/{module_id}/...)
+            elif 'courses' in normalized_path:
+                try:
+                    # Extract course ID from path (format: courses/{course_id}/modules/{module_id}/...)
+                    parts = normalized_path.split('courses/')
+                    if len(parts) > 1:
+                        course_id_str = parts[1].split('/')[0]
+                        course_id = int(course_id_str)
+                        
+                        if current_user.is_authenticated:
+                            is_admin = hasattr(current_user, 'user_type') and current_user.user_type == 'admin'
+                            
+                            if is_admin:
+                                # Admins can access all course files
+                                return serve_file_response(full_path)
+                            
+                            # Check if user is a tutor assigned to this course
+                            if hasattr(current_user, 'user_type') and current_user.user_type == 'tutor':
+                                from src.auth.models import course_tutors
+                                assignment = db.session.query(course_tutors).filter_by(
+                                    course_id=course_id,
+                                    tutor_id=current_user.id
+                                ).first()
+                                if assignment:
+                                    return serve_file_response(full_path)
+                            
+                            # Check if user is a student enrolled in this course
+                            if hasattr(current_user, 'user_type') and current_user.user_type == 'student':
+                                from src.auth.models import CourseStudent
+                                enrollment = CourseStudent.query.filter_by(
+                                    course_id=course_id,
+                                    student_id=current_user.id
+                                ).first()
+                                if enrollment:
+                                    return serve_file_response(full_path)
+                            
+                            current_app.logger.warning(f"Access denied: User {current_user.id} tried to access course {course_id} file")
+                            return "Forbidden", 403
+                        else:
+                            return "Unauthorized", 401
+                except (ValueError, IndexError) as e:
+                    current_app.logger.error(f"Error parsing course ID from path {file_path}: {str(e)}")
+                    return "Invalid file path", 400
+            
             # If path doesn't match expected pattern, deny access
             current_app.logger.warning(f"Access denied for file path: {file_path}")
             return "Forbidden", 403
-            
+        
         except Exception as e:
             current_app.logger.exception(f"Error serving file {file_path}: {str(e)}")
             return "Internal server error", 500
