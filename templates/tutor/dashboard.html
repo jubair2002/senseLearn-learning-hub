@@ -462,7 +462,19 @@
                         
                         <!-- Upload New Document -->
                         <div class="border border-slate-200 rounded-lg p-4 mb-4 bg-slate-50">
-                            <h4 class="font-semibold text-slate-800 mb-3">Upload New Document</h4>
+                            <h4 class="font-semibold text-slate-800 mb-3">
+                                {% if user.is_verified %}
+                                    <i class="fas fa-plus-circle text-blue-600 mr-2"></i>Add More Documents
+                                {% else %}
+                                    <i class="fas fa-upload text-blue-600 mr-2"></i>Upload New Document
+                                {% endif %}
+                            </h4>
+                            {% if user.is_verified %}
+                            <p class="text-sm text-slate-600 mb-3">
+                                <i class="fas fa-info-circle text-blue-500 mr-1"></i>
+                                You can continue to add documents to your profile at any time.
+                            </p>
+                            {% endif %}
                             <form id="upload-document-form" class="space-y-3">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
@@ -924,9 +936,12 @@
                         documentsCache = html;
                         documentsCacheTime = Date.now();
                     } else {
-                        const html = '<div class="text-center py-8"><i class="fas fa-file text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No documents uploaded yet</p><p class="text-sm text-slate-500 mt-2">Upload your documents above to get verified</p></div>';
-                        listEl.innerHTML = html;
-                        documentsCache = html;
+                        const isVerified = {% if user.is_verified %}true{% else %}false{% endif %};
+                        const emptyMessage = isVerified 
+                            ? '<div class="text-center py-8"><i class="fas fa-file text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No documents uploaded yet</p><p class="text-sm text-slate-500 mt-2">Upload documents to add them to your profile</p></div>'
+                            : '<div class="text-center py-8"><i class="fas fa-file text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No documents uploaded yet</p><p class="text-sm text-slate-500 mt-2">Upload your documents above to get verified</p></div>';
+                        listEl.innerHTML = emptyMessage;
+                        documentsCache = emptyMessage;
                         documentsCacheTime = Date.now();
                     }
                 } else {
