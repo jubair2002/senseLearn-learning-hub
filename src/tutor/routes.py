@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from decimal import Decimal
 from src import db
 from src.tutor import tutor_bp
-from src.auth.models import TutorDocument
+from src.auth.models import TutorDocument, Course, CourseStudent, CourseRequest, course_tutors, User
 from src.common.file_utils import save_uploaded_file, delete_file, get_file_url
 from src.config import config
 import os
@@ -19,7 +19,7 @@ def dashboard(section=None):
         return redirect(url_for('index'))
     
     # Validate section name
-    valid_sections = ['dashboard', 'profile', 'students', 'verification', 'settings']
+    valid_sections = ['dashboard', 'profile', 'courses', 'students', 'verification', 'settings']
     if section and section not in valid_sections:
         section = 'dashboard'
     elif not section:
@@ -293,3 +293,271 @@ def get_stats():
         'completion_rate': 0
     }
     return jsonify(stats)
+
+
+# ==================== COURSE MANAGEMENT ROUTES ====================
+
+@tutor_bp.route('/api/courses')
+@login_required
+def list_assigned_courses():
+    """API endpoint to list courses assigned to the authenticated tutor."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        # Get courses where tutor is assigned
+        courses = Course.query.join(course_tutors).filter(
+            course_tutors.c.tutor_id == current_user.id
+        ).order_by(Course.created_at.desc()).all()
+        
+        courses_data = []
+        for course in courses:
+            # Get student count
+            student_count = CourseStudent.query.filter_by(course_id=course.id, status='enrolled').count()
+            # Get pending requests count
+            pending_requests = CourseRequest.query.filter_by(
+                course_id=course.id,
+                tutor_id=current_user.id,
+                status='pending'
+            ).count()
+            
+            courses_data.append({
+                'id': course.id,
+                'name': course.name,
+                'description': course.description or '',
+                'created_at': course.created_at.isoformat() if course.created_at else None,
+                'student_count': student_count,
+                'pending_requests': pending_requests
+            })
+        
+        return jsonify({'success': True, 'courses': courses_data}), 200
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.exception("Error listing assigned courses")
+        return jsonify({'success': False, 'error': 'Failed to load courses'}), 500
+
+
+@tutor_bp.route('/api/courses/<int:course_id>')
+@login_required
+def get_course_details(course_id):
+    """API endpoint to get course details for assigned tutor."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        # Verify tutor is assigned to this course
+        assignment = db.session.query(course_tutors).filter_by(
+            course_id=course_id,
+            tutor_id=current_user.id
+        ).first()
+        
+        if not assignment:
+            return jsonify({'success': False, 'error': 'Course not found or not assigned'}), 404
+        
+        course = Course.query.get_or_404(course_id)
+        
+        # Get enrolled students
+        enrollments = CourseStudent.query.filter_by(course_id=course_id, status='enrolled').all()
+        students_data = []
+        for enrollment in enrollments:
+            student = enrollment.student
+            if student:
+                students_data.append({
+                    'id': student.id,
+                    'full_name': student.full_name,
+                    'email': student.email,
+                    'disability_type': student.disability_type
+                })
+        
+        return jsonify({
+            'success': True,
+            'course': {
+                'id': course.id,
+                'name': course.name,
+                'description': course.description or '',
+                'students': students_data
+            }
+        }), 200
+        
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.exception(f"Error getting course details for {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to load course details'}), 500
+
+
+@tutor_bp.route('/api/courses/<int:course_id>/requests')
+@login_required
+def get_course_requests(course_id):
+    """API endpoint to get student requests for a course."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        # Verify tutor is assigned to this course
+        assignment = db.session.query(course_tutors).filter_by(
+            course_id=course_id,
+            tutor_id=current_user.id
+        ).first()
+        
+        if not assignment:
+            return jsonify({'success': False, 'error': 'Course not found or not assigned'}), 404
+        
+        # Get requests for this tutor
+        requests = CourseRequest.query.filter_by(
+            course_id=course_id,
+            tutor_id=current_user.id
+        ).order_by(CourseRequest.requested_at.desc()).all()
+        
+        requests_data = []
+        for req in requests:
+            student = req.student
+            if student:
+                requests_data.append({
+                    'id': req.id,
+                    'student_id': student.id,
+                    'student_name': student.full_name,
+                    'student_email': student.email,
+                    'disability_type': student.disability_type,
+                    'status': req.status,
+                    'requested_at': req.requested_at.isoformat() if req.requested_at else None,
+                    'responded_at': req.responded_at.isoformat() if req.responded_at else None
+                })
+        
+        return jsonify({'success': True, 'requests': requests_data}), 200
+        
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.exception(f"Error getting course requests for {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to load requests'}), 500
+
+
+@tutor_bp.route('/api/courses/<int:course_id>/requests/<int:request_id>', methods=['POST'])
+@login_required
+def respond_to_request(course_id, request_id):
+    """API endpoint to accept or reject a student request."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        # Verify tutor is assigned to this course
+        assignment = db.session.query(course_tutors).filter_by(
+            course_id=course_id,
+            tutor_id=current_user.id
+        ).first()
+        
+        if not assignment:
+            return jsonify({'success': False, 'error': 'Course not found or not assigned'}), 404
+        
+        # Get request
+        req = CourseRequest.query.filter_by(
+            id=request_id,
+            course_id=course_id,
+            tutor_id=current_user.id
+        ).first_or_404()
+        
+        if req.status != 'pending':
+            return jsonify({'success': False, 'error': 'Request already processed'}), 400
+        
+        data = request.get_json()
+        action = data.get('action')  # 'accept' or 'reject'
+        
+        if action not in ['accept', 'reject']:
+            return jsonify({'success': False, 'error': 'Invalid action'}), 400
+        
+        from datetime import datetime
+        req.status = 'accepted' if action == 'accept' else 'rejected'
+        req.responded_at = datetime.utcnow()
+        
+        # If accepted, create enrollment
+        if action == 'accept':
+            # Check if already enrolled
+            existing = CourseStudent.query.filter_by(
+                course_id=course_id,
+                student_id=req.student_id
+            ).first()
+            
+            if not existing:
+                enrollment = CourseStudent(
+                    course_id=course_id,
+                    student_id=req.student_id,
+                    status='enrolled',
+                    assigned_by=current_user.id
+                )
+                db.session.add(enrollment)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Request {action}ed successfully'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.exception(f"Error responding to request {request_id}")
+        return jsonify({'success': False, 'error': 'Failed to process request'}), 500
+
+
+@tutor_bp.route('/api/courses/<int:course_id>/students', methods=['POST'])
+@login_required
+def assign_students_to_course(course_id):
+    """API endpoint for tutor to assign students to a course."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        # Verify tutor is assigned to this course
+        assignment = db.session.query(course_tutors).filter_by(
+            course_id=course_id,
+            tutor_id=current_user.id
+        ).first()
+        
+        if not assignment:
+            return jsonify({'success': False, 'error': 'Course not found or not assigned'}), 404
+        
+        data = request.get_json()
+        student_ids = data.get('student_ids', [])
+        disability_type = data.get('disability_type')  # Optional filter
+        
+        if not student_ids:
+            return jsonify({'success': False, 'error': 'At least one student ID is required'}), 400
+        
+        assigned_count = 0
+        for student_id in student_ids:
+            student = User.query.filter_by(id=student_id, user_type='student').first()
+            if not student:
+                continue
+            
+            # Filter by disability type if specified
+            if disability_type and student.disability_type != disability_type:
+                continue
+            
+            # Check if already enrolled
+            existing = CourseStudent.query.filter_by(
+                course_id=course_id,
+                student_id=student_id
+            ).first()
+            
+            if not existing:
+                enrollment = CourseStudent(
+                    course_id=course_id,
+                    student_id=student_id,
+                    status='enrolled',
+                    assigned_by=current_user.id
+                )
+                db.session.add(enrollment)
+                assigned_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Assigned {assigned_count} student(s) to course'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.exception(f"Error assigning students to course {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to assign students'}), 500

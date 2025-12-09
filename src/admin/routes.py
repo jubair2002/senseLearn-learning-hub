@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from src import db
 from src.admin import admin_bp
-from src.auth.models import User, TutorDocument
+from src.auth.models import User, TutorDocument, Course, CourseStudent, CourseRequest, course_tutors
 from src.auth.utils import hash_password, is_valid_email, validate_password
 from src.auth.email_service import send_credentials_email
 from src.common.decorators import admin_required
@@ -52,8 +52,11 @@ def list_tutors():
             func.count(TutorDocument.id).label('doc_count')
         ).group_by(TutorDocument.tutor_id).subquery()
         
-        # Optimized query: select only needed columns, left join document counts
-        tutors = db.session.query(
+        # Check if only verified tutors are requested
+        verified_only = request.args.get('verified_only', 'false').lower() == 'true'
+        
+        # Build base query
+        query = db.session.query(
             User.id,
             User.email,
             User.full_name,
@@ -69,9 +72,13 @@ def list_tutors():
             User.created_at,
             func.coalesce(doc_counts.c.doc_count, 0).label('document_count')
         ).filter_by(user_type='tutor')\
-         .outerjoin(doc_counts, User.id == doc_counts.c.tutor_id)\
-         .order_by(User.created_at.desc())\
-         .all()
+         .outerjoin(doc_counts, User.id == doc_counts.c.tutor_id)
+        
+        # Filter by verified status if requested
+        if verified_only:
+            query = query.filter(User.is_verified == True)
+        
+        tutors = query.order_by(User.created_at.desc()).all()
         
         # Use list comprehension for faster data building
         tutors_data = [{
@@ -386,4 +393,312 @@ def get_stats():
         return jsonify(stats), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+# ==================== COURSE MANAGEMENT ROUTES ====================
+
+@admin_bp.route('/api/courses', methods=['GET'])
+@login_required
+@admin_required
+def list_courses():
+    """API endpoint to list all courses."""
+    try:
+        courses = Course.query.order_by(Course.created_at.desc()).all()
+        
+        courses_data = []
+        for course in courses:
+            # Get tutor count
+            tutor_count = db.session.query(course_tutors).filter_by(course_id=course.id).count()
+            # Get student count
+            student_count = CourseStudent.query.filter_by(course_id=course.id, status='enrolled').count()
+            
+            courses_data.append({
+                'id': course.id,
+                'name': course.name,
+                'description': course.description or '',
+                'target_disability_types': course.target_disability_types or 'All',
+                'created_at': course.created_at.isoformat() if course.created_at else None,
+                'created_by': course.creator.full_name if course.creator else 'Unknown',
+                'tutor_count': tutor_count,
+                'student_count': student_count
+            })
+        
+        return jsonify({'success': True, 'courses': courses_data}), 200
+    except Exception as e:
+        current_app.logger.exception("Error listing courses")
+        return jsonify({'success': False, 'error': 'Failed to load courses'}), 500
+
+
+@admin_bp.route('/api/courses', methods=['POST'])
+@login_required
+@admin_required
+def create_course():
+    """API endpoint to create a new course."""
+    try:
+        data = request.get_json()
+        
+        name = (data.get('name') or '').strip()
+        description = (data.get('description') or '').strip()
+        target_disability_types = data.get('target_disability_types', 'All')  # Default to 'All'
+        tutor_ids = data.get('tutor_ids', [])  # List of tutor IDs to assign
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'Course name is required'}), 400
+        
+        # Validate target_disability_types
+        if target_disability_types and target_disability_types != 'All':
+            # Validate that all types are valid
+            types_list = [t.strip() for t in target_disability_types.split(',')]
+            invalid_types = [t for t in types_list if t not in config.VALID_DISABILITY_TYPES]
+            if invalid_types:
+                return jsonify({
+                    'success': False,
+                    'error': f'Invalid disability types: {", ".join(invalid_types)}'
+                }), 400
+        
+        # Check if course name already exists
+        existing = Course.query.filter_by(name=name).first()
+        if existing:
+            return jsonify({'success': False, 'error': 'Course with this name already exists'}), 400
+        
+        # Create course
+        course = Course(
+            name=name,
+            description=description,
+            target_disability_types=target_disability_types,
+            created_by=current_user.id
+        )
+        db.session.add(course)
+        db.session.flush()  # Get course ID
+        
+        # Assign tutors if provided
+        if tutor_ids:
+            for tutor_id in tutor_ids:
+                tutor = User.query.filter_by(id=tutor_id, user_type='tutor', is_verified=True).first()
+                if not tutor:
+                    continue  # Skip unverified tutors
+                
+                # Check if already assigned
+                existing_assignment = db.session.query(course_tutors).filter_by(
+                    course_id=course.id,
+                    tutor_id=tutor_id
+                ).first()
+                if not existing_assignment:
+                    db.session.execute(
+                        course_tutors.insert().values(
+                            course_id=course.id,
+                            tutor_id=tutor_id,
+                            assigned_by=current_user.id
+                        )
+                    )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Course created successfully',
+            'course_id': course.id
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception("Error creating course")
+        return jsonify({'success': False, 'error': f'Failed to create course: {str(e)}'}), 500
+
+
+@admin_bp.route('/api/courses/<int:course_id>/tutors', methods=['POST'])
+@login_required
+@admin_required
+def assign_tutors_to_course(course_id):
+    """API endpoint to assign tutors to a course. Only verified tutors can be assigned."""
+    try:
+        course = Course.query.get_or_404(course_id)
+        data = request.get_json()
+        
+        tutor_ids = data.get('tutor_ids', [])
+        if not tutor_ids:
+            return jsonify({'success': False, 'error': 'At least one tutor ID is required'}), 400
+        
+        assigned_count = 0
+        unverified_tutors = []
+        
+        for tutor_id in tutor_ids:
+            tutor = User.query.filter_by(id=tutor_id, user_type='tutor').first()
+            if not tutor:
+                continue
+            
+            # Check if tutor is verified
+            if not tutor.is_verified:
+                unverified_tutors.append(tutor.full_name)
+                continue
+            
+            # Check if already assigned
+            existing = db.session.query(course_tutors).filter_by(
+                course_id=course_id,
+                tutor_id=tutor_id
+            ).first()
+            
+            if not existing:
+                db.session.execute(
+                    course_tutors.insert().values(
+                        course_id=course_id,
+                        tutor_id=tutor_id,
+                        assigned_by=current_user.id
+                    )
+                )
+                assigned_count += 1
+        
+        db.session.commit()
+        
+        message = f'Assigned {assigned_count} tutor(s) to course'
+        if unverified_tutors:
+            message += f'. Skipped {len(unverified_tutors)} unverified tutor(s): {", ".join(unverified_tutors)}'
+        
+        return jsonify({
+            'success': True,
+            'message': message
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception(f"Error assigning tutors to course {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to assign tutors'}), 500
+
+
+@admin_bp.route('/api/courses/<int:course_id>/students', methods=['POST'])
+@login_required
+@admin_required
+def assign_students_to_course(course_id):
+    """API endpoint to assign students to a course."""
+    try:
+        course = Course.query.get_or_404(course_id)
+        data = request.get_json()
+        
+        student_ids = data.get('student_ids', [])
+        disability_type = data.get('disability_type')  # Optional filter
+        
+        if not student_ids:
+            return jsonify({'success': False, 'error': 'At least one student ID is required'}), 400
+        
+        assigned_count = 0
+        for student_id in student_ids:
+            student = User.query.filter_by(id=student_id, user_type='student').first()
+            if not student:
+                continue
+            
+            # Filter by disability type if specified
+            if disability_type and student.disability_type != disability_type:
+                continue
+            
+            # Check if already enrolled
+            existing = CourseStudent.query.filter_by(
+                course_id=course_id,
+                student_id=student_id
+            ).first()
+            
+            if not existing:
+                enrollment = CourseStudent(
+                    course_id=course_id,
+                    student_id=student_id,
+                    status='enrolled',
+                    assigned_by=current_user.id
+                )
+                db.session.add(enrollment)
+                assigned_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Assigned {assigned_count} student(s) to course'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception(f"Error assigning students to course {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to assign students'}), 500
+
+
+@admin_bp.route('/api/courses/<int:course_id>')
+@login_required
+@admin_required
+def get_course_details(course_id):
+    """API endpoint to get course details including tutors and students."""
+    try:
+        course = Course.query.get_or_404(course_id)
+        
+        # Get tutors
+        tutor_assignments = db.session.query(course_tutors).filter_by(course_id=course_id).all()
+        tutors_data = []
+        for assignment in tutor_assignments:
+            tutor = User.query.get(assignment.tutor_id)
+            if tutor:
+                tutors_data.append({
+                    'id': tutor.id,
+                    'full_name': tutor.full_name,
+                    'email': tutor.email
+                })
+        
+        # Get students
+        enrollments = CourseStudent.query.filter_by(course_id=course_id).all()
+        students_data = []
+        for enrollment in enrollments:
+            student = enrollment.student
+            if student:
+                students_data.append({
+                    'id': student.id,
+                    'full_name': student.full_name,
+                    'email': student.email,
+                    'disability_type': student.disability_type,
+                    'status': enrollment.status,
+                    'assigned_at': enrollment.assigned_at.isoformat() if enrollment.assigned_at else None
+                })
+        
+        return jsonify({
+            'success': True,
+            'course': {
+                'id': course.id,
+                'name': course.name,
+                'description': course.description or '',
+                'target_disability_types': course.target_disability_types or 'All',
+                'created_at': course.created_at.isoformat() if course.created_at else None,
+                'created_by': course.creator.full_name if course.creator else 'Unknown',
+                'tutors': tutors_data,
+                'students': students_data
+            }
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.exception(f"Error getting course details for {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to load course details'}), 500
+
+
+@admin_bp.route('/api/courses/<int:course_id>/tutors/<int:tutor_id>', methods=['DELETE'])
+@login_required
+@admin_required
+def remove_tutor_from_course(course_id, tutor_id):
+    """API endpoint to remove a tutor from a course."""
+    try:
+        course = Course.query.get_or_404(course_id)
+        tutor = User.query.filter_by(id=tutor_id, user_type='tutor').first_or_404()
+        
+        # Remove assignment
+        db.session.execute(
+            course_tutors.delete().where(
+                course_tutors.c.course_id == course_id,
+                course_tutors.c.tutor_id == tutor_id
+            )
+        )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Tutor removed from course'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception(f"Error removing tutor {tutor_id} from course {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to remove tutor'}), 500
 
