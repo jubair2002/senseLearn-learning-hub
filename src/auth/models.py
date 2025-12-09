@@ -120,3 +120,29 @@ class PendingRegistration(db.Model):
     def get_registration_data(self) -> dict:
         import json
         return json.loads(self.registration_data)
+
+
+class TutorDocument(db.Model):
+    """Model for storing tutor verification documents (certificates, etc.)."""
+    __tablename__ = "tutor_documents"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    tutor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    file_name = db.Column(db.String(255), nullable=False)  # Original filename
+    file_path = db.Column(db.String(500), nullable=False, unique=True)  # Path relative to uploads directory
+    file_type = db.Column(db.String(50), nullable=False, index=True)  # e.g., 'certificate', 'recommendation', 'vendor_cert'
+    file_size = db.Column(db.Integer, nullable=False)  # Size in bytes
+    mime_type = db.Column(db.String(100), nullable=True)  # MIME type (e.g., 'application/pdf')
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    uploaded_by_admin = db.Column(db.Boolean, default=False)  # True if uploaded by admin during account creation
+    
+    # Relationship
+    tutor = db.relationship("User", backref="documents")
+    
+    # Composite index for common query pattern: tutor_id + uploaded_at (for sorting)
+    __table_args__ = (
+        db.Index('ix_tutor_documents_tutor_uploaded', 'tutor_id', 'uploaded_at'),
+    )
+    
+    def __repr__(self) -> str:
+        return f"<TutorDocument {self.file_name} for tutor {self.tutor_id}>"

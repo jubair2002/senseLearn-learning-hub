@@ -18,6 +18,10 @@ from src.auth.utils import (
     verify_password,
 )
 from src.auth.email_service import send_otp_email
+from src.common.file_utils import save_uploaded_file, delete_file
+from src.auth.models import TutorDocument
+import json
+import os
 
 
 @auth_bp.route("/", methods=["GET"])
@@ -42,14 +46,54 @@ def auth_root():
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
+    # Import config at function level to avoid scoping issues
+    from src.config import config as app_config
+    
     try:
-        data = request.get_json() or {}
+        # Handle both JSON and form-data (for file uploads)
+        # IMPORTANT: Check content type header directly BEFORE accessing any request properties
+        # that might trigger Flask's JSON parsing
+        content_type_header = request.headers.get('Content-Type', '') or ''
+        content_type = content_type_header.lower()
+        
+        # Check if this is a multipart/form-data request (file uploads)
+        # This must be checked FIRST before trying to parse JSON
+        is_multipart = 'multipart/form-data' in content_type
+        
+        # Initialize variables
+        data = {}
+        files = []
+        
+        if is_multipart:
+            # Handle multipart/form-data (file uploads)
+            # Use request.form directly - Flask handles multipart automatically
+            # This is safe and won't trigger JSON parsing
+            data = dict(request.form)
+            files = request.files.getlist('documents[]')  # Get all uploaded files
+            # Filter out empty file inputs
+            files = [f for f in files if f and f.filename]
+        else:
+            # Handle JSON request (no files)
+            # Only try to parse JSON if content type is explicitly JSON
+            if 'application/json' in content_type:
+                try:
+                    # Use force=True to prevent 415 error if content-type is wrong
+                    data = request.get_json(force=True) or {}
+                except Exception as e:
+                    current_app.logger.warning(f"JSON parsing failed: {str(e)}, falling back to form data")
+                    # If JSON parsing fails, fall back to form data
+                    data = dict(request.form)
+            else:
+                # Fallback to form data for other content types (including empty)
+                data = dict(request.form)
+            files = []
+        
         email = (data.get("email") or "").strip().lower()
         password = data.get("password") or ""
         
         # Common fields
         full_name = (data.get("full_name") or "").strip()
-        user_type = (data.get("user_type") or config.DEFAULT_USER_TYPE).strip().lower()
+        user_type = (data.get("user_type") or app_config.DEFAULT_USER_TYPE).strip().lower()
         
         # Optional common fields
         username = (data.get("username") or "").strip() or None
@@ -65,9 +109,9 @@ def register():
             return jsonify({"message": "Please provide a valid email address"}), 400
 
         # Validate user type
-        if user_type not in config.VALID_USER_TYPES:
+        if user_type not in app_config.VALID_USER_TYPES:
             return jsonify({
-                "message": f"Invalid user type. Must be one of: {', '.join(config.VALID_USER_TYPES)}"
+                "message": f"Invalid user type. Must be one of: {', '.join(app_config.VALID_USER_TYPES)}"
             }), 400
 
         ok, error = validate_password(password)
@@ -91,9 +135,9 @@ def register():
             if not disability_type:
                 return jsonify({"message": "Disability type is required for students"}), 400
             
-            if disability_type not in config.VALID_DISABILITY_TYPES:
+            if disability_type not in app_config.VALID_DISABILITY_TYPES:
                 return jsonify({
-                    "message": f"Invalid disability type. Must be one of: {', '.join(config.VALID_DISABILITY_TYPES)}"
+                    "message": f"Invalid disability type. Must be one of: {', '.join(app_config.VALID_DISABILITY_TYPES)}"
                 }), 400
 
         # Tutor-specific validation
@@ -105,24 +149,72 @@ def register():
         
         if user_type == "tutor":
             qualifications = (data.get("qualifications") or "").strip()
-            experience_years = data.get("experience_years")
+            experience_years_raw = data.get("experience_years")
             subjects = (data.get("subjects") or "").strip()
-            hourly_rate = data.get("hourly_rate")
+            hourly_rate_raw = data.get("hourly_rate")
             bio = (data.get("bio") or "").strip()
             
             # Validate required tutor fields
             if not qualifications or not subjects or not bio:
                 return jsonify({"message": "Qualifications, subjects, and bio are required for tutors"}), 400
             
+            # Convert and validate experience_years
+            try:
+                experience_years = int(experience_years_raw) if experience_years_raw else None
+            except (ValueError, TypeError):
+                experience_years = None
+            
             if experience_years is None or experience_years < 0:
                 return jsonify({"message": "Valid years of experience required for tutors"}), 400
             
-            if hourly_rate is None or float(hourly_rate) <= 0:
+            # Convert and validate hourly_rate
+            try:
+                hourly_rate = float(hourly_rate_raw) if hourly_rate_raw else None
+            except (ValueError, TypeError):
+                hourly_rate = None
+            
+            if hourly_rate is None or hourly_rate <= 0:
                 return jsonify({"message": "Valid hourly rate required for tutors"}), 400
 
         # Store registration data temporarily (don't create user yet)
         # Bulk delete any existing pending registration for this email (faster)
         db.session.query(PendingRegistration).filter_by(email=email).delete(synchronize_session=False)
+        
+        # Handle file uploads for tutors (save temporarily, will be moved after verification)
+        temp_files_info = []
+        if user_type == "tutor":
+            # Filter out empty file uploads
+            valid_files = [f for f in files if f and f.filename]
+            
+            # Validate that at least one document is uploaded for tutors
+            if not valid_files or len(valid_files) == 0:
+                return jsonify({"message": "At least one document (certificate, recommendation, etc.) is required for tutor registration"}), 400
+            
+            if valid_files:
+                # Create temporary directory for pending registration
+                temp_dir = os.path.join(app_config.UPLOAD_DIR, "temp", email.replace("@", "_"))
+                os.makedirs(temp_dir, exist_ok=True)
+                
+                for idx, file in enumerate(valid_files):
+                    try:
+                        # Save file temporarily
+                        temp_filename = f"temp_{idx}_{file.filename}"
+                        temp_path = os.path.join(temp_dir, temp_filename)
+                        file.save(temp_path)
+                        
+                        # Get file size
+                        file_size = os.path.getsize(temp_path)
+                        
+                        temp_files_info.append({
+                            "original_filename": file.filename,
+                            "temp_path": os.path.join("temp", email.replace("@", "_"), temp_filename).replace("\\", "/"),
+                            "file_size": file_size,
+                            "mime_type": file.content_type or "application/octet-stream",
+                            "file_type": data.get(f"file_type_{idx}", "certificate")  # Default to certificate
+                        })
+                    except Exception as e:
+                        current_app.logger.error(f"Error saving temp file: {str(e)}")
+                        # Continue with other files
         
         # Prepare registration data
         registration_data = {
@@ -138,6 +230,7 @@ def register():
             "subjects": subjects,
             "hourly_rate": hourly_rate,
             "bio": bio,
+            "temp_files": temp_files_info,  # Store temporary file info
         }
         
         pending_reg = PendingRegistration.create(
@@ -149,11 +242,11 @@ def register():
         db.session.flush()
         
         # Generate and send OTP for email verification
-        otp = generate_otp(length=config.OTP_LENGTH)
+        otp = generate_otp(length=app_config.OTP_LENGTH)
         verification_otp = EmailVerificationOTP.create_for_email(
             email,
             otp,
-            minutes_valid=config.OTP_VALIDITY_MINUTES,
+            minutes_valid=app_config.OTP_VALIDITY_MINUTES,
             purpose="verification"
         )
         db.session.add(verification_otp)
@@ -487,6 +580,43 @@ def verify_email():
             user.is_verified = False  # Tutors need admin verification
 
         db.session.add(user)
+        db.session.flush()  # Get user.id
+        
+        # Handle file uploads for tutors - move temp files and create TutorDocument records
+        if reg_data["user_type"] == "tutor" and reg_data.get("temp_files"):
+            from src.common.file_utils import get_upload_path, generate_unique_filename
+            from src.config import config as app_config
+            
+            for file_info in reg_data["temp_files"]:
+                try:
+                    # Source: temp file path
+                    temp_full_path = os.path.join(app_config.UPLOAD_DIR, file_info["temp_path"])
+                    
+                    if os.path.exists(temp_full_path):
+                        # Generate unique filename for final location
+                        unique_filename = generate_unique_filename(file_info["original_filename"], user.id)
+                        
+                        # Destination: tutor's directory
+                        dest_full_path, dest_relative_path = get_upload_path(user.id, unique_filename)
+                        
+                        # Move file from temp to final location
+                        os.makedirs(os.path.dirname(dest_full_path), exist_ok=True)
+                        os.rename(temp_full_path, dest_full_path)
+                        
+                        # Create TutorDocument record
+                        doc = TutorDocument(
+                            tutor_id=user.id,
+                            file_name=file_info["original_filename"],
+                            file_path=dest_relative_path,
+                            file_type=file_info.get("file_type", "certificate"),
+                            file_size=file_info["file_size"],
+                            mime_type=file_info["mime_type"],
+                            uploaded_by_admin=False
+                        )
+                        db.session.add(doc)
+                except Exception as e:
+                    current_app.logger.error(f"Error processing file {file_info.get('original_filename', 'unknown')}: {str(e)}")
+                    # Continue with other files even if one fails
         
         # Bulk delete pending registration and OTP (faster)
         db.session.query(PendingRegistration).filter_by(email=email).delete(synchronize_session=False)
@@ -497,9 +627,10 @@ def verify_email():
         # Auto-login the user after successful registration
         login_user(user, remember=True)
 
+        from src.config import config as app_config
         success_message = {
-            "student": config.MSG_STUDENT_REGISTER_SUCCESS,
-            "tutor": config.MSG_TUTOR_REGISTER_SUCCESS
+            "student": app_config.MSG_STUDENT_REGISTER_SUCCESS,
+            "tutor": app_config.MSG_TUTOR_REGISTER_SUCCESS
         }.get(reg_data["user_type"], "Account created successfully!")
 
         return jsonify({

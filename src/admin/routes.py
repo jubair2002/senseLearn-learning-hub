@@ -1,17 +1,19 @@
 """Admin routes for managing users and verifying tutors."""
 import secrets
 import string
-from flask import render_template, jsonify, request, flash, redirect, url_for
+from flask import render_template, jsonify, request, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from decimal import Decimal
 
 from src import db
 from src.admin import admin_bp
-from src.auth.models import User
+from src.auth.models import User, TutorDocument
 from src.auth.utils import hash_password, is_valid_email, validate_password
 from src.auth.email_service import send_credentials_email
 from src.common.decorators import admin_required
+from src.common.file_utils import save_uploaded_file, get_file_url
 from src.config import config
+import os
 
 
 def generate_random_password(length: int = 12) -> str:
@@ -40,31 +42,110 @@ def dashboard(section=None):
 @login_required
 @admin_required
 def list_tutors():
-    """API endpoint to list all tutors with their verification status."""
+    """API endpoint to list all tutors with their verification status and document count."""
     try:
-        tutors = User.query.filter_by(user_type='tutor').order_by(User.created_at.desc()).all()
+        from sqlalchemy import func
         
-        tutors_data = []
-        for tutor in tutors:
-            tutors_data.append({
-                'id': tutor.id,
-                'email': tutor.email,
-                'full_name': tutor.full_name,
-                'username': tutor.username or '',
-                'phone_number': tutor.phone_number or '',
-                'qualifications': tutor.qualifications or '',
-                'experience_years': tutor.experience_years or 0,
-                'subjects': tutor.subjects or '',
-                'hourly_rate': str(tutor.hourly_rate) if tutor.hourly_rate else '0',
-                'bio': tutor.bio or '',
-                'is_verified': tutor.is_verified if hasattr(tutor, 'is_verified') else False,
-                'email_verified': tutor.email_verified if hasattr(tutor, 'email_verified') else False,
-                'created_at': tutor.created_at.isoformat() if tutor.created_at else None
-            })
+        # Optimized: Use subquery to count documents in one query instead of N+1
+        doc_counts = db.session.query(
+            TutorDocument.tutor_id,
+            func.count(TutorDocument.id).label('doc_count')
+        ).group_by(TutorDocument.tutor_id).subquery()
         
-        return jsonify({'success': True, 'tutors': tutors_data}), 200
+        # Optimized query: select only needed columns, left join document counts
+        tutors = db.session.query(
+            User.id,
+            User.email,
+            User.full_name,
+            User.username,
+            User.phone_number,
+            User.qualifications,
+            User.experience_years,
+            User.subjects,
+            User.hourly_rate,
+            User.bio,
+            User.is_verified,
+            User.email_verified,
+            User.created_at,
+            func.coalesce(doc_counts.c.doc_count, 0).label('document_count')
+        ).filter_by(user_type='tutor')\
+         .outerjoin(doc_counts, User.id == doc_counts.c.tutor_id)\
+         .order_by(User.created_at.desc())\
+         .all()
+        
+        # Use list comprehension for faster data building
+        tutors_data = [{
+            'id': tutor.id,
+            'email': tutor.email,
+            'full_name': tutor.full_name,
+            'username': tutor.username or '',
+            'phone_number': tutor.phone_number or '',
+            'qualifications': tutor.qualifications or '',
+            'experience_years': tutor.experience_years or 0,
+            'subjects': tutor.subjects or '',
+            'hourly_rate': str(tutor.hourly_rate) if tutor.hourly_rate else '0',
+            'bio': tutor.bio or '',
+            'is_verified': tutor.is_verified if hasattr(tutor, 'is_verified') else False,
+            'email_verified': tutor.email_verified if hasattr(tutor, 'email_verified') else False,
+            'created_at': tutor.created_at.isoformat() if tutor.created_at else None,
+            'document_count': int(tutor.document_count)
+        } for tutor in tutors]
+        
+        response = jsonify({'success': True, 'tutors': tutors_data})
+        # Add caching headers
+        response.cache_control.max_age = 30  # Cache for 30 seconds
+        response.cache_control.private = True
+        return response, 200
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.exception("Error fetching tutors")
+        return jsonify({'success': False, 'error': 'Failed to load tutors'}), 500
+
+
+@admin_bp.route('/api/tutors/<int:tutor_id>/documents')
+@login_required
+@admin_required
+def get_tutor_documents(tutor_id):
+    """API endpoint to get all documents for a specific tutor."""
+    try:
+        # Optimized: Check tutor exists with minimal query
+        tutor_exists = db.session.query(User.id).filter_by(id=tutor_id, user_type='tutor').first()
+        if not tutor_exists:
+            return jsonify({'success': False, 'error': 'Tutor not found'}), 404
+        
+        # Optimized query: select only needed columns
+        documents = TutorDocument.query.filter_by(tutor_id=tutor_id)\
+            .order_by(TutorDocument.uploaded_at.desc())\
+            .with_entities(
+                TutorDocument.id,
+                TutorDocument.file_name,
+                TutorDocument.file_type,
+                TutorDocument.file_size,
+                TutorDocument.mime_type,
+                TutorDocument.uploaded_at,
+                TutorDocument.uploaded_by_admin,
+                TutorDocument.file_path
+            ).all()
+        
+        # Use list comprehension for faster data building
+        docs_data = [{
+            'id': doc.id,
+            'file_name': doc.file_name,
+            'file_type': doc.file_type,
+            'file_size': doc.file_size,
+            'mime_type': doc.mime_type,
+            'uploaded_at': doc.uploaded_at.isoformat() if doc.uploaded_at else None,
+            'uploaded_by_admin': doc.uploaded_by_admin,
+            'file_url': get_file_url(doc.file_path)
+        } for doc in documents]
+        
+        response = jsonify({'success': True, 'documents': docs_data})
+        # Add caching headers
+        response.cache_control.max_age = 60
+        response.cache_control.private = True
+        return response, 200
+    except Exception as e:
+        current_app.logger.exception("Error fetching tutor documents")
+        return jsonify({'success': False, 'error': 'Failed to load documents'}), 500
 
 
 @admin_bp.route('/api/students')
@@ -130,7 +211,13 @@ def verify_tutor():
 def create_account():
     """API endpoint to create a new student or tutor account."""
     try:
-        data = request.get_json() or {}
+        # Handle both JSON and form-data (for file uploads)
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            data = request.form.to_dict()
+            files = request.files.getlist('documents[]')  # Get all uploaded files
+        else:
+            data = request.get_json() or {}
+            files = []
         
         # Get user type
         user_type = (data.get('user_type') or '').strip().lower()
@@ -224,6 +311,32 @@ def create_account():
         # Save to database
         db.session.add(user)
         db.session.flush()  # Get the user ID
+        
+        # Handle file uploads for tutors
+        if user_type == 'tutor' and files:
+            for idx, file in enumerate(files):
+                if file and file.filename:
+                    try:
+                        # Save file
+                        result = save_uploaded_file(file, user.id)
+                        if result:
+                            file_path, original_filename, file_size, mime_type = result
+                            file_type = data.get(f'file_type_{idx}', 'certificate')
+                            
+                            # Create document record
+                            doc = TutorDocument(
+                                tutor_id=user.id,
+                                file_name=original_filename,
+                                file_path=file_path,
+                                file_type=file_type,
+                                file_size=file_size,
+                                mime_type=mime_type,
+                                uploaded_by_admin=True
+                            )
+                            db.session.add(doc)
+                    except Exception as e:
+                        # Log error but continue with account creation
+                        current_app.logger.error(f"Error uploading file for tutor {user.id}: {str(e)}")
         
         # Send credentials email
         login_username = username or email

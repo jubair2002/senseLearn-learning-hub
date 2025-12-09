@@ -98,6 +98,11 @@ class Config:
         self.OTP_LENGTH: int = int(otp_length) if otp_length else 6
         otp_validity = os.getenv("OTP_VALIDITY_MINUTES", "")
         self.OTP_VALIDITY_MINUTES: int = int(otp_validity) if otp_validity else 10
+        
+        # File Upload Configuration
+        self.UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "D:/uploads")  # Default to D:/uploads for local testing
+        self.MAX_FILE_SIZE: int = int(os.getenv("MAX_FILE_SIZE", "10485760"))  # Default 10MB in bytes
+        self.ALLOWED_EXTENSIONS: set = set(os.getenv("ALLOWED_EXTENSIONS", "pdf,doc,docx,jpg,jpeg,png").split(","))
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:

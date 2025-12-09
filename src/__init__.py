@@ -1,6 +1,6 @@
 from flask import Flask, render_template, send_file, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, current_user
+from flask_login import LoginManager, current_user, login_required
 from dotenv import load_dotenv
 from flask_migrate import Migrate
 from flask_compress import Compress
@@ -172,6 +172,94 @@ def create_app() -> Flask:
         logout_user()
         flash('You have been logged out.', 'info')
         return redirect(url_for('login_page'))
+    
+    @app.route("/uploads/<path:file_path>")
+    @login_required
+    def serve_upload(file_path):
+        """Serve uploaded files securely."""
+        from src.config import config as app_config
+        import os
+        
+        try:
+            # Security: Ensure file is within uploads directory
+            # Normalize the file path to prevent directory traversal
+            normalized_path = file_path.replace("\\", "/")
+            full_path = os.path.join(app_config.UPLOAD_DIR, normalized_path)
+            
+            # Normalize path to prevent directory traversal
+            full_path = os.path.normpath(full_path)
+            upload_dir = os.path.normpath(app_config.UPLOAD_DIR)
+            
+            # Security check: ensure file is within uploads directory
+            if not full_path.startswith(upload_dir):
+                current_app.logger.warning(f"Directory traversal attempt: {file_path}")
+                return "Forbidden", 403
+            
+            if not os.path.exists(full_path):
+                current_app.logger.warning(f"File not found: {full_path}")
+                return "File not found", 404
+            
+            if not os.path.isfile(full_path):
+                current_app.logger.warning(f"Path is not a file: {full_path}")
+                return "Not a file", 400
+            
+            # Check if user has permission to view this file
+            # Tutors can view their own files, admins can view all tutor files
+            if 'tutors' in normalized_path:
+                try:
+                    # Extract tutor ID from path (format: tutors/{tutor_id}/...)
+                    parts = normalized_path.split('tutors/')
+                    if len(parts) > 1:
+                        tutor_id_str = parts[1].split('/')[0]
+                        tutor_id = int(tutor_id_str)
+                        
+                        # Allow if current user is the tutor or an admin
+                        if current_user.is_authenticated:
+                            is_tutor_owner = current_user.id == tutor_id
+                            is_admin = hasattr(current_user, 'user_type') and current_user.user_type == 'admin'
+                            
+                            if is_tutor_owner or is_admin:
+                                # Determine MIME type for proper browser handling
+                                from mimetypes import guess_type
+                                mime_type, _ = guess_type(full_path)
+                                if not mime_type:
+                                    mime_type = 'application/octet-stream'
+                                
+                                # Send file with proper headers for inline display
+                                response = send_file(
+                                    full_path,
+                                    mimetype=mime_type,
+                                    as_attachment=False,  # Display inline instead of downloading
+                                    conditional=True  # Enable conditional requests (304 Not Modified)
+                                )
+                                # Add headers for proper PDF display in iframe
+                                response.headers['Content-Disposition'] = f'inline; filename="{os.path.basename(full_path)}"'
+                                response.headers['X-Content-Type-Options'] = 'nosniff'
+                                # Optimized cache headers - longer cache for static files
+                                response.cache_control.max_age = 86400  # 24 hours
+                                response.cache_control.public = True
+                                # Add ETag for better caching
+                                import hashlib
+                                file_stat = os.stat(full_path)
+                                etag = hashlib.md5(f"{full_path}{file_stat.st_mtime}{file_stat.st_size}".encode()).hexdigest()
+                                response.headers['ETag'] = f'"{etag}"'
+                                return response
+                            else:
+                                current_app.logger.warning(f"Access denied: User {current_user.id} tried to access tutor {tutor_id} file")
+                                return "Forbidden", 403
+                        else:
+                            return "Unauthorized", 401
+                except (ValueError, IndexError) as e:
+                    current_app.logger.error(f"Error parsing tutor ID from path {file_path}: {str(e)}")
+                    return "Invalid file path", 400
+            
+            # If path doesn't match expected pattern, deny access
+            current_app.logger.warning(f"Access denied for file path: {file_path}")
+            return "Forbidden", 403
+            
+        except Exception as e:
+            current_app.logger.exception(f"Error serving file {file_path}: {str(e)}")
+            return "Internal server error", 500
 
     # Register blueprints
     from src.auth import auth_bp

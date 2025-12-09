@@ -431,34 +431,84 @@
 
                 <!-- Verification Section -->
                 <div id="section-verification" class="content-section">
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                        <h3 class="text-2xl font-bold text-slate-800 mb-6">Account Verification</h3>
-                        {% if user.is_verified %}
-                        <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-6 text-center">
-                            <i class="fas fa-check-circle text-6xl text-emerald-600 mb-4"></i>
-                            <h4 class="text-xl font-bold text-emerald-800 mb-2">Your account is verified!</h4>
-                            <p class="text-emerald-700">You can now start teaching and accepting students.</p>
-                        </div>
-                        {% else %}
-                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                            <div class="flex items-start gap-4">
-                                <i class="fas fa-clock text-4xl text-yellow-600"></i>
-                                <div class="flex-1">
-                                    <h4 class="text-xl font-bold text-yellow-800 mb-2">Verification Pending</h4>
-                                    <p class="text-yellow-700 mb-4">Your tutor account is currently under review. Our team will verify your credentials and qualifications.</p>
-                                    <div class="bg-white rounded-lg p-4 mb-4">
-                                        <p class="text-sm font-semibold text-slate-700 mb-2">What we're reviewing:</p>
-                                        <ul class="text-sm text-slate-600 space-y-1">
-                                            <li><i class="fas fa-check text-emerald-600 mr-2"></i>Your qualifications</li>
-                                            <li><i class="fas fa-check text-emerald-600 mr-2"></i>Your experience</li>
-                                            <li><i class="fas fa-check text-emerald-600 mr-2"></i>Your profile information</li>
-                                        </ul>
-                                    </div>
-                                    <p class="text-sm text-yellow-700">We'll notify you once your account is verified. This usually takes 1-2 business days.</p>
-                                </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                        <div class="flex items-start mb-6">
+                            <div class="p-3 rounded-full {% if user.is_verified %}bg-emerald-100 text-emerald-600{% else %}bg-yellow-100 text-yellow-600{% endif %} mr-4 flex-shrink-0">
+                                <i class="fas {% if user.is_verified %}fa-check-circle{% else %}fa-clock{% endif %} text-3xl"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-bold text-slate-800">
+                                    {% if user.is_verified %}Account Verified{% else %}Verification Pending{% endif %}
+                                </h2>
+                                <p class="text-slate-600 mt-2">
+                                    {% if user.is_verified %}
+                                        Your tutor account has been successfully verified. You can now accept students and start teaching.
+                                    {% else %}
+                                        Your tutor account is currently under review by our team. This usually takes 1-2 business days.
+                                    {% endif %}
+                                </p>
                             </div>
                         </div>
-                        {% endif %}
+                    </div>
+                    
+                    <!-- Documents Section -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-slate-800">Your Documents</h3>
+                            <button onclick="loadDocuments()" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+                                <i class="fas fa-sync-alt mr-1"></i>Refresh
+                            </button>
+                        </div>
+                        
+                        <!-- Upload New Document -->
+                        <div class="border border-slate-200 rounded-lg p-4 mb-4 bg-slate-50">
+                            <h4 class="font-semibold text-slate-800 mb-3">Upload New Document</h4>
+                            <form id="upload-document-form" class="space-y-3">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Document Type</label>
+                                        <select id="document-type" name="file_type" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                            <option value="certificate">Certificate</option>
+                                            <option value="qualification">Qualification</option>
+                                            <option value="recommendation">Recommendation</option>
+                                            <option value="vendor_cert">Vendor Certificate</option>
+                                            <option value="identification">Identification</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Select File</label>
+                                        <input type="file" id="document-file" name="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                        <p class="text-xs text-slate-500 mt-1">Accepted: PDF, DOC, DOCX, JPG, JPEG, PNG (Max 10MB)</p>
+                                    </div>
+                                </div>
+                                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                                    <i class="fas fa-upload mr-2"></i>Upload Document
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Documents List -->
+                        <div id="documents-list" class="space-y-3">
+                            <div class="text-center py-8">
+                                <i class="fas fa-spinner fa-spin text-3xl text-slate-400 mb-2"></i>
+                                <p class="text-slate-600">Loading documents...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if not user.is_verified %}
+                    <div class="bg-blue-50 border border-blue-300 rounded-xl p-6 shadow-md">
+                        <h3 class="text-xl font-bold text-blue-800 mb-3">Verification Status</h3>
+                        <p class="text-blue-700 mb-4">
+                            Your tutor account is currently under review. Please upload all required documents above. Our team will review your credentials and verify your account.
+                        </p>
+                        <p class="text-sm text-blue-700">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Processing time is typically 48 hours after all documents are submitted.
+                        </p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             
@@ -744,6 +794,231 @@
             .catch(error => {
                 console.error('Error loading stats:', error);
             });
+
+        // Documents functionality for verification section
+        const API_BASE = '/tutor/api';
+        
+        // Load documents function
+        async function loadDocuments() {
+            const listEl = document.getElementById('documents-list');
+            if (!listEl) return; // Only run if documents list exists
+            
+            listEl.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-slate-400 mb-2"></i><p class="text-slate-600">Loading documents...</p></div>';
+            
+            try {
+                const response = await fetch(API_BASE + '/documents');
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.documents && result.documents.length > 0) {
+                        listEl.innerHTML = result.documents.map(doc => {
+                            const fileSizeMB = (doc.file_size / 1024 / 1024).toFixed(2);
+                            const uploadDate = new Date(doc.uploaded_at).toLocaleDateString();
+                            const fileIcon = doc.mime_type?.includes('pdf') ? 'fa-file-pdf' : 
+                                           doc.mime_type?.includes('image') ? 'fa-file-image' : 
+                                           doc.mime_type?.includes('word') ? 'fa-file-word' : 'fa-file';
+                            const fileColor = doc.mime_type?.includes('pdf') ? 'text-red-600' : 
+                                            doc.mime_type?.includes('image') ? 'text-blue-600' : 
+                                            doc.mime_type?.includes('word') ? 'text-blue-500' : 'text-slate-600';
+                            
+                            return `
+                                <div class="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex items-center gap-3 flex-1">
+                                            <i class="fas ${fileIcon} ${fileColor} text-2xl"></i>
+                                            <div class="flex-1">
+                                                <h5 class="font-semibold text-slate-800">${doc.file_name}</h5>
+                                                <p class="text-xs text-slate-500">
+                                                    ${doc.file_type} • ${fileSizeMB} MB • Uploaded ${uploadDate}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <a href="${doc.file_url}" target="_blank" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+                                                <i class="fas fa-eye mr-1"></i>View
+                                            </a>
+                                            <button onclick="deleteDocument(${doc.id})" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
+                                                <i class="fas fa-trash mr-1"></i>Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        listEl.innerHTML = '<div class="text-center py-8"><i class="fas fa-file text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No documents uploaded yet</p><p class="text-sm text-slate-500 mt-2">Upload your documents above to get verified</p></div>';
+                    }
+                } else {
+                    listEl.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading documents</p></div>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading documents: ' + error.message + '</p></div>';
+            }
+        }
+        
+        // Cache for documents to avoid unnecessary reloads
+        let documentsCache = null;
+        let documentsCacheTime = 0;
+        const CACHE_DURATION = 30000; // 30 seconds
+        
+        // Store original loadDocuments function
+        const originalLoadDocuments = loadDocuments;
+        
+        // Override loadDocuments to add caching
+        loadDocuments = async function() {
+            const listEl = document.getElementById('documents-list');
+            if (!listEl) return;
+            
+            // Check cache first
+            const now = Date.now();
+            if (documentsCache && (now - documentsCacheTime) < CACHE_DURATION) {
+                listEl.innerHTML = documentsCache;
+                return;
+            }
+            
+            // Load fresh data
+            listEl.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-slate-400 mb-2"></i><p class="text-slate-600">Loading documents...</p></div>';
+            
+            try {
+                const response = await fetch(API_BASE + '/documents');
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.documents && result.documents.length > 0) {
+                        const html = result.documents.map(doc => {
+                            const fileSizeMB = (doc.file_size / 1024 / 1024).toFixed(2);
+                            const uploadDate = new Date(doc.uploaded_at).toLocaleDateString();
+                            const fileIcon = doc.mime_type?.includes('pdf') ? 'fa-file-pdf' : 
+                                           doc.mime_type?.includes('image') ? 'fa-file-image' : 
+                                           doc.mime_type?.includes('word') ? 'fa-file-word' : 'fa-file';
+                            const fileColor = doc.mime_type?.includes('pdf') ? 'text-red-600' : 
+                                            doc.mime_type?.includes('image') ? 'text-blue-600' : 
+                                            doc.mime_type?.includes('word') ? 'text-blue-500' : 'text-slate-600';
+                            
+                            return `
+                                <div class="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex items-center gap-3 flex-1">
+                                            <i class="fas ${fileIcon} ${fileColor} text-2xl"></i>
+                                            <div class="flex-1">
+                                                <h5 class="font-semibold text-slate-800">${doc.file_name}</h5>
+                                                <p class="text-xs text-slate-500">
+                                                    ${doc.file_type} • ${fileSizeMB} MB • Uploaded ${uploadDate}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <a href="${doc.file_url}" target="_blank" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+                                                <i class="fas fa-eye mr-1"></i>View
+                                            </a>
+                                            <button onclick="deleteDocument(${doc.id})" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
+                                                <i class="fas fa-trash mr-1"></i>Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        listEl.innerHTML = html;
+                        // Cache the result
+                        documentsCache = html;
+                        documentsCacheTime = Date.now();
+                    } else {
+                        const html = '<div class="text-center py-8"><i class="fas fa-file text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No documents uploaded yet</p><p class="text-sm text-slate-500 mt-2">Upload your documents above to get verified</p></div>';
+                        listEl.innerHTML = html;
+                        documentsCache = html;
+                        documentsCacheTime = Date.now();
+                    }
+                } else {
+                    listEl.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading documents</p></div>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading documents: ' + error.message + '</p></div>';
+            }
+        };
+        
+        // Optimized: Load documents only when verification section is shown
+        const originalShowSection = showSection;
+        showSection = function(sectionName, updateUrl = true) {
+            originalShowSection(sectionName, updateUrl);
+            if (sectionName === 'verification') {
+                setTimeout(() => loadDocuments(), 100);
+            }
+        };
+        
+        // Clear cache on upload/delete
+        const originalDeleteDocument = deleteDocument;
+        deleteDocument = async function(docId) {
+            if (!confirm('Are you sure you want to delete this document?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(API_BASE + '/documents/' + docId, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Document deleted successfully!');
+                    documentsCache = null; // Clear cache
+                    loadDocuments();
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to delete document'));
+                }
+            } catch (error) {
+                alert('Error deleting document: ' + error.message);
+            }
+        };
+        
+        // Update upload handler to clear cache
+        if (uploadForm) {
+            const originalSubmit = uploadForm.onsubmit;
+            uploadForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const form = e.target;
+                const fileInput = document.getElementById('document-file');
+                const fileType = document.getElementById('document-type').value;
+                const submitBtn = form.querySelector('button[type="submit"]');
+                
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    alert('Please select a file to upload');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                formData.append('file_type', fileType);
+                
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Uploading...';
+                
+                try {
+                    const response = await fetch(API_BASE + '/documents', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        alert('Document uploaded successfully!');
+                        form.reset();
+                        documentsCache = null; // Clear cache
+                        loadDocuments();
+                    } else {
+                        alert('Error: ' + (result.error || 'Failed to upload document'));
+                    }
+                } catch (error) {
+                    alert('Error uploading document: ' + error.message);
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>Upload Document';
+                }
+            });
+        }
     </script>
 </body>
 </html>

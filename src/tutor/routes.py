@@ -1,8 +1,12 @@
-from flask import render_template, jsonify, request, flash, redirect, url_for
+from flask import render_template, jsonify, request, flash, redirect, url_for, send_from_directory
 from flask_login import login_required, current_user
 from decimal import Decimal
 from src import db
 from src.tutor import tutor_bp
+from src.auth.models import TutorDocument
+from src.common.file_utils import save_uploaded_file, delete_file, get_file_url
+from src.config import config
+import os
 
 @tutor_bp.route('/dashboard')
 @tutor_bp.route('/dashboard/<section>')
@@ -140,6 +144,125 @@ def verification():
         return redirect(url_for('index'))
     
     return render_template('tutor/verification.html', user=current_user)
+
+@tutor_bp.route('/api/documents', methods=['GET'])
+@login_required
+def get_documents():
+    """API endpoint to get all documents for the authenticated tutor."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        # Optimized query: select only needed columns, use index on tutor_id + uploaded_at
+        documents = TutorDocument.query.filter_by(tutor_id=current_user.id)\
+            .order_by(TutorDocument.uploaded_at.desc())\
+            .with_entities(
+                TutorDocument.id,
+                TutorDocument.file_name,
+                TutorDocument.file_type,
+                TutorDocument.file_size,
+                TutorDocument.mime_type,
+                TutorDocument.uploaded_at,
+                TutorDocument.file_path
+            ).all()
+        
+        # Use list comprehension for faster data building
+        docs_data = [{
+            'id': doc.id,
+            'file_name': doc.file_name,
+            'file_type': doc.file_type,
+            'file_size': doc.file_size,
+            'mime_type': doc.mime_type,
+            'uploaded_at': doc.uploaded_at.isoformat() if doc.uploaded_at else None,
+            'file_url': get_file_url(doc.file_path)
+        } for doc in documents]
+        
+        response = jsonify({'success': True, 'documents': docs_data})
+        # Add caching headers
+        response.cache_control.max_age = 60  # Cache for 60 seconds
+        response.cache_control.private = True
+        return response, 200
+    except Exception as e:
+        current_app.logger.exception("Error fetching documents")
+        return jsonify({'success': False, 'error': 'Failed to load documents'}), 500
+
+
+@tutor_bp.route('/api/documents', methods=['POST'])
+@login_required
+def upload_document():
+    """API endpoint to upload a new document."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        file_type = request.form.get('file_type', 'certificate')
+        
+        if not file or file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        # Save file
+        result = save_uploaded_file(file, current_user.id)
+        if not result:
+            return jsonify({'success': False, 'error': 'Invalid file or file too large'}), 400
+        
+        file_path, original_filename, file_size, mime_type = result
+        
+        # Create document record
+        doc = TutorDocument(
+            tutor_id=current_user.id,
+            file_name=original_filename,
+            file_path=file_path,
+            file_type=file_type,
+            file_size=file_size,
+            mime_type=mime_type,
+            uploaded_by_admin=False
+        )
+        db.session.add(doc)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Document uploaded successfully',
+            'document': {
+                'id': doc.id,
+                'file_name': doc.file_name,
+                'file_type': doc.file_type,
+                'file_url': get_file_url(doc.file_path)
+            }
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@tutor_bp.route('/api/documents/<int:doc_id>', methods=['DELETE'])
+@login_required
+def delete_document(doc_id):
+    """API endpoint to delete a document."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        doc = TutorDocument.query.filter_by(id=doc_id, tutor_id=current_user.id).first()
+        if not doc:
+            return jsonify({'success': False, 'error': 'Document not found'}), 404
+        
+        # Delete file from filesystem
+        delete_file(doc.file_path)
+        
+        # Delete record
+        db.session.delete(doc)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Document deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @tutor_bp.route('/api/stats')
 @login_required

@@ -95,6 +95,24 @@
     <!-- Notification Container -->
     <div id="notification-container"></div>
     
+    <!-- Documents Modal -->
+    <div id="documents-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 95vw; max-height: 95vh; overflow-y: auto; width: 1200px;">
+            <div class="flex items-center justify-between mb-4 border-b pb-4">
+                <h3 id="documents-modal-title" class="text-xl font-bold text-slate-800">Tutor Documents</h3>
+                <button onclick="closeDocumentsModal()" class="text-slate-500 hover:text-slate-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="documents-list" class="space-y-4">
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-3xl text-slate-400 mb-2"></i>
+                    <p class="text-slate-600">Loading documents...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Confirmation Modal -->
     <div id="confirmation-modal" class="modal-overlay hidden">
         <div class="modal-content">
@@ -676,6 +694,7 @@
                                     <div class="flex items-center gap-3 mb-2">
                                         <h4 class="text-lg font-bold text-slate-800">${tutor.full_name}</h4>
                                         ${tutor.is_verified ? '<span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-medium"><i class="fas fa-check-circle mr-1"></i>Verified</span>' : '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium"><i class="fas fa-clock mr-1"></i>Pending</span>'}
+                                        ${tutor.document_count > 0 ? `<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"><i class="fas fa-file mr-1"></i>${tutor.document_count} Document${tutor.document_count > 1 ? 's' : ''}</span>` : '<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium"><i class="fas fa-exclamation-circle mr-1"></i>No Documents</span>'}
                                     </div>
                                     <p class="text-sm text-slate-600 mb-1"><i class="fas fa-envelope mr-2"></i>${tutor.email}</p>
                                     ${tutor.phone_number ? `<p class="text-sm text-slate-600 mb-1"><i class="fas fa-phone mr-2"></i>${tutor.phone_number}</p>` : ''}
@@ -684,8 +703,11 @@
                                     <p class="text-sm text-slate-600 mb-3"><i class="fas fa-briefcase mr-2"></i>${tutor.experience_years || 0} years experience</p>
                                     <p class="text-sm text-slate-500 line-clamp-2">${tutor.bio || 'No bio provided'}</p>
                                 </div>
-                                <div class="ml-4">
-                                    ${!tutor.is_verified ? `<button onclick="verifyTutor(${tutor.id}, true)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition mb-2"><i class="fas fa-check mr-2"></i>Verify</button>` : `<button onclick="verifyTutor(${tutor.id}, false)" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition"><i class="fas fa-times mr-2"></i>Unverify</button>`}
+                                <div class="ml-4 flex flex-col gap-2">
+                                    <button onclick="viewTutorDocuments(${tutor.id}, '${tutor.full_name}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                        <i class="fas fa-file-alt mr-2"></i>View Documents
+                                    </button>
+                                    ${!tutor.is_verified ? `<button onclick="verifyTutor(${tutor.id}, true)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"><i class="fas fa-check mr-2"></i>Verify</button>` : `<button onclick="verifyTutor(${tutor.id}, false)" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition"><i class="fas fa-times mr-2"></i>Unverify</button>`}
                                 </div>
                             </div>
                         </div>
@@ -728,6 +750,84 @@
                 listEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading students</p></div>';
             }
         }
+
+        // View tutor documents
+        async function viewTutorDocuments(tutorId, tutorName) {
+            const modal = document.getElementById('documents-modal');
+            const titleEl = document.getElementById('documents-modal-title');
+            const listEl = document.getElementById('documents-list');
+            
+            titleEl.textContent = `Documents - ${tutorName}`;
+            modal.classList.remove('hidden');
+            listEl.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-slate-400 mb-2"></i><p class="text-slate-600">Loading documents...</p></div>';
+            
+            try {
+                const response = await fetch(`/admin/api/tutors/${tutorId}/documents`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.documents && result.documents.length > 0) {
+                        listEl.innerHTML = result.documents.map((doc, index) => {
+                            const fileSizeMB = (doc.file_size / 1024 / 1024).toFixed(2);
+                            const uploadDate = new Date(doc.uploaded_at).toLocaleDateString();
+                            const fileIcon = doc.mime_type?.includes('pdf') ? 'fa-file-pdf' : 
+                                           doc.mime_type?.includes('image') ? 'fa-file-image' : 
+                                           doc.mime_type?.includes('word') ? 'fa-file-word' : 'fa-file';
+                            const fileColor = doc.mime_type?.includes('pdf') ? 'text-red-600' : 
+                                            doc.mime_type?.includes('image') ? 'text-blue-600' : 
+                                            doc.mime_type?.includes('word') ? 'text-blue-500' : 'text-slate-600';
+                            
+                            // Determine if we can show inline preview
+                            const isPDF = doc.mime_type?.includes('pdf');
+                            const isImage = doc.mime_type?.includes('image');
+                            
+                            return `
+                                <div class="border border-slate-200 rounded-lg p-4 bg-white hover:bg-slate-50 transition">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <i class="fas ${fileIcon} ${fileColor} text-2xl"></i>
+                                            <div>
+                                                <h5 class="font-semibold text-slate-800">${doc.file_name}</h5>
+                                                <p class="text-xs text-slate-500">
+                                                    ${doc.file_type} • ${fileSizeMB} MB • Uploaded ${uploadDate}
+                                                    ${doc.uploaded_by_admin ? ' • <span class="text-blue-600">Uploaded by Admin</span>' : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <a href="${doc.file_url}" target="_blank" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                                <i class="fas fa-external-link-alt mr-1"></i>Open
+                                            </a>
+                                            <a href="${doc.file_url}" target="_blank" download="${doc.file_name}" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium">
+                                                <i class="fas fa-download mr-1"></i>Download
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        listEl.innerHTML = '<div class="text-center py-8"><i class="fas fa-file text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No documents uploaded yet</p></div>';
+                    }
+                } else {
+                    listEl.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading documents: ' + (result.error || 'Unknown error') + '</p></div>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading documents: ' + error.message + '</p></div>';
+            }
+        }
+
+        // Close documents modal
+        function closeDocumentsModal() {
+            document.getElementById('documents-modal').classList.add('hidden');
+        }
+
+        // Close documents modal on overlay click
+        document.getElementById('documents-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'documents-modal') {
+                closeDocumentsModal();
+            }
+        });
 
         // Verify tutor
         async function verifyTutor(tutorId, verify) {
