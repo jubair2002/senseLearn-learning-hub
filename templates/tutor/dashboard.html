@@ -1268,11 +1268,29 @@
                                 <div class="flex items-start justify-between">
                                     <div class="flex-1">
                                         <h3 class="text-2xl font-semibold text-slate-900 mb-2">${course.name}</h3>
-                                        ${course.description ? `<p class="text-slate-600 text-sm leading-relaxed">${course.description}</p>` : ''}
+                                        <div id="course-description-display">
+                                            ${course.description ? `<p class="text-slate-600 text-sm leading-relaxed">${course.description}</p>` : '<p class="text-slate-400 text-sm italic">No description</p>'}
+                                        </div>
+                                        <div id="course-description-edit" style="display: none;" class="mt-2">
+                                            <textarea id="edit-description-input" rows="3" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Enter course description...">${course.description || ''}</textarea>
+                                            <div class="flex gap-2 mt-2">
+                                                <button onclick="saveCourseDescription(${courseId})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                                    <i class="fas fa-check mr-1"></i>Save
+                                                </button>
+                                                <button onclick="cancelEditDescription()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium">
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <button onclick="closeCourseModal()" class="ml-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition">
-                                        <i class="fas fa-times text-lg"></i>
-                                    </button>
+                                    <div class="flex items-center gap-2 ml-4">
+                                        <button onclick="editCourseDescription()" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit Description">
+                                            <i class="fas fa-edit text-sm"></i>
+                                        </button>
+                                        <button onclick="closeCourseModal()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition">
+                                            <i class="fas fa-times text-lg"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -1410,6 +1428,85 @@
             const modal = document.getElementById('course-modal');
             if (modal) {
                 modal.style.display = 'none';
+            }
+        }
+
+        // Edit course description
+        function editCourseDescription() {
+            const displayDiv = document.getElementById('course-description-display');
+            const editDiv = document.getElementById('course-description-edit');
+            if (displayDiv && editDiv) {
+                displayDiv.style.display = 'none';
+                editDiv.style.display = 'block';
+                const textarea = document.getElementById('edit-description-input');
+                if (textarea) {
+                    textarea.focus();
+                    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+                }
+            }
+        }
+
+        // Cancel editing description
+        function cancelEditDescription() {
+            const displayDiv = document.getElementById('course-description-display');
+            const editDiv = document.getElementById('course-description-edit');
+            if (displayDiv && editDiv) {
+                editDiv.style.display = 'none';
+                displayDiv.style.display = 'block';
+                // Reset textarea to original value
+                const originalDescription = displayDiv.textContent.trim();
+                const textarea = document.getElementById('edit-description-input');
+                if (textarea && originalDescription !== 'No description') {
+                    textarea.value = originalDescription;
+                } else if (textarea) {
+                    textarea.value = '';
+                }
+            }
+        }
+
+        // Save course description
+        async function saveCourseDescription(courseId) {
+            const textarea = document.getElementById('edit-description-input');
+            if (!textarea) {
+                alert('Error: Could not find description input');
+                return;
+            }
+
+            const description = textarea.value.trim();
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/description`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ description: description })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Update the display
+                    const displayDiv = document.getElementById('course-description-display');
+                    if (displayDiv) {
+                        displayDiv.innerHTML = description 
+                            ? `<p class="text-slate-600 text-sm leading-relaxed">${description}</p>`
+                            : '<p class="text-slate-400 text-sm italic">No description</p>';
+                    }
+                    
+                    // Hide edit, show display
+                    cancelEditDescription();
+                    
+                    // Refresh course list to show updated description
+                    if (typeof loadCourses === 'function') {
+                        loadCourses();
+                    }
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to update description'));
+                }
+            } catch (error) {
+                console.error('Error saving description:', error);
+                alert('Error: ' + error.message);
             }
         }
 

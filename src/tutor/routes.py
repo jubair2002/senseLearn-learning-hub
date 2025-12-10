@@ -305,10 +305,25 @@ def list_assigned_courses():
         return jsonify({'error': 'Unauthorized'}), 403
     
     try:
+        # Get search query parameter
+        search_query = request.args.get('search', '').strip()
+        
         # Get courses where tutor is assigned
-        courses = Course.query.join(course_tutors).filter(
+        query = Course.query.join(course_tutors).filter(
             course_tutors.c.tutor_id == current_user.id
-        ).order_by(Course.created_at.desc()).all()
+        )
+        
+        # Apply search filter if provided
+        if search_query:
+            search_term = f'%{search_query}%'
+            query = query.filter(
+                db.or_(
+                    Course.name.ilike(search_term),
+                    Course.description.ilike(search_term)
+                )
+            )
+        
+        courses = query.order_by(Course.created_at.desc()).all()
         
         courses_data = []
         for course in courses:
@@ -392,6 +407,52 @@ def get_course_details(course_id):
         from flask import current_app
         current_app.logger.exception(f"Error getting course details for {course_id}")
         return jsonify({'success': False, 'error': 'Failed to load course details'}), 500
+
+
+@tutor_bp.route('/api/courses/<int:course_id>/description', methods=['PUT', 'PATCH', 'POST'])
+@login_required
+def update_course_description(course_id):
+    """API endpoint to update course description."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        # Verify tutor is assigned to this course
+        assignment = db.session.query(course_tutors).filter_by(
+            course_id=course_id,
+            tutor_id=current_user.id
+        ).first()
+        
+        if not assignment:
+            return jsonify({'success': False, 'error': 'Course not found or not assigned'}), 404
+        
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found'}), 404
+        
+        # Get data from request
+        data = request.get_json() or {}
+        description = data.get('description', '').strip()
+        
+        # Update description
+        course.description = description if description else None
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Course description updated successfully',
+            'course': {
+                'id': course.id,
+                'name': course.name,
+                'description': course.description or ''
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.exception(f"Error updating course description for {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to update course description'}), 500
 
 
 @tutor_bp.route('/api/courses/<int:course_id>/requests')
