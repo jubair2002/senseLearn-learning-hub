@@ -378,6 +378,29 @@
                                 <i class="fas fa-search mr-2"></i>Browse All Courses
                             </button>
                         </div>
+                        
+                        <!-- Search Bar -->
+                        <div class="mb-6">
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    id="enrolled-course-search-input" 
+                                    placeholder="Search your courses..." 
+                                    class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                                    oninput="handleEnrolledCourseSearch(event)"
+                                    onkeyup="handleEnrolledCourseSearch(event)"
+                                >
+                                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                                <button 
+                                    onclick="clearEnrolledCourseSearch()" 
+                                    id="clear-enrolled-search-btn" 
+                                    class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                                >
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
                         <div id="courses-list" class="space-y-4">
                             <!-- Courses will be loaded here -->
                             <div class="text-center py-12">
@@ -397,6 +420,29 @@
                                 <i class="fas fa-arrow-left mr-2"></i>Back to My Courses
                             </button>
                         </div>
+                        
+                        <!-- Search Bar -->
+                        <div class="mb-6">
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    id="all-course-search-input" 
+                                    placeholder="Search all courses by name or description..." 
+                                    class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    oninput="handleAllCourseSearch(event)"
+                                    onkeyup="handleAllCourseSearch(event)"
+                                >
+                                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                                <button 
+                                    onclick="clearAllCourseSearch()" 
+                                    id="clear-all-search-btn" 
+                                    class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                                >
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
                         <div id="all-courses-list" class="space-y-4">
                             <!-- All courses will be loaded here -->
                             <div class="text-center py-12">
@@ -797,26 +843,136 @@
         let currentSelectedStudentModuleId = null;
         let currentStudentCourseId = null;
 
+        // Course search state
+        let enrolledCourseSearchTimeout = null;
+        let allCourseSearchTimeout = null;
+        let currentEnrolledSearchQuery = '';
+        let currentAllCourseSearchQuery = '';
+
+        // Handle enrolled course search input - dynamic search
+        function handleEnrolledCourseSearch(event) {
+            const searchInput = document.getElementById('enrolled-course-search-input');
+            const clearBtn = document.getElementById('clear-enrolled-search-btn');
+            const query = searchInput ? searchInput.value.trim() : '';
+            
+            // Show/hide clear button
+            if (clearBtn) {
+                if (query) {
+                    clearBtn.classList.remove('hidden');
+                } else {
+                    clearBtn.classList.add('hidden');
+                }
+            }
+            
+            // Clear previous timeout
+            if (enrolledCourseSearchTimeout) {
+                clearTimeout(enrolledCourseSearchTimeout);
+            }
+            
+            // If query is empty, immediately load all courses (no debounce)
+            if (!query) {
+                currentEnrolledSearchQuery = '';
+                loadEnrolledCourses('');
+                return;
+            }
+            
+            // Debounce search - wait 50ms after user stops typing for instant dynamic response
+            enrolledCourseSearchTimeout = setTimeout(() => {
+                currentEnrolledSearchQuery = query;
+                loadEnrolledCourses(query);
+            }, 50);
+        }
+
+        // Clear enrolled course search
+        function clearEnrolledCourseSearch() {
+            const searchInput = document.getElementById('enrolled-course-search-input');
+            const clearBtn = document.getElementById('clear-enrolled-search-btn');
+            searchInput.value = '';
+            clearBtn.classList.add('hidden');
+            currentEnrolledSearchQuery = '';
+            loadEnrolledCourses('');
+        }
+
+        // Handle all course search input - dynamic search
+        function handleAllCourseSearch(event) {
+            const searchInput = document.getElementById('all-course-search-input');
+            const clearBtn = document.getElementById('clear-all-search-btn');
+            const query = searchInput ? searchInput.value.trim() : '';
+            
+            // Show/hide clear button
+            if (clearBtn) {
+                if (query) {
+                    clearBtn.classList.remove('hidden');
+                } else {
+                    clearBtn.classList.add('hidden');
+                }
+            }
+            
+            // Clear previous timeout
+            if (allCourseSearchTimeout) {
+                clearTimeout(allCourseSearchTimeout);
+            }
+            
+            // If query is empty, immediately load all courses (no debounce)
+            if (!query) {
+                currentAllCourseSearchQuery = '';
+                loadAllCourses('');
+                return;
+            }
+            
+            // Debounce search - wait 50ms after user stops typing for instant dynamic response
+            allCourseSearchTimeout = setTimeout(() => {
+                currentAllCourseSearchQuery = query;
+                loadAllCourses(query);
+            }, 50);
+        }
+
+        // Clear all course search
+        function clearAllCourseSearch() {
+            const searchInput = document.getElementById('all-course-search-input');
+            const clearBtn = document.getElementById('clear-all-search-btn');
+            searchInput.value = '';
+            clearBtn.classList.add('hidden');
+            currentAllCourseSearchQuery = '';
+            loadAllCourses('');
+        }
+
         // Load enrolled courses
-        function loadEnrolledCourses() {
+        function loadEnrolledCourses(searchQuery = '') {
             const coursesList = document.getElementById('courses-list');
             if (!coursesList) return;
             
             coursesList.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading courses...</p></div>';
             
-            fetch('/student/api/courses/enrolled')
+            // Build URL with search parameter
+            let url = '/student/api/courses/enrolled';
+            if (searchQuery) {
+                url += `?search=${encodeURIComponent(searchQuery)}`;
+            }
+            
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.courses && data.courses.length > 0) {
                         displayCourses(data.courses);
                     } else {
-                        coursesList.innerHTML = `
-                            <div class="text-center py-12">
-                                <i class="fas fa-book text-6xl text-slate-300 mb-4"></i>
-                                <p class="text-slate-600">No courses enrolled yet</p>
-                                <p class="text-sm text-slate-500 mt-2">Your assigned courses will appear here</p>
-                            </div>
-                        `;
+                        if (searchQuery) {
+                            coursesList.innerHTML = `
+                                <div class="text-center py-12">
+                                    <i class="fas fa-search text-6xl text-slate-300 mb-4"></i>
+                                    <p class="text-slate-600">No courses found</p>
+                                    <p class="text-sm text-slate-500 mt-2">Try adjusting your search terms</p>
+                                </div>
+                            `;
+                        } else {
+                            coursesList.innerHTML = `
+                                <div class="text-center py-12">
+                                    <i class="fas fa-book text-6xl text-slate-300 mb-4"></i>
+                                    <p class="text-slate-600">No courses enrolled yet</p>
+                                    <p class="text-sm text-slate-500 mt-2">Your assigned courses will appear here</p>
+                                </div>
+                            `;
+                        }
                     }
                 })
                 .catch(error => {
@@ -891,7 +1047,13 @@
             document.getElementById('section-courses').style.display = 'none';
             document.getElementById('section-browse-courses').style.display = 'block';
             document.getElementById('page-title').textContent = 'Browse Courses';
-            loadAllCourses();
+            // Clear search when switching sections
+            const searchInput = document.getElementById('all-course-search-input');
+            if (searchInput) searchInput.value = '';
+            const clearBtn = document.getElementById('clear-all-search-btn');
+            if (clearBtn) clearBtn.classList.add('hidden');
+            currentAllCourseSearchQuery = '';
+            loadAllCourses('');
         }
 
         // Show my enrolled courses
@@ -899,28 +1061,50 @@
             document.getElementById('section-browse-courses').style.display = 'none';
             document.getElementById('section-courses').style.display = 'block';
             document.getElementById('page-title').textContent = 'My Courses';
-            loadEnrolledCourses();
+            // Clear search when switching sections
+            const searchInput = document.getElementById('enrolled-course-search-input');
+            if (searchInput) searchInput.value = '';
+            const clearBtn = document.getElementById('clear-enrolled-search-btn');
+            if (clearBtn) clearBtn.classList.add('hidden');
+            currentEnrolledSearchQuery = '';
+            loadEnrolledCourses('');
         }
 
         // Load all available courses
-        function loadAllCourses() {
+        function loadAllCourses(searchQuery = '') {
             const allCoursesList = document.getElementById('all-courses-list');
             if (!allCoursesList) return;
             
             allCoursesList.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading courses...</p></div>';
             
-            fetch('/student/api/courses')
+            // Build URL with search parameter
+            let url = '/student/api/courses';
+            if (searchQuery) {
+                url += `?search=${encodeURIComponent(searchQuery)}`;
+            }
+            
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.courses && data.courses.length > 0) {
                         displayAllCourses(data.courses);
                     } else {
-                        allCoursesList.innerHTML = `
-                            <div class="text-center py-12">
-                                <i class="fas fa-book text-6xl text-slate-300 mb-4"></i>
-                                <p class="text-slate-600">No courses available</p>
-                            </div>
-                        `;
+                        if (searchQuery) {
+                            allCoursesList.innerHTML = `
+                                <div class="text-center py-12">
+                                    <i class="fas fa-search text-6xl text-slate-300 mb-4"></i>
+                                    <p class="text-slate-600">No courses found</p>
+                                    <p class="text-sm text-slate-500 mt-2">Try adjusting your search terms</p>
+                                </div>
+                            `;
+                        } else {
+                            allCoursesList.innerHTML = `
+                                <div class="text-center py-12">
+                                    <i class="fas fa-book text-6xl text-slate-300 mb-4"></i>
+                                    <p class="text-slate-600">No courses available</p>
+                                </div>
+                            `;
+                        }
                     }
                 })
                 .catch(error => {

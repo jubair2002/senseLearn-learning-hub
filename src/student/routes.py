@@ -206,21 +206,28 @@ def list_enrolled_courses():
         # Get search query parameter
         search_query = request.args.get('search', '').strip()
         
-        enrollments = CourseStudent.query.filter_by(
-            student_id=current_user.id,
-            status='enrolled'
-        ).order_by(CourseStudent.assigned_at.desc()).all()
+        # Build query with join to Course table for efficient search
+        query = CourseStudent.query.join(Course, CourseStudent.course_id == Course.id).filter(
+            CourseStudent.student_id == current_user.id,
+            CourseStudent.status == 'enrolled'
+        )
+        
+        # Apply search filter at database level if provided
+        if search_query:
+            search_term = f'%{search_query}%'
+            query = query.filter(
+                db.or_(
+                    Course.name.ilike(search_term),
+                    Course.description.ilike(search_term)
+                )
+            )
+        
+        enrollments = query.order_by(CourseStudent.assigned_at.desc()).all()
         
         courses_data = []
         for enrollment in enrollments:
             course = enrollment.course
             if course:
-                # Apply search filter if provided
-                if search_query:
-                    search_lower = search_query.lower()
-                    if search_lower not in course.name.lower() and (not course.description or search_lower not in course.description.lower()):
-                        continue  # Skip courses that don't match search
-                
                 # Get tutors assigned to this course
                 tutor_assignments = db.session.query(course_tutors).filter_by(course_id=course.id).all()
                 tutors_data = []
