@@ -373,12 +373,19 @@
                 <div id="section-courses" class="content-section">
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                         <h3 class="text-2xl font-bold text-slate-800 mb-6">My Courses</h3>
-                        <div class="text-center py-12">
-                            <i class="fas fa-book text-6xl text-slate-300 mb-4"></i>
-                            <p class="text-slate-600">No courses enrolled yet</p>
-                            <p class="text-sm text-slate-500 mt-2">Start learning by enrolling in a course</p>
+                        <div id="courses-list" class="space-y-4">
+                            <!-- Courses will be loaded here -->
+                            <div class="text-center py-12">
+                                <i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i>
+                                <p class="text-slate-600">Loading courses...</p>
+                            </div>
                         </div>
                     </div>
+                </div>
+                
+                <!-- Course View Container (hidden by default) -->
+                <div id="course-view-container" class="content-section" style="display: none;">
+                    <!-- Course view will be loaded here dynamically -->
                 </div>
 
                 <!-- Tutors Section -->
@@ -461,12 +468,20 @@
         // Get base URL for dashboard
         const baseUrl = '/student/dashboard';
         
-        // Get initial section from URL or template variable
+        // Get initial section from URL, localStorage, or template variable
         function getSectionFromUrl() {
+            // First, check URL
             const path = window.location.pathname;
             const match = path.match(/\/student\/dashboard\/([^\/]+)/);
             if (match) {
+                // Save to localStorage for future refreshes
+                localStorage.setItem('studentCurrentSection', match[1]);
                 return match[1];
+            }
+            // Check localStorage for saved section
+            const savedSection = localStorage.getItem('studentCurrentSection');
+            if (savedSection) {
+                return savedSection;
             }
             // Check if default_section is passed from backend
             {% if default_section %}
@@ -476,12 +491,25 @@
             {% endif %}
         }
 
-        // Navigation handler with URL update
+        // Navigation handler with URL update and persistence
         function showSection(sectionName, updateUrl = true) {
             // Hide all sections
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
             });
+            
+            // Hide course view container if visible
+            const courseViewContainer = document.getElementById('course-view-container');
+            if (courseViewContainer) {
+                courseViewContainer.style.display = 'none';
+                courseViewContainer.classList.remove('active');
+            }
+            
+            // Show courses section if it was hidden
+            const coursesSection = document.getElementById('section-courses');
+            if (coursesSection) {
+                coursesSection.style.display = 'block';
+            }
             
             // Show selected section
             const targetSection = document.getElementById(`section-${sectionName}`);
@@ -506,6 +534,9 @@
             
             // Close user dropdown if open
             document.getElementById('user-dropdown').classList.add('hidden');
+            
+            // Save to localStorage for persistence across refreshes
+            localStorage.setItem('studentCurrentSection', sectionName);
             
             // Update URL without page reload
             if (updateUrl) {
@@ -536,6 +567,11 @@
         // Initialize section on page load
         const initialSection = getSectionFromUrl();
         showSection(initialSection, false); // Don't update URL on initial load
+        
+        // Also save to localStorage if not already saved
+        if (!localStorage.getItem('studentCurrentSection')) {
+            localStorage.setItem('studentCurrentSection', initialSection);
+        }
 
         // Profile Edit Mode Toggle
         const profileViewMode = document.getElementById('profile-view-mode');
@@ -663,15 +699,16 @@
         });
         }
 
-        // Sidebar Toggle
+        // Sidebar Toggle with persistence
         const sidebar = document.getElementById('sidebar');
         const sidebarToggle = document.getElementById('sidebar-toggle');
         const sidebarTexts = document.querySelectorAll('.sidebar-text');
-        let sidebarCollapsed = false;
-
-        sidebarToggle.addEventListener('click', () => {
-            sidebarCollapsed = !sidebarCollapsed;
-            
+        
+        // Load sidebar state from localStorage
+        let sidebarCollapsed = localStorage.getItem('studentSidebarCollapsed') === 'true';
+        
+        // Apply saved state on page load
+        function applySidebarState() {
             if (sidebarCollapsed) {
                 sidebar.style.width = '80px';
                 sidebarTexts.forEach(text => {
@@ -683,6 +720,24 @@
                     text.style.display = 'block';
                 });
             }
+        }
+        
+        // Apply state on load (before showing sections to avoid flicker)
+        applySidebarState();
+
+        sidebarToggle.addEventListener('click', () => {
+            sidebarCollapsed = !sidebarCollapsed;
+            
+            // Save state to localStorage immediately
+            localStorage.setItem('studentSidebarCollapsed', sidebarCollapsed.toString());
+            
+            // Apply state
+            applySidebarState();
+        });
+        
+        // Ensure sidebar state persists even if page is refreshed during navigation
+        window.addEventListener('beforeunload', () => {
+            localStorage.setItem('studentSidebarCollapsed', sidebarCollapsed.toString());
         });
 
         // User Menu Dropdown
@@ -711,6 +766,345 @@
             .catch(error => {
                 console.error('Error loading stats:', error);
             });
+
+        // ==================== COURSE MANAGEMENT ====================
+        
+        // Global variables for course view
+        let currentSelectedStudentModuleId = null;
+        let currentStudentCourseId = null;
+
+        // Load enrolled courses
+        function loadEnrolledCourses() {
+            const coursesList = document.getElementById('courses-list');
+            if (!coursesList) return;
+            
+            coursesList.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading courses...</p></div>';
+            
+            fetch('/student/api/courses/enrolled')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.courses && data.courses.length > 0) {
+                        displayCourses(data.courses);
+                    } else {
+                        coursesList.innerHTML = `
+                            <div class="text-center py-12">
+                                <i class="fas fa-book text-6xl text-slate-300 mb-4"></i>
+                                <p class="text-slate-600">No courses enrolled yet</p>
+                                <p class="text-sm text-slate-500 mt-2">Your assigned courses will appear here</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading courses:', error);
+                    coursesList.innerHTML = `
+                        <div class="text-center py-12">
+                            <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>
+                            <p class="text-red-600">Failed to load courses</p>
+                            <p class="text-sm text-slate-500 mt-2">Please try refreshing the page</p>
+                        </div>
+                    `;
+                });
+        }
+
+        // Display courses in square card grid (3 per row)
+        function displayCourses(courses) {
+            const coursesList = document.getElementById('courses-list');
+            if (!coursesList) return;
+            
+            coursesList.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    ${courses.map(course => {
+                        const enrolledDate = course.enrolled_at ? new Date(course.enrolled_at).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                        }) : 'N/A';
+                        
+                        return `
+                            <div class="bg-white border-2 border-slate-200 rounded-xl hover:border-emerald-400 hover:shadow-xl transition-all duration-300 cursor-pointer group aspect-square flex flex-col overflow-hidden" onclick="viewStudentCourse(${course.id})">
+                                <!-- Card Header with Icon -->
+                                <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 flex items-center justify-center relative overflow-hidden">
+                                    <div class="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                    <div class="relative z-10">
+                                        <div class="w-16 h-16 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                                            <i class="fas fa-graduation-cap text-white text-2xl"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Card Content -->
+                                <div class="flex-1 flex flex-col p-5">
+                                    <h4 class="text-lg font-bold text-slate-800 mb-2 line-clamp-2 group-hover:text-emerald-700 transition">${course.name}</h4>
+                                    <p class="text-sm text-slate-600 mb-4 line-clamp-2 flex-1">${course.description || 'No description provided'}</p>
+                                    
+                                    <!-- Course Stats -->
+                                    <div class="space-y-2 mb-4">
+                                        <div class="flex items-center gap-2 text-xs text-slate-500">
+                                            <i class="fas fa-calendar text-emerald-600"></i>
+                                            <span>${enrolledDate}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 text-xs text-slate-500">
+                                            <i class="fas fa-chalkboard-teacher text-emerald-600"></i>
+                                            <span>${course.tutor_count} tutor${course.tutor_count !== 1 ? 's' : ''}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Tutors Preview -->
+                                    ${course.tutors && course.tutors.length > 0 ? `
+                                        <div class="pt-3 border-t border-slate-200">
+                                            <p class="text-xs font-semibold text-slate-600 mb-2">
+                                                <i class="fas fa-user-tie mr-1 text-emerald-600"></i>Tutors:
+                                            </p>
+                                            <div class="flex flex-wrap gap-1">
+                                                ${course.tutors.slice(0, 2).map(tutor => `
+                                                    <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full font-medium">${tutor.full_name.split(' ')[0]}</span>
+                                                `).join('')}
+                                                ${course.tutors.length > 2 ? `<span class="text-xs text-slate-500">+${course.tutors.length - 2} more</span>` : ''}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                
+                                <!-- Card Footer -->
+                                <div class="p-5 pt-0">
+                                    <button class="w-full px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-medium text-sm flex items-center justify-center gap-2 group-hover:shadow-lg">
+                                        <span>View Course</span>
+                                        <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        // View course details
+        function viewStudentCourse(courseId) {
+            currentStudentCourseId = courseId;
+            
+            // Hide courses list, show course view container
+            document.getElementById('section-courses').style.display = 'none';
+            const courseViewContainer = document.getElementById('course-view-container');
+            courseViewContainer.style.display = 'block';
+            courseViewContainer.classList.add('active');
+            
+            // Update page title
+            document.getElementById('page-title').textContent = 'Course View';
+            
+            // Load course view
+            fetch(`/student/api/courses/${courseId}/view`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            })
+                .then(response => {
+                    const contentType = response.headers.get('content-type');
+                    if (!response.ok) {
+                        // Try to parse error as JSON, fallback to text
+                        if (contentType && contentType.includes('application/json')) {
+                            return response.json().then(err => {
+                                throw new Error(err.error || err.message || `HTTP ${response.status}`);
+                            });
+                        } else {
+                            return response.text().then(text => {
+                                throw new Error(`Server error: ${response.status} - ${text.substring(0, 100)}`);
+                            });
+                        }
+                    }
+                    // Check if response is JSON
+                    if (contentType && contentType.includes('application/json')) {
+                        return response.json();
+                    } else {
+                        throw new Error('Server returned non-JSON response');
+                    }
+                })
+                .then(data => {
+                    if (data.success) {
+                        courseViewContainer.innerHTML = data.html;
+                        // Re-execute any scripts in the loaded HTML
+                        const scripts = courseViewContainer.querySelectorAll('script');
+                        scripts.forEach(oldScript => {
+                            const newScript = document.createElement('script');
+                            Array.from(oldScript.attributes).forEach(attr => {
+                                newScript.setAttribute(attr.name, attr.value);
+                            });
+                            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                            oldScript.parentNode.replaceChild(newScript, oldScript);
+                        });
+                    } else {
+                        alert('Failed to load course: ' + (data.error || 'Unknown error'));
+                        showSection('courses');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading course view:', error);
+                    console.error('Full error:', error.stack);
+                    alert('Failed to load course: ' + error.message + '\n\nPlease restart the Flask server and try again.');
+                    showSection('courses');
+                });
+        }
+
+        // Select module in student course view
+        function selectStudentModule(courseId, moduleId) {
+            currentSelectedStudentModuleId = moduleId;
+            currentStudentCourseId = courseId;
+            
+            // Update active module styling
+            document.querySelectorAll('.module-item').forEach(item => {
+                item.classList.remove('bg-emerald-50', 'border-emerald-300');
+            });
+            const selectedModule = document.querySelector(`[data-module-id="${moduleId}"]`);
+            if (selectedModule) {
+                selectedModule.classList.add('bg-emerald-50', 'border-emerald-300');
+            }
+            
+            // Load module files
+            fetch(`/student/api/modules/${moduleId}/files`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayStudentModuleFiles(data.module, data.files);
+                    } else {
+                        document.getElementById('module-content').innerHTML = `
+                            <div class="text-center py-12 text-red-400">
+                                <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                                <p>Failed to load module: ${data.error || 'Unknown error'}</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading module files:', error);
+                    document.getElementById('module-content').innerHTML = `
+                        <div class="text-center py-12 text-red-400">
+                            <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                            <p>Failed to load module files</p>
+                        </div>
+                    `;
+                });
+        }
+
+        // Display module files for students
+        function displayStudentModuleFiles(module, files) {
+            const moduleContent = document.getElementById('module-content');
+            if (!moduleContent) return;
+            
+            if (!files || files.length === 0) {
+                moduleContent.innerHTML = `
+                    <div class="text-center py-12 text-slate-400">
+                        <i class="fas fa-folder-open text-6xl mb-4"></i>
+                        <p class="text-lg">No files in this module</p>
+                        <p class="text-sm mt-2">Files will appear here when your tutor adds them</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const filesHtml = files.map(file => {
+                const fileSize = formatFileSize(file.file_size);
+                const fileIcon = getFileIcon(file.file_type);
+                
+                return `
+                    <div class="bg-white rounded-lg border border-slate-200 p-4 hover:shadow-md transition mb-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4 flex-1">
+                                <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                    <i class="${fileIcon} text-emerald-600 text-xl"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-slate-800 mb-1">${file.file_name}</h4>
+                                    <div class="flex items-center gap-4 text-xs text-slate-500">
+                                        <span><i class="fas fa-file mr-1"></i>${file.file_type.toUpperCase()}</span>
+                                        <span><i class="fas fa-weight mr-1"></i>${fileSize}</span>
+                                        <span><i class="fas fa-calendar mr-1"></i>${new Date(file.uploaded_at).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <a href="${file.url}" target="_blank" class="ml-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-sm font-medium">
+                                <i class="fas fa-external-link-alt mr-2"></i>Open
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            moduleContent.innerHTML = `
+                <div>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">${module.name}</h3>
+                    ${module.description ? `<p class="text-slate-600 mb-6">${module.description}</p>` : ''}
+                    <div class="mt-6">
+                        <h4 class="text-lg font-semibold text-slate-700 mb-4">
+                            <i class="fas fa-files mr-2"></i>Files (${files.length})
+                        </h4>
+                        ${filesHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Helper function to format file size
+        function formatFileSize(bytes) {
+            if (!bytes) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // Helper function to get file icon
+        function getFileIcon(fileType) {
+            const iconMap = {
+                'pdf': 'fas fa-file-pdf',
+                'doc': 'fas fa-file-word',
+                'docx': 'fas fa-file-word',
+                'ppt': 'fas fa-file-powerpoint',
+                'pptx': 'fas fa-file-powerpoint',
+                'jpg': 'fas fa-file-image',
+                'jpeg': 'fas fa-file-image',
+                'png': 'fas fa-file-image',
+                'gif': 'fas fa-file-image',
+                'txt': 'fas fa-file-alt',
+                'default': 'fas fa-file'
+            };
+            return iconMap[fileType.toLowerCase()] || iconMap['default'];
+        }
+
+        // Override showSection to handle course view
+        const originalShowSection = showSection;
+        showSection = function(sectionName, updateUrl = true) {
+            // Hide course view container when switching sections
+            const courseViewContainer = document.getElementById('course-view-container');
+            if (courseViewContainer) {
+                courseViewContainer.style.display = 'none';
+                courseViewContainer.classList.remove('active');
+            }
+            
+            // Show courses section if it was hidden
+            const coursesSection = document.getElementById('section-courses');
+            if (coursesSection) {
+                coursesSection.style.display = 'block';
+            }
+            
+            // Call original showSection
+            originalShowSection(sectionName, updateUrl);
+            
+            // Load courses when courses section is shown
+            if (sectionName === 'courses') {
+                loadEnrolledCourses();
+            }
+        };
+
+        // Load courses when page loads if courses section is active
+        // Use the same logic as initialization
+        const currentSection = localStorage.getItem('studentCurrentSection') || getSectionFromUrl();
+        if (currentSection === 'courses') {
+            loadEnrolledCourses();
+        }
     </script>
 </body>
 </html>

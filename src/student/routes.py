@@ -196,15 +196,25 @@ def list_enrolled_courses():
         for enrollment in enrollments:
             course = enrollment.course
             if course:
-                # Get tutor count
-                tutor_count = db.session.query(course_tutors).filter_by(course_id=course.id).count()
+                # Get tutors assigned to this course
+                tutor_assignments = db.session.query(course_tutors).filter_by(course_id=course.id).all()
+                tutors_data = []
+                for assignment in tutor_assignments:
+                    tutor = User.query.get(assignment.tutor_id)
+                    if tutor:
+                        tutors_data.append({
+                            'id': tutor.id,
+                            'full_name': tutor.full_name,
+                            'email': tutor.email
+                        })
                 
                 courses_data.append({
                     'id': course.id,
                     'name': course.name,
                     'description': course.description or '',
                     'enrolled_at': enrollment.assigned_at.isoformat() if enrollment.assigned_at else None,
-                    'tutor_count': tutor_count
+                    'tutor_count': len(tutors_data),
+                    'tutors': tutors_data
                 })
         
         return jsonify({'success': True, 'courses': courses_data}), 200
@@ -389,3 +399,88 @@ def get_module_files(module_id):
         from flask import current_app
         current_app.logger.exception(f"Error getting files for module {module_id}")
         return jsonify({'success': False, 'error': 'Failed to load files'}), 500
+
+
+@student_bp.route('/api/courses/<int:course_id>/view', methods=['GET'])
+@login_required
+def get_course_view(course_id):
+    """API endpoint to get course view HTML content for student dashboard."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        # Verify student is enrolled in this course
+        enrollment = CourseStudent.query.filter_by(
+            course_id=course_id,
+            student_id=current_user.id,
+            status='enrolled'
+        ).first()
+        
+        if not enrollment:
+            return jsonify({'success': False, 'error': 'Course not found or not enrolled'}), 404
+        
+        course = Course.query.get(course_id)
+        if not course:
+            return jsonify({'success': False, 'error': 'Course not found'}), 404
+        
+        # Get tutors assigned to this course
+        tutor_assignments = db.session.query(course_tutors).filter_by(course_id=course_id).all()
+        tutors_data = []
+        for assignment in tutor_assignments:
+            tutor = User.query.get(assignment.tutor_id)
+            if tutor:
+                tutors_data.append({
+                    'id': tutor.id,
+                    'full_name': tutor.full_name,
+                    'email': tutor.email
+                })
+        
+        # Get modules for this course
+        modules = CourseModule.query.filter_by(course_id=course_id).order_by(CourseModule.order_index, CourseModule.created_at).all()
+        modules_data = []
+        for module in modules:
+            # Get files for this module
+            module_files = ModuleFile.query.filter_by(module_id=module.id).order_by(ModuleFile.uploaded_at).all()
+            files_data = []
+            for file_obj in module_files:
+                files_data.append({
+                    'id': file_obj.id,
+                    'file_name': file_obj.file_name,
+                    'file_path': file_obj.file_path,
+                    'file_type': file_obj.file_type,
+                    'file_size': file_obj.file_size,
+                    'mime_type': file_obj.mime_type,
+                    'uploaded_at': file_obj.uploaded_at.isoformat() if file_obj.uploaded_at else None,
+                    'url': get_file_url(file_obj.file_path)
+                })
+            
+            modules_data.append({
+                'id': module.id,
+                'name': module.name,
+                'description': module.description or '',
+                'order_index': module.order_index,
+                'created_at': module.created_at.isoformat() if module.created_at else None,
+                'files': files_data,
+                'file_count': len(files_data)
+            })
+        
+        # Render course view template
+        html = render_template('student/course_view.html', 
+                              course=course, 
+                              tutors=tutors_data,
+                              modules=modules_data,
+                              course_id=course_id)
+        
+        return jsonify({'success': True, 'html': html}), 200
+        
+    except Exception as e:
+        from flask import current_app
+        import traceback
+        error_trace = traceback.format_exc()
+        current_app.logger.exception(f"Error getting course view for {course_id}")
+        current_app.logger.error(f"Full traceback: {error_trace}")
+        return jsonify({
+            'success': False, 
+            'error': f'Failed to load course: {str(e)}',
+            'details': str(e) if current_app.debug else None
+        }), 500
