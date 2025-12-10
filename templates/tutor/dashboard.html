@@ -426,10 +426,33 @@
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
                         <div class="flex items-center justify-between mb-6">
                             <h3 class="text-2xl font-bold text-slate-800">My Courses</h3>
-                            <button onclick="loadCourses()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <button onclick="refreshCourses()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                                 <i class="fas fa-sync-alt mr-2"></i>Refresh
                             </button>
                         </div>
+                        
+                        <!-- Search Bar -->
+                        <div class="mb-6">
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    id="course-search-input" 
+                                    placeholder="Search courses by name or description..." 
+                                    class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    oninput="handleCourseSearch(event)"
+                                    onkeyup="handleCourseSearch(event)"
+                                >
+                                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                                <button 
+                                    onclick="clearCourseSearch()" 
+                                    id="clear-search-btn" 
+                                    class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                                >
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
                         <div id="courses-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <div class="text-center py-12 col-span-full">
                                 <i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i>
@@ -587,7 +610,7 @@
     </div>
 
     <!-- Confirmation Modal -->
-    <div id="confirmation-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div id="confirmation-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 max-w-md w-full">
             <h3 id="confirmation-title" class="text-xl font-bold text-slate-800 mb-4">Confirm Action</h3>
             <div id="confirmation-message" class="mb-6 text-slate-600"></div>
@@ -1104,7 +1127,10 @@
                 // Load courses when courses section is shown
                 setTimeout(() => {
                     if (typeof loadCourses === 'function') {
-                        loadCourses();
+                        // Check if there's a search query in the input field
+                        const searchInput = document.getElementById('course-search-input');
+                        const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+                        loadCourses(searchQuery);
                     }
                 }, 100);
             }
@@ -1125,23 +1151,87 @@
         if (initialSection === 'courses') {
             setTimeout(() => {
                 if (typeof loadCourses === 'function') {
-                    loadCourses();
+                    // Check if there's a search query in the input field
+                    const searchInput = document.getElementById('course-search-input');
+                    const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+                    loadCourses(searchQuery);
                 }
             }, 400);
         }
         
         // ==================== COURSE MANAGEMENT FUNCTIONS ====================
 
+        // Course search state
+        let courseSearchTimeout = null;
+        let currentSearchQuery = '';
+
+        // Handle course search input - dynamic search
+        function handleCourseSearch(event) {
+            const searchInput = document.getElementById('course-search-input');
+            const clearBtn = document.getElementById('clear-search-btn');
+            const query = searchInput ? searchInput.value.trim() : '';
+            
+            // Show/hide clear button
+            if (clearBtn) {
+                if (query) {
+                    clearBtn.classList.remove('hidden');
+                } else {
+                    clearBtn.classList.add('hidden');
+                }
+            }
+            
+            // Clear previous timeout
+            if (courseSearchTimeout) {
+                clearTimeout(courseSearchTimeout);
+            }
+            
+            // If query is empty, immediately load all courses (no debounce)
+            if (!query) {
+                currentSearchQuery = '';
+                loadCourses('');
+                return;
+            }
+            
+            // Debounce search - wait 50ms after user stops typing for instant dynamic response
+            courseSearchTimeout = setTimeout(() => {
+                currentSearchQuery = query;
+                loadCourses(query);
+            }, 50);
+        }
+
+        // Clear course search
+        function clearCourseSearch() {
+            const searchInput = document.getElementById('course-search-input');
+            const clearBtn = document.getElementById('clear-search-btn');
+            searchInput.value = '';
+            clearBtn.classList.add('hidden');
+            currentSearchQuery = '';
+            loadCourses('');
+        }
+
+        // Refresh courses while preserving search query
+        function refreshCourses() {
+            const searchInput = document.getElementById('course-search-input');
+            const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+            loadCourses(searchQuery);
+        }
+
         // Load courses assigned to tutor
-        async function loadCourses() {
+        async function loadCourses(searchQuery = '') {
             const listEl = document.getElementById('courses-list');
             if (!listEl) return;
             
             listEl.innerHTML = '<div class="text-center py-12 col-span-full"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading courses...</p></div>';
             
             try {
-                console.log('Fetching courses from /tutor/api/courses');
-                const response = await fetch('/tutor/api/courses');
+                // Build URL with search parameter
+                let url = '/tutor/api/courses';
+                if (searchQuery) {
+                    url += `?search=${encodeURIComponent(searchQuery)}`;
+                }
+                
+                console.log('Fetching courses from', url);
+                const response = await fetch(url);
                 console.log('Response status:', response.status);
                 
                 const contentType = response.headers.get('content-type') || '';
@@ -1159,36 +1249,56 @@
                 
                 if (result.success) {
                     if (result.courses && result.courses.length > 0) {
-                        listEl.innerHTML = result.courses.map(course => `
-                            <div class="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200 flex flex-col">
-                                <div class="flex-1">
-                                    <h4 class="text-xl font-bold text-slate-800 mb-3">${course.name}</h4>
-                                    ${course.description ? `<p class="text-sm text-slate-600 mb-4 line-clamp-3">${course.description}</p>` : '<p class="text-sm text-slate-400 mb-4">No description</p>'}
-                                    <div class="flex items-center gap-4 text-sm text-slate-500 mb-4">
-                                        <span class="flex items-center gap-1">
-                                            <i class="fas fa-user-graduate"></i>
-                                            <span>${course.student_count} Student${course.student_count !== 1 ? 's' : ''}</span>
-                                        </span>
-                                        ${course.pending_requests > 0 ? `
-                                            <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium flex items-center gap-1">
-                                                <i class="fas fa-bell"></i>
-                                                <span>${course.pending_requests}</span>
+                        // Build course cards HTML
+                        const coursesHTML = result.courses.map((course, index) => {
+                            const courseId = parseInt(course.id);
+                            return `
+                                <div class="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200 flex flex-col">
+                                    <div class="flex-1">
+                                        <h4 class="text-xl font-bold text-slate-800 mb-3">${course.name || 'Unnamed Course'}</h4>
+                                        ${course.description ? `<p class="text-sm text-slate-600 mb-4 line-clamp-3">${course.description}</p>` : '<p class="text-sm text-slate-400 mb-4">No description</p>'}
+                                        <div class="flex items-center gap-4 text-sm text-slate-500 mb-4">
+                                            <span class="flex items-center gap-1">
+                                                <i class="fas fa-user-graduate"></i>
+                                                <span>${course.student_count || 0} Student${course.student_count !== 1 ? 's' : ''}</span>
                                             </span>
-                                        ` : ''}
+                                            ${course.pending_requests > 0 ? `
+                                                <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium flex items-center gap-1">
+                                                    <i class="fas fa-bell"></i>
+                                                    <span>${course.pending_requests}</span>
+                                                </span>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col gap-2 pt-4 border-t border-slate-200">
+                                        <button onclick="openCourse(${courseId})" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-center font-medium">
+                                            <i class="fas fa-door-open mr-2"></i>Open
+                                        </button>
+                                        <button data-course-id="${courseId}" class="w-full px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition font-medium view-details-btn" type="button">
+                                            <i class="fas fa-info-circle mr-2"></i>View Details
+                                        </button>
                                     </div>
                                 </div>
-                                <div class="flex flex-col gap-2 pt-4 border-t border-slate-200">
-                                    <button onclick="openCourse(${course.id})" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-center font-medium">
-                                        <i class="fas fa-door-open mr-2"></i>Open
-                                    </button>
-                                    <button onclick="viewCourseDetails(${course.id})" class="w-full px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition font-medium">
-                                        <i class="fas fa-info-circle mr-2"></i>View Details
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('');
+                            `;
+                        }).join('');
+                        
+                        listEl.innerHTML = coursesHTML;
+                        
+                        // Add event listeners after DOM is updated
+                        document.querySelectorAll('.view-details-btn').forEach(btn => {
+                            btn.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                const courseId = parseInt(this.getAttribute('data-course-id'));
+                                console.log('Button clicked for course ID:', courseId);
+                                viewCourseDetails(courseId);
+                            });
+                        });
                     } else {
-                        listEl.innerHTML = '<div class="text-center py-12 col-span-full"><i class="fas fa-book text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No courses assigned yet</p><p class="text-sm text-slate-500 mt-2">You will see courses here once an admin assigns you to them</p></div>';
+                        if (searchQuery) {
+                            listEl.innerHTML = '<div class="text-center py-12 col-span-full"><i class="fas fa-search text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No courses found</p><p class="text-sm text-slate-500 mt-2">Try adjusting your search terms</p></div>';
+                        } else {
+                            listEl.innerHTML = '<div class="text-center py-12 col-span-full"><i class="fas fa-book text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No courses assigned yet</p><p class="text-sm text-slate-500 mt-2">You will see courses here once an admin assigns you to them</p></div>';
+                        }
                     }
                 } else {
                     const errorMsg = result.error || 'Unknown error';
@@ -1204,32 +1314,77 @@
 
         // View course details
         async function viewCourseDetails(courseId) {
+            // Close any existing modal first
+            closeCourseModal();
+            
             try {
+                // Convert to number and validate courseId
+                courseId = parseInt(courseId);
+                if (!courseId || isNaN(courseId)) {
+                    alert('Invalid course ID: ' + courseId);
+                    console.error('Invalid courseId:', courseId);
+                    return;
+                }
+                
+                console.log('Loading course details for ID:', courseId);
+                
                 const response = await fetch(`/tutor/api/courses/${courseId}`);
+                
+                // Check response
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error Response:', errorText);
+                    throw new Error(`HTTP ${response.status}: Failed to load course details`);
+                }
+                
                 const result = await response.json();
+                console.log('Course details result:', result);
                 
                 if (result.success && result.course) {
                     const course = result.course;
                     
+                    // Ensure students array exists
+                    if (!course.students || !Array.isArray(course.students)) {
+                        course.students = [];
+                    }
+                    
                     // Also load requests
                     const requestsResponse = await fetch(`/tutor/api/courses/${courseId}/requests`);
                     const requestsResult = await requestsResponse.json();
-                    const requests = requestsResult.success ? requestsResult.requests : [];
-                    const pendingRequests = requests.filter(r => r.status === 'pending');
+                    const requests = requestsResult.success ? (requestsResult.requests || []) : [];
+                    const pendingRequests = requests.filter(r => r && r.status === 'pending');
                     
-                    // Create modal content - Minimal Design
+                    // Create modal content - Minimal Design (with consistent inline styles)
                     const modalContent = `
-                        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
+                        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl mx-auto max-h-[90vh] overflow-hidden flex flex-col" style="background-color: white; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); max-width: 56rem; width: 100%; margin: 0 auto; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
                             <!-- Header -->
                             <div class="px-8 py-6 border-b border-slate-100">
                                 <div class="flex items-start justify-between">
                                     <div class="flex-1">
                                         <h3 class="text-2xl font-semibold text-slate-900 mb-2">${course.name}</h3>
-                                        ${course.description ? `<p class="text-slate-600 text-sm leading-relaxed">${course.description}</p>` : ''}
+                                        <div id="course-description-display">
+                                            ${course.description ? `<p class="text-slate-600 text-sm leading-relaxed">${course.description}</p>` : '<p class="text-slate-400 text-sm italic">No description</p>'}
+                                        </div>
+                                        <div id="course-description-edit" style="display: none;" class="mt-2">
+                                            <textarea id="edit-description-input" rows="3" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Enter course description...">${course.description || ''}</textarea>
+                                            <div class="flex gap-2 mt-2">
+                                                <button onclick="saveCourseDescription(${courseId})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                                    <i class="fas fa-check mr-1"></i>Save
+                                                </button>
+                                                <button onclick="cancelEditDescription()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium">
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <button onclick="closeCourseModal()" class="ml-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition">
-                                        <i class="fas fa-times text-lg"></i>
-                                    </button>
+                                    <div class="flex items-center gap-2 ml-4">
+                                        <button onclick="editCourseDescription()" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit Description">
+                                            <i class="fas fa-edit text-sm"></i>
+                                        </button>
+                                        <button onclick="closeCourseModal()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition">
+                                            <i class="fas fa-times text-lg"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -1327,27 +1482,37 @@
                         </div>
                     `;
                     
-                    // Show modal (create if doesn't exist)
-                    let modal = document.getElementById('course-modal');
-                    if (!modal) {
-                        modal = document.createElement('div');
-                        modal.id = 'course-modal';
-                        modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4';
-                        modal.style.display = 'none';
-                        // Close modal when clicking backdrop
-                        modal.addEventListener('click', (e) => {
-                            if (e.target === modal) {
-                                closeCourseModal();
-                            }
-                        });
-                        document.body.appendChild(modal);
+                    // Remove existing modal if any
+                    const existingModal = document.getElementById('course-modal');
+                    if (existingModal) {
+                        existingModal.remove();
                     }
+                    
+                    // Create new modal with consistent structure and inline styles
+                    const modal = document.createElement('div');
+                    modal.id = 'course-modal';
+                    modal.className = 'fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm z-[55] flex items-center justify-center p-4';
+                    // Ensure consistent styling with inline styles
+                    modal.setAttribute('style', 'position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; background-color: rgba(0, 0, 0, 0.4) !important; backdrop-filter: blur(4px) !important; z-index: 55 !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 1rem !important;');
                     modal.innerHTML = modalContent;
-                    modal.style.display = 'flex';
+                    
+                    // Close modal when clicking backdrop
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            closeCourseModal();
+                        }
+                    });
+                    
+                    // Append to body and show
+                    document.body.appendChild(modal);
+                    
+                    console.log('Modal created and displayed for course:', courseId);
                 } else {
-                    alert('Error loading course details');
+                    alert('Error loading course details: ' + (result.error || 'Unknown error'));
+                    console.error('Course details error:', result);
                 }
             } catch (error) {
+                console.error('Error in viewCourseDetails:', error);
                 alert('Error: ' + error.message);
             }
         }
@@ -1357,6 +1522,87 @@
             const modal = document.getElementById('course-modal');
             if (modal) {
                 modal.style.display = 'none';
+            }
+        }
+
+        // Edit course description
+        function editCourseDescription() {
+            const displayDiv = document.getElementById('course-description-display');
+            const editDiv = document.getElementById('course-description-edit');
+            if (displayDiv && editDiv) {
+                displayDiv.style.display = 'none';
+                editDiv.style.display = 'block';
+                const textarea = document.getElementById('edit-description-input');
+                if (textarea) {
+                    textarea.focus();
+                    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+                }
+            }
+        }
+
+        // Cancel editing description
+        function cancelEditDescription() {
+            const displayDiv = document.getElementById('course-description-display');
+            const editDiv = document.getElementById('course-description-edit');
+            if (displayDiv && editDiv) {
+                editDiv.style.display = 'none';
+                displayDiv.style.display = 'block';
+                // Reset textarea to original value
+                const originalDescription = displayDiv.textContent.trim();
+                const textarea = document.getElementById('edit-description-input');
+                if (textarea && originalDescription !== 'No description') {
+                    textarea.value = originalDescription;
+                } else if (textarea) {
+                    textarea.value = '';
+                }
+            }
+        }
+
+        // Save course description
+        async function saveCourseDescription(courseId) {
+            const textarea = document.getElementById('edit-description-input');
+            if (!textarea) {
+                alert('Error: Could not find description input');
+                return;
+            }
+
+            const description = textarea.value.trim();
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/description`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ description: description })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Update the display
+                    const displayDiv = document.getElementById('course-description-display');
+                    if (displayDiv) {
+                        displayDiv.innerHTML = description 
+                            ? `<p class="text-slate-600 text-sm leading-relaxed">${description}</p>`
+                            : '<p class="text-slate-400 text-sm italic">No description</p>';
+                    }
+                    
+                    // Hide edit, show display
+                    cancelEditDescription();
+                    
+                    // Refresh course list to show updated description
+                    if (typeof loadCourses === 'function') {
+                        const searchInput = document.getElementById('course-search-input');
+                        const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+                        loadCourses(searchQuery);
+                    }
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to update description'));
+                }
+            } catch (error) {
+                console.error('Error saving description:', error);
+                alert('Error: ' + error.message);
             }
         }
 
@@ -1442,7 +1688,7 @@
                     if (!modal) {
                         modal = document.createElement('div');
                         modal.id = 'course-modal';
-                        modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4';
+                        modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-[55] flex items-center justify-center p-4';
                         modal.style.display = 'none';
                         // Close modal when clicking backdrop
                         modal.addEventListener('click', (e) => {
@@ -1478,8 +1724,10 @@
                 const result = await response.json();
                 if (result.success) {
                     alert(result.message);
-                    viewCourseRequests(courseId);
-                    loadCourses(); // Refresh course list
+                    viewCourseDetails(courseId); // Refresh the View Details modal
+                    const searchInput = document.getElementById('course-search-input');
+                    const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+                    loadCourses(searchQuery); // Refresh course list
                 } else {
                     alert('Error: ' + result.error);
                 }
@@ -1490,6 +1738,9 @@
 
         // Assign students to course
         async function assignStudentsToCourse(courseId) {
+            // Close the View Details modal first to avoid confusion
+            closeCourseModal();
+            
             try {
                 // Load students from tutor API
                 const response = await fetch('/tutor/api/students');
@@ -1681,7 +1932,9 @@
                     alert(result.message);
                     loadCourseView(courseId);
                     if (typeof loadCourses === 'function') {
-                        loadCourses(); // Refresh course list
+                        const searchInput = document.getElementById('course-search-input');
+                        const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+                        loadCourses(searchQuery); // Refresh course list
                     }
                 } else {
                     alert('Error: ' + result.error);
@@ -1706,7 +1959,9 @@
                     alert(result.message);
                     loadCourseView(courseId);
                     if (typeof loadCourses === 'function') {
-                        loadCourses(); // Refresh course list
+                        const searchInput = document.getElementById('course-search-input');
+                        const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+                        loadCourses(searchQuery); // Refresh course list
                     }
                 } else {
                     alert('Error: ' + result.error);

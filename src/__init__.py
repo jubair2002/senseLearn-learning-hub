@@ -108,7 +108,12 @@ def create_app() -> Flask:
             response.cache_control.must_revalidate = True
         # Add security headers
         response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'DENY'
+        # Allow embedding for file viewer (students need to view files in iframe)
+        # Only deny for HTML pages, allow for file serving
+        if request.endpoint != 'serve_upload':
+            response.headers['X-Frame-Options'] = 'DENY'
+        else:
+            response.headers['X-Frame-Options'] = 'SAMEORIGIN'  # Allow same-origin embedding
         response.headers['X-XSS-Protection'] = '1; mode=block'
         return response
 
@@ -194,6 +199,8 @@ def create_app() -> Flask:
         # Add headers for proper display
         response.headers['Content-Disposition'] = f'inline; filename="{os.path.basename(full_path)}"'
         response.headers['X-Content-Type-Options'] = 'nosniff'
+        # Allow embedding in iframe for file viewer (students)
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
         # Optimized cache headers - longer cache for static files
         response.cache_control.max_age = 86400  # 24 hours
         response.cache_control.public = True
