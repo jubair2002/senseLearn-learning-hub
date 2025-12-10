@@ -49,13 +49,14 @@ def profile():
         if 'application/json' in content_type:
             try:
                 json_data = request.get_json() or {}
-                full_name = json_data.get('full_name', '').strip()
-                phone_number = json_data.get('phone_number', '').strip() or None
-                qualifications = json_data.get('qualifications', '').strip()
-                experience_years = json_data.get('experience_years', '0').strip()
-                subjects = json_data.get('subjects', '').strip()
-                hourly_rate = json_data.get('hourly_rate', '0').strip()
-                bio = json_data.get('bio', '').strip()
+                # Handle both string and number types from JSON
+                full_name = str(json_data.get('full_name', '')).strip()
+                phone_number = str(json_data.get('phone_number', '')).strip() or None
+                qualifications = str(json_data.get('qualifications', '')).strip()
+                experience_years = str(json_data.get('experience_years', '0')).strip()
+                subjects = str(json_data.get('subjects', '')).strip()
+                hourly_rate = str(json_data.get('hourly_rate', '0')).strip()
+                bio = str(json_data.get('bio', '')).strip()
             except Exception:
                 # Fallback to form data if JSON parsing fails
                 full_name = request.form.get('full_name', '').strip()
