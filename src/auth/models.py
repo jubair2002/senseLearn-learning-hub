@@ -283,3 +283,30 @@ class ModuleFile(db.Model):
     
     def __repr__(self) -> str:
         return f"<ModuleFile {self.file_name} (module={self.module_id})>"
+
+
+class StudentFileProgress(db.Model):
+    """Model for tracking student progress on course files."""
+    __tablename__ = "student_file_progress"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='CASCADE'), nullable=False, index=True)
+    file_id = db.Column(db.Integer, db.ForeignKey("module_files.id", ondelete='CASCADE'), nullable=False, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey("courses.id", ondelete='CASCADE'), nullable=False, index=True)
+    first_viewed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    last_viewed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, onupdate=datetime.utcnow)
+    view_count = db.Column(db.Integer, default=1, nullable=False)  # Number of times file was viewed
+    
+    # Relationships
+    student = db.relationship("User", foreign_keys=[student_id], backref="file_progress")
+    file = db.relationship("ModuleFile", backref="student_progress")
+    course = db.relationship("Course", backref="student_progress")
+    
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'file_id', name='uq_student_file_progress'),
+        db.Index('ix_student_file_progress_student_course', 'student_id', 'course_id'),
+        db.Index('ix_student_file_progress_course_student', 'course_id', 'student_id'),
+    )
+    
+    def __repr__(self) -> str:
+        return f"<StudentFileProgress student={self.student_id} file={self.file_id} course={self.course_id}>"

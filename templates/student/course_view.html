@@ -41,10 +41,11 @@
                         {% if module.files and module.files|length > 0 %}
                             {% for file in module.files %}
                             <div class="file-item p-3 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md transition-all duration-200 cursor-pointer group file-link" 
-                                 onclick="openFile('{{ file.url }}', '{{ file.file_name }}', '{{ file.file_type }}', {{ module.id }}, {{ loop.index0 }})"
+                                 onclick="openFile('{{ file.url }}', '{{ file.file_name }}', '{{ file.file_type }}', {{ module.id }}, {{ loop.index0 }}, {{ file.id }})"
                                  data-file-url="{{ file.url }}"
                                  data-file-name="{{ file.file_name }}"
-                                 data-file-type="{{ file.file_type }}">
+                                 data-file-type="{{ file.file_type }}"
+                                 data-file-id="{{ file.id }}">
                                 <div class="flex items-start gap-3">
                                     <div class="w-10 h-10 bg-slate-100 group-hover:bg-emerald-100 rounded-lg flex items-center justify-center transition">
                                         {% if file.file_type.lower() == 'pdf' %}
@@ -55,6 +56,8 @@
                                             <i class="fas fa-file-powerpoint text-orange-500 text-lg"></i>
                                         {% elif file.file_type.lower() in ['jpg', 'jpeg', 'png', 'gif'] %}
                                             <i class="fas fa-file-image text-purple-500 text-lg"></i>
+                                        {% elif file.file_type.lower() in ['mp4', 'webm', 'avi', 'mov', 'mkv'] %}
+                                            <i class="fas fa-file-video text-red-600 text-lg"></i>
                                         {% elif file.file_type.lower() == 'txt' %}
                                             <i class="fas fa-file-alt text-slate-500 text-lg"></i>
                                         {% else %}
@@ -123,6 +126,11 @@
                     {% if course.description %}
                     <p class="text-slate-600 mb-6">{{ course.description }}</p>
                     {% endif %}
+                    
+                    <!-- Progress Display -->
+                    <div id="course-progress-display" class="mb-6">
+                        <!-- Progress will be loaded here -->
+                    </div>
                     <p class="text-slate-600">Select a file from the left sidebar to start learning.</p>
                 </div>
             </div>
@@ -163,6 +171,7 @@
     // Store all files for navigation
     let allFiles = [];
     let currentFileIndex = -1;
+    let courseId = {{ course_id }};
     
     // Collect all files from sidebar
     function collectAllFiles() {
@@ -172,13 +181,71 @@
                 url: link.getAttribute('data-file-url'),
                 fileName: link.getAttribute('data-file-name'),
                 fileType: link.getAttribute('data-file-type'),
+                fileId: link.getAttribute('data-file-id'),
                 element: link
             });
         });
     }
     
+    // Track file view progress
+    async function trackFileView(fileId) {
+        if (!fileId) return;
+        
+        try {
+            const response = await fetch(`/student/api/progress/file/${fileId}/track`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    // Update progress display
+                    updateProgressDisplay();
+                }
+            }
+        } catch (error) {
+            console.error('Error tracking file view:', error);
+        }
+    }
+    
+    // Update progress display
+    async function updateProgressDisplay() {
+        if (!courseId) return;
+        
+        try {
+            const response = await fetch(`/student/api/courses/${courseId}/progress`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.progress) {
+                    const progress = data.progress;
+                    const progressElement = document.getElementById('course-progress-display');
+                    if (progressElement) {
+                        progressElement.innerHTML = `
+                            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-semibold text-emerald-800">Course Progress</span>
+                                    <span class="text-lg font-bold text-emerald-900">${progress.percentage}%</span>
+                                </div>
+                                <div class="w-full bg-emerald-200 rounded-full h-2.5 mb-1">
+                                    <div class="bg-emerald-600 h-2.5 rounded-full transition-all duration-500" style="width: ${progress.percentage}%"></div>
+                                </div>
+                                <p class="text-xs text-emerald-700">${progress.viewed_files} of ${progress.total_files} files viewed</p>
+                            </div>
+                        `;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error updating progress:', error);
+        }
+    }
+    
     // Open file in main content area (tutorial-style)
-    function openFile(url, fileName, fileType, moduleId, fileIndex) {
+    function openFile(url, fileName, fileType, moduleId, fileIndex, fileId) {
         // Collect all files if not done
         if (allFiles.length === 0) {
             collectAllFiles();
@@ -223,6 +290,11 @@
             bgElements.forEach(el => {
                 el.classList.add('!bg-white/20', '!text-white');
             });
+        }
+        
+        // Track file view
+        if (fileId) {
+            trackFileView(parseInt(fileId));
         }
         
         // Show file in main content area
@@ -270,6 +342,23 @@
             img.alt = fileName;
             fileContentArea.innerHTML = '';
             fileContentArea.appendChild(img);
+        } else if (['mp4', 'webm', 'avi', 'mov', 'mkv'].includes(fileTypeLower)) {
+            // Video player
+            const videoContainer = document.createElement('div');
+            videoContainer.className = 'w-full flex justify-center';
+            const video = document.createElement('video');
+            video.src = url;
+            video.controls = true;
+            video.className = 'max-w-full max-h-[calc(100vh-200px)] rounded-lg shadow-lg';
+            video.style.width = '100%';
+            video.style.height = 'auto';
+            const source = document.createElement('source');
+            source.src = url;
+            source.type = `video/${fileTypeLower}`;
+            video.appendChild(source);
+            videoContainer.appendChild(video);
+            fileContentArea.innerHTML = '';
+            fileContentArea.appendChild(videoContainer);
         } else if (fileTypeLower === 'txt') {
             // Text file viewer
             fetch(url)
@@ -331,7 +420,11 @@
         const newIndex = currentFileIndex + direction;
         if (newIndex >= 0 && newIndex < allFiles.length) {
             const file = allFiles[newIndex];
-            openFile(file.url, file.fileName, file.fileType);
+            // Find module ID and file index from the element
+            const element = file.element;
+            const moduleId = element.closest('.module-files')?.id.replace('files-', '');
+            const fileIndex = Array.from(element.parentElement.children).indexOf(element);
+            openFile(file.url, file.fileName, file.fileType, moduleId, fileIndex, file.fileId);
         }
     }
     

@@ -103,7 +103,7 @@ class Config:
         self.UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "D:/uploads")  # Default to D:/uploads for local testing
         self.MAX_FILE_SIZE: int = int(os.getenv("MAX_FILE_SIZE", "10485760"))  # Default 10MB in bytes
         # Convert extensions to lowercase for case-insensitive matching
-        allowed_exts_str = os.getenv("ALLOWED_EXTENSIONS", "pdf,doc,docx,jpg,jpeg,png,ppt,pptx,gif,txt")
+        allowed_exts_str = os.getenv("ALLOWED_EXTENSIONS", "pdf,doc,docx,jpg,jpeg,png,ppt,pptx,gif,txt,mp4,webm,avi,mov,mkv")
         self.ALLOWED_EXTENSIONS: set = set(ext.strip().lower() for ext in allowed_exts_str.split(","))
     
     @property

@@ -2,7 +2,7 @@ from flask import render_template, jsonify, request, flash, redirect, url_for
 from flask_login import login_required, current_user
 from src import db
 from src.student import student_bp
-from src.auth.models import Course, CourseStudent, CourseRequest, course_tutors, User, CourseModule, ModuleFile
+from src.auth.models import Course, CourseStudent, CourseRequest, course_tutors, User, CourseModule, ModuleFile, StudentFileProgress
 from src.common.file_utils import get_file_url
 
 @student_bp.route('/dashboard')
@@ -516,3 +516,139 @@ def get_course_view(course_id):
             'error': f'Failed to load course: {str(e)}',
             'details': str(e) if current_app.debug else None
         }), 500
+
+
+@student_bp.route('/api/progress/file/<int:file_id>/track', methods=['POST'])
+@login_required
+def track_file_view(file_id):
+    """API endpoint to track when a student views a file."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        # Get the file and verify it exists
+        file_obj = ModuleFile.query.get(file_id)
+        if not file_obj:
+            return jsonify({'success': False, 'error': 'File not found'}), 404
+        
+        # Get the course_id from the module
+        course_id = file_obj.module.course_id
+        
+        # Verify student is enrolled in the course
+        enrollment = CourseStudent.query.filter_by(
+            course_id=course_id,
+            student_id=current_user.id,
+            status='enrolled'
+        ).first()
+        
+        if not enrollment:
+            return jsonify({'success': False, 'error': 'You are not enrolled in this course'}), 403
+        
+        # Check if progress already exists
+        progress = StudentFileProgress.query.filter_by(
+            student_id=current_user.id,
+            file_id=file_id
+        ).first()
+        
+        from datetime import datetime
+        if progress:
+            # Update existing progress
+            progress.last_viewed_at = datetime.utcnow()
+            progress.view_count += 1
+        else:
+            # Create new progress record
+            progress = StudentFileProgress(
+                student_id=current_user.id,
+                file_id=file_id,
+                course_id=course_id,
+                first_viewed_at=datetime.utcnow(),
+                last_viewed_at=datetime.utcnow(),
+                view_count=1
+            )
+            db.session.add(progress)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Progress updated',
+            'view_count': progress.view_count
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        from flask import current_app
+        current_app.logger.exception(f"Error tracking file view for file {file_id}")
+        return jsonify({'success': False, 'error': 'Failed to track progress'}), 500
+
+
+@student_bp.route('/api/courses/<int:course_id>/progress', methods=['GET'])
+@login_required
+def get_course_progress(course_id):
+    """API endpoint to get student's progress for a specific course."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        # Verify student is enrolled
+        enrollment = CourseStudent.query.filter_by(
+            course_id=course_id,
+            student_id=current_user.id,
+            status='enrolled'
+        ).first()
+        
+        if not enrollment:
+            return jsonify({'success': False, 'error': 'You are not enrolled in this course'}), 403
+        
+        # Get all files in the course (across all modules)
+        modules = CourseModule.query.filter_by(course_id=course_id).all()
+        total_files = 0
+        file_ids = []
+        
+        for module in modules:
+            files = ModuleFile.query.filter_by(module_id=module.id).all()
+            total_files += len(files)
+            file_ids.extend([f.id for f in files])
+        
+        # Get viewed files
+        viewed_progress = StudentFileProgress.query.filter(
+            StudentFileProgress.student_id == current_user.id,
+            StudentFileProgress.file_id.in_(file_ids)
+        ).all()
+        
+        viewed_count = len(viewed_progress)
+        viewed_file_ids = {p.file_id for p in viewed_progress}
+        
+        # Calculate percentage
+        percentage = round((viewed_count / total_files * 100) if total_files > 0 else 0, 2)
+        
+        # Get detailed progress per module
+        modules_progress = []
+        for module in modules:
+            module_files = ModuleFile.query.filter_by(module_id=module.id).all()
+            module_total = len(module_files)
+            module_viewed = sum(1 for f in module_files if f.id in viewed_file_ids)
+            module_percentage = round((module_viewed / module_total * 100) if module_total > 0 else 0, 2)
+            
+            modules_progress.append({
+                'module_id': module.id,
+                'module_name': module.name,
+                'total_files': module_total,
+                'viewed_files': module_viewed,
+                'percentage': module_percentage
+            })
+        
+        return jsonify({
+            'success': True,
+            'progress': {
+                'total_files': total_files,
+                'viewed_files': viewed_count,
+                'percentage': percentage,
+                'modules': modules_progress
+            }
+        }), 200
+        
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.exception(f"Error getting progress for course {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to get progress'}), 500
