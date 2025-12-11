@@ -673,14 +673,14 @@
                         <i class="fas fa-file-upload mr-1"></i>Select File to Upload
                     </label>
                     <div id="drop-zone" class="border-2 border-dashed border-blue-400 rounded-lg p-6 text-center hover:border-blue-500 hover:bg-blue-50 transition cursor-pointer bg-slate-50" onclick="document.getElementById('module-file-input').click()">
-                        <input type="file" id="module-file-input" required class="hidden" accept=".pdf,.PDF,.pptx,.PPTX,.ppt,.PPT,.doc,.DOC,.docx,.DOCX,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.gif,.GIF,.txt,.TXT">
+                        <input type="file" id="module-file-input" required class="hidden" accept=".pdf,.PDF,.pptx,.PPTX,.ppt,.PPT,.doc,.DOC,.docx,.DOCX,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.gif,.GIF,.txt,.TXT,.mp4,.MP4,.webm,.WEBM,.avi,.AVI,.mov,.MOV,.mkv,.MKV">
                         <i class="fas fa-cloud-upload-alt text-5xl text-blue-500 mb-3" id="upload-icon"></i>
                         <p class="text-base font-semibold text-slate-700 mb-1" id="drop-text">Click to browse or drag and drop</p>
                         <p class="text-xs text-slate-500 font-medium" id="file-name-display">No file selected</p>
                     </div>
                     <p class="text-xs text-slate-500 mt-2">
                         <i class="fas fa-info-circle mr-1"></i>
-                        Supported: PDF, PPTX, PPT, DOC, DOCX, JPG, PNG, GIF, TXT (Max 10MB)
+                        Supported: PDF, PPTX, PPT, DOC, DOCX, JPG, PNG, GIF, TXT, MP4, WEBM, AVI, MOV, MKV (Max 10MB)
                     </p>
                 </div>
                 <div class="flex gap-3 justify-end">
@@ -1466,6 +1466,22 @@
                                         </div>
                                     `}
                                 </div>
+                                
+                                <!-- Student Progress Section -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h4 class="text-lg font-medium text-slate-900">Student Progress</h4>
+                                        <button onclick="loadStudentProgress(${courseId})" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-sm font-medium">
+                                            <i class="fas fa-chart-line mr-1.5"></i>View Progress
+                                        </button>
+                                    </div>
+                                    <div id="student-progress-content-${courseId}" class="space-y-4">
+                                        <div class="text-center py-8 border border-dashed border-slate-200 rounded-xl bg-slate-50">
+                                            <i class="fas fa-chart-bar text-4xl text-slate-300 mb-3"></i>
+                                            <p class="text-slate-500 text-sm">Click "View Progress" to see student progress</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             
                             <!-- Footer -->
@@ -1971,6 +1987,70 @@
             }
         }
 
+        // Load and display student progress for a course
+        async function loadStudentProgress(courseId) {
+            const progressContent = document.getElementById(`student-progress-content-${courseId}`);
+            if (!progressContent) return;
+            
+            progressContent.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-blue-600 mb-3"></i><p class="text-slate-600">Loading progress...</p></div>`;
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/students/progress`);
+                const result = await response.json();
+                
+                if (result.success && result.students) {
+                    if (result.students.length === 0) {
+                        progressContent.innerHTML = `<div class="text-center py-12 border border-dashed border-slate-200 rounded-xl"><i class="fas fa-user-friends text-4xl text-slate-300 mb-3"></i><p class="text-slate-500 text-sm">No enrolled students to track</p></div>`;
+                        return;
+                    }
+                    
+                    const progressHTML = result.students.map(student => `
+                        <div class="border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all bg-white">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex-1">
+                                    <h5 class="font-semibold text-slate-900 text-lg mb-1">${student.student_name}</h5>
+                                    <p class="text-sm text-slate-600 mb-2">${student.student_email}</p>
+                                    ${student.enrolled_at ? `<p class="text-xs text-slate-500">Enrolled: ${new Date(student.enrolled_at).toLocaleDateString()}</p>` : ''}
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold text-emerald-600 mb-1">${student.percentage}%</div>
+                                    <p class="text-xs text-slate-500">${student.viewed_files} / ${student.total_files} files</p>
+                                </div>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-3 mb-3">
+                                <div class="bg-emerald-600 h-3 rounded-full transition-all duration-500" style="width: ${student.percentage}%"></div>
+                            </div>
+                            <details class="mt-3">
+                                <summary class="cursor-pointer text-sm font-medium text-slate-700 hover:text-slate-900 transition">
+                                    <i class="fas fa-chevron-down text-xs mr-1"></i>Module Breakdown
+                                </summary>
+                                <div class="mt-3 space-y-2 pl-4 border-l-2 border-slate-200">
+                                    ${student.modules.map(module => `
+                                        <div class="py-2">
+                                            <div class="flex items-center justify-between mb-1">
+                                                <span class="text-sm font-medium text-slate-700">${module.module_name}</span>
+                                                <span class="text-xs font-semibold text-emerald-600">${module.percentage}%</span>
+                                            </div>
+                                            <div class="w-full bg-slate-100 rounded-full h-1.5">
+                                                <div class="bg-emerald-500 h-1.5 rounded-full" style="width: ${module.percentage}%"></div>
+                                            </div>
+                                            <p class="text-xs text-slate-500 mt-1">${module.viewed_files} / ${module.total_files} files</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </details>
+                        </div>
+                    `).join('');
+                    
+                    progressContent.innerHTML = progressHTML;
+                } else {
+                    progressContent.innerHTML = `<div class="text-center py-8 text-red-500"><i class="fas fa-exclamation-triangle text-3xl mb-3"></i><p class="text-sm">Error: ${result.error || 'Unknown error'}</p></div>`;
+                }
+            } catch (error) {
+                progressContent.innerHTML = `<div class="text-center py-8 text-red-500"><i class="fas fa-exclamation-triangle text-3xl mb-3"></i><p class="text-sm">Error: ${error.message}</p></div>`;
+            }
+        }
+        
         async function assignStudentsToCourseView(courseId) {
             try {
                 const response = await fetch('/tutor/api/students');

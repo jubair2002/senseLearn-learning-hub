@@ -11,10 +11,16 @@
             transition: all 0.3s ease-in-out;
         }
         .content-section {
-            display: none;
+            display: none !important;
+            position: relative;
         }
         .content-section.active {
-            display: block;
+            display: block !important;
+        }
+        #course-view-container {
+            width: 100%;
+            position: relative;
+            z-index: 1;
         }
     </style>
 </head>
@@ -454,7 +460,7 @@
                 </div>
                 
                 <!-- Course View Container (hidden by default) -->
-                <div id="course-view-container" class="content-section" style="display: none;">
+                <div id="course-view-container" class="content-section" style="display: none; position: relative; z-index: 1;">
                     <!-- Course view will be loaded here dynamically -->
                 </div>
 
@@ -563,9 +569,10 @@
 
         // Navigation handler with URL update and persistence
         function showSection(sectionName, updateUrl = true) {
-            // Hide all sections
+            // Hide ALL sections including course view container (use both class and inline style)
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
+                section.style.display = 'none';
             });
             
             // Hide course view container if visible
@@ -575,15 +582,10 @@
                 courseViewContainer.classList.remove('active');
             }
             
-            // Show courses section if it was hidden
-            const coursesSection = document.getElementById('section-courses');
-            if (coursesSection) {
-                coursesSection.style.display = 'block';
-            }
-            
             // Show selected section
             const targetSection = document.getElementById(`section-${sectionName}`);
             if (targetSection) {
+                targetSection.style.display = 'block';
                 targetSection.classList.add('active');
             }
             
@@ -1029,7 +1031,21 @@
                                 <!-- Course Content -->
                                 <div class="p-5">
                                     <h4 class="text-lg font-bold text-slate-800 mb-2 line-clamp-1 group-hover:text-emerald-600 transition">${course.name}</h4>
-                                    <p class="text-sm text-slate-600 mb-4 line-clamp-2 min-h-[2.5rem]">${course.description || 'Explore course materials and resources'}</p>
+                                    <p class="text-sm text-slate-600 mb-3 line-clamp-2 min-h-[2.5rem]">${course.description || 'Explore course materials and resources'}</p>
+                                    
+                                    <!-- Progress Display -->
+                                    ${course.progress ? `
+                                        <div class="mb-4">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <span class="text-xs font-semibold text-slate-600">Progress</span>
+                                                <span class="text-sm font-bold text-emerald-600">${course.progress.percentage}%</span>
+                                            </div>
+                                            <div class="w-full bg-slate-200 rounded-full h-2 mb-1">
+                                                <div class="bg-emerald-600 h-2 rounded-full transition-all duration-500" style="width: ${course.progress.percentage}%"></div>
+                                            </div>
+                                            <p class="text-xs text-slate-500">${course.progress.viewed_files} of ${course.progress.total_files} files</p>
+                                        </div>
+                                    ` : ''}
                                     
                                     <button class="w-full px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-semibold text-sm group-hover:shadow-lg">
                                         Open Course <i class="fas fa-arrow-right ml-2"></i>
@@ -1204,11 +1220,25 @@
         function viewStudentCourse(courseId) {
             currentStudentCourseId = courseId;
             
-            // Hide courses list, show course view container
-            document.getElementById('section-courses').style.display = 'none';
+            // Hide ALL sections first
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+                section.style.display = 'none';
+            });
+            
+            // Hide courses list specifically
+            const coursesSection = document.getElementById('section-courses');
+            if (coursesSection) {
+                coursesSection.style.display = 'none';
+                coursesSection.classList.remove('active');
+            }
+            
+            // Show course view container
             const courseViewContainer = document.getElementById('course-view-container');
-            courseViewContainer.style.display = 'block';
-            courseViewContainer.classList.add('active');
+            if (courseViewContainer) {
+                courseViewContainer.style.display = 'block';
+                courseViewContainer.classList.add('active');
+            }
             
             // Update page title
             document.getElementById('page-title').textContent = 'Course View';

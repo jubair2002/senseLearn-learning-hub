@@ -13,7 +13,7 @@ def allowed_file(filename: str) -> bool:
     ext = filename.rsplit('.', 1)[1].lower()
     
     # Default allowed extensions (always supported)
-    default_exts = {'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'gif', 'txt'}
+    default_exts = {'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'ppt', 'pptx', 'gif', 'txt', 'mp4', 'webm', 'avi', 'mov', 'mkv'}
     
     # Check against default first (this ensures backwards compatibility)
     if ext in default_exts:
