@@ -240,13 +240,40 @@ def list_enrolled_courses():
                             'email': tutor.email
                         })
                 
+                # Calculate progress for this course
+                modules = CourseModule.query.filter_by(course_id=course.id).all()
+                total_files = 0
+                file_ids = []
+                
+                for module in modules:
+                    files = ModuleFile.query.filter_by(module_id=module.id).all()
+                    total_files += len(files)
+                    file_ids.extend([f.id for f in files])
+                
+                # Get viewed files for this student
+                viewed_count = 0
+                if file_ids:
+                    viewed_progress = StudentFileProgress.query.filter(
+                        StudentFileProgress.student_id == current_user.id,
+                        StudentFileProgress.file_id.in_(file_ids)
+                    ).all()
+                    viewed_count = len(viewed_progress)
+                
+                # Calculate percentage
+                percentage = round((viewed_count / total_files * 100) if total_files > 0 else 0, 1)
+                
                 courses_data.append({
                     'id': course.id,
                     'name': course.name,
                     'description': course.description or '',
                     'enrolled_at': enrollment.assigned_at.isoformat() if enrollment.assigned_at else None,
                     'tutor_count': len(tutors_data),
-                    'tutors': tutors_data
+                    'tutors': tutors_data,
+                    'progress': {
+                        'percentage': percentage,
+                        'viewed_files': viewed_count,
+                        'total_files': total_files
+                    }
                 })
         
         return jsonify({'success': True, 'courses': courses_data}), 200

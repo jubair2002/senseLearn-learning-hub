@@ -126,11 +126,6 @@
                     {% if course.description %}
                     <p class="text-slate-600 mb-6">{{ course.description }}</p>
                     {% endif %}
-                    
-                    <!-- Progress Display -->
-                    <div id="course-progress-display" class="mb-6">
-                        <!-- Progress will be loaded here -->
-                    </div>
                     <p class="text-slate-600">Select a file from the left sidebar to start learning.</p>
                 </div>
             </div>
@@ -202,47 +197,14 @@
             
             if (response.ok) {
                 const data = await response.json();
-                if (data.success) {
-                    // Update progress display
-                    updateProgressDisplay();
-                }
+                // Progress is tracked - will update when user returns to course list
             }
         } catch (error) {
             console.error('Error tracking file view:', error);
         }
     }
     
-    // Update progress display
-    async function updateProgressDisplay() {
-        if (!courseId) return;
-        
-        try {
-            const response = await fetch(`/student/api/courses/${courseId}/progress`);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success && data.progress) {
-                    const progress = data.progress;
-                    const progressElement = document.getElementById('course-progress-display');
-                    if (progressElement) {
-                        progressElement.innerHTML = `
-                            <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-4">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-sm font-semibold text-emerald-800">Course Progress</span>
-                                    <span class="text-lg font-bold text-emerald-900">${progress.percentage}%</span>
-                                </div>
-                                <div class="w-full bg-emerald-200 rounded-full h-2.5 mb-1">
-                                    <div class="bg-emerald-600 h-2.5 rounded-full transition-all duration-500" style="width: ${progress.percentage}%"></div>
-                                </div>
-                                <p class="text-xs text-emerald-700">${progress.viewed_files} of ${progress.total_files} files viewed</p>
-                            </div>
-                        `;
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Error updating progress:', error);
-        }
-    }
+    // Update progress display (removed - progress is now shown on course cards)
     
     // Open file in main content area (tutorial-style)
     function openFile(url, fileName, fileType, moduleId, fileIndex, fileId) {
@@ -292,7 +254,7 @@
             });
         }
         
-        // Track file view
+        // Track file view (progress updates will reflect on course cards)
         if (fileId) {
             trackFileView(parseInt(fileId));
         }
