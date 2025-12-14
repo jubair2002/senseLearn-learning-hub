@@ -28,3 +28,23 @@ body {
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* High Contrast Mode Overrides */
+body.high-contrast {
+    background-image: none !important;
+    background-color: #000000 !important;
+    color: #FFFF00 !important;
+}
+
+body.high-contrast * {
+    background-color: #000000 !important;
+    color: #FFFF00 !important;
+    border-color: #FFFF00 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    background-image: none !important;
+}
+
+body.high-contrast .accent-border {
+    border: 2px solid #FFFF00 !important;
+}
