@@ -1,0 +1,34 @@
+.sidebar {
+    width: 16rem; /* w-64 */
+    transition: width 0.3s ease-in-out;
+}
+.main-content {
+    margin-left: 16rem; /* ml-64 */
+    transition: margin-left 0.3s ease-in-out;
+}
+.sidebar-item-text {
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
+}
+.sidebar-link-full {
+    justify-content: start;
+}
+
+/* COLLAPSED STATE */
+.sidebar-collapsed .sidebar {
+    width: 5rem; /* w-20 */
+}
+.sidebar-collapsed .main-content {
+    margin-left: 5rem; /* ml-20 */
+}
+.sidebar-collapsed .sidebar-item-text,
+.sidebar-collapsed .logo-text,
+.sidebar-collapsed .tutor-info-name {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+.sidebar-collapsed .sidebar-link-full {
+    justify-content: center;
+}
