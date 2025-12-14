@@ -6,23 +6,7 @@
     <title>Student Dashboard - SenseLearn</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        .sidebar-transition {
-            transition: all 0.3s ease-in-out;
-        }
-        .content-section {
-            display: none !important;
-            position: relative;
-        }
-        .content-section.active {
-            display: block !important;
-        }
-        #course-view-container {
-            width: 100%;
-            position: relative;
-            z-index: 1;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/student-dashboard.css') }}">
 </head>
 <body class="bg-slate-50 min-h-screen">
     <div class="flex h-screen overflow-hidden">
@@ -529,6 +513,7 @@
         </div>
     </div>
 
+    <script src="{{ url_for('static', filename='js/student-dashboard.js') }}"></script>
     <script>
         // Page titles mapping
         const pageTitles = {

@@ -7,42 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <style>
-        .sidebar {
-            width: 16rem; /* w-64 */
-            transition: width 0.3s ease-in-out;
-        }
-        .main-content {
-            margin-left: 16rem; /* ml-64 */
-            transition: margin-left 0.3s ease-in-out;
-        }
-        .sidebar-item-text {
-            opacity: 1;
-            transition: opacity 0.3s ease-in-out;
-        }
-        .sidebar-link-full {
-            justify-content: start;
-        }
-
-        /* COLLAPSED STATE */
-        .sidebar-collapsed .sidebar {
-            width: 5rem; /* w-20 */
-        }
-        .sidebar-collapsed .main-content {
-            margin-left: 5rem; /* ml-20 */
-        }
-        .sidebar-collapsed .sidebar-item-text,
-        .sidebar-collapsed .logo-text,
-        .sidebar-collapsed .tutor-info-name {
-            opacity: 0;
-            width: 0;
-            overflow: hidden;
-            white-space: nowrap;
-        }
-        .sidebar-collapsed .sidebar-link-full {
-            justify-content: center;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tutor-base.css') }}">
 </head>
 <body class="bg-gray-50 min-h-screen sidebar-expanded">
     
@@ -117,27 +82,7 @@
     </div>
 
     {% block scripts %}
-    <script>
-        function toggleSidebar() {
-            const body = document.body;
-            const icon = document.getElementById('toggle-icon');
-            
-            // Check current state and toggle class on body
-            if (body.classList.contains('sidebar-expanded')) {
-                body.classList.remove('sidebar-expanded');
-                body.classList.add('sidebar-collapsed');
-                // Change icon to 'expand'
-                icon.classList.remove('fa-arrow-left');
-                icon.classList.add('fa-arrow-right');
-            } else {
-                body.classList.remove('sidebar-collapsed');
-                body.classList.add('sidebar-expanded');
-                // Change icon to 'collapse'
-                icon.classList.remove('fa-arrow-right');
-                icon.classList.add('fa-arrow-left');
-            }
-        }
-    </script>
+    <script src="{{ url_for('static', filename='js/tutor-base.js') }}"></script>
     {% endblock %}
 
 </body>
