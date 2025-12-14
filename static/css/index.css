@@ -1,0 +1,14 @@
+/* Custom Accessibility & Base Styles */
+:root {
+    --text-scale: 1;
+}
+
+html {
+    font-size: calc(16px * var(--text-scale));
+}
+
+body {
+    background-color: #F8FAFC;
+    background-image: radial-gradient(#E2E8F0 1px, transparent 1px);
+    background-size: 32px 32px;
+}
