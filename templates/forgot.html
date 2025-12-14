@@ -87,7 +87,10 @@
     </div>
 
     <script>
+        // Make API_BASE available globally for forgot.js
         const API_BASE = '{{ APP_CONFIG.AUTH_API_PREFIX }}';
+    </script>
+    <script src="{{ url_for('static', filename='js/forgot.js') }}"></script>
 
         // Step 1: Request Reset Code
         document.getElementById('forgot-form').addEventListener('submit', async (e) => {
