@@ -305,19 +305,51 @@
             fileContentArea.innerHTML = '';
             fileContentArea.appendChild(img);
         } else if (['mp4', 'webm', 'avi', 'mov', 'mkv'].includes(fileTypeLower)) {
-            // Video player
+            // Video player with streaming support (HTTP Range requests)
             const videoContainer = document.createElement('div');
-            videoContainer.className = 'w-full flex justify-center';
+            videoContainer.className = 'w-full flex justify-center relative';
+            
+            // Loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg';
+            loadingDiv.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin text-4xl text-emerald-600 mb-2"></i><p class="text-slate-600">Loading video...</p></div>';
+            
             const video = document.createElement('video');
             video.src = url;
             video.controls = true;
+            video.preload = 'metadata'; // Only load metadata, not entire video (saves bandwidth)
             video.className = 'max-w-full max-h-[calc(100vh-200px)] rounded-lg shadow-lg';
             video.style.width = '100%';
             video.style.height = 'auto';
+            
+            // Add source element with proper MIME type
             const source = document.createElement('source');
             source.src = url;
-            source.type = `video/${fileTypeLower}`;
+            // Set proper MIME type for better browser compatibility
+            const mimeTypes = {
+                'mp4': 'video/mp4',
+                'webm': 'video/webm',
+                'avi': 'video/x-msvideo',
+                'mov': 'video/quicktime',
+                'mkv': 'video/x-matroska'
+            };
+            source.type = mimeTypes[fileTypeLower] || `video/${fileTypeLower}`;
             video.appendChild(source);
+            
+            // Handle video loading events
+            video.addEventListener('loadedmetadata', () => {
+                loadingDiv.remove();
+            });
+            
+            video.addEventListener('error', (e) => {
+                loadingDiv.innerHTML = '<div class="text-center text-red-600"><i class="fas fa-exclamation-triangle text-4xl mb-2"></i><p>Failed to load video</p><p class="text-sm mt-2">Please try again or download the file</p></div>';
+            });
+            
+            video.addEventListener('loadstart', () => {
+                // Video is starting to load
+            });
+            
+            videoContainer.appendChild(loadingDiv);
             videoContainer.appendChild(video);
             fileContentArea.innerHTML = '';
             fileContentArea.appendChild(videoContainer);

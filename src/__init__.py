@@ -179,35 +179,122 @@ def create_app() -> Flask:
         return redirect(url_for('login_page'))
     
     def serve_file_response(full_path):
-        """Helper function to serve a file with proper headers."""
+        """Helper function to serve a file with proper headers and HTTP Range support for streaming."""
         from mimetypes import guess_type
         import hashlib
         import os
+        from flask import Response, request
         
         # Determine MIME type for proper browser handling
         mime_type, _ = guess_type(full_path)
         if not mime_type:
             mime_type = 'application/octet-stream'
         
-        # Send file with proper headers for inline display
+        # Get file size
+        file_size = os.path.getsize(full_path)
+        file_stat = os.stat(full_path)
+        
+        # Check if this is a video file that should support streaming
+        video_extensions = {'.mp4', '.webm', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.m4v'}
+        is_video = any(full_path.lower().endswith(ext) for ext in video_extensions)
+        
+        # Handle HTTP Range requests for video streaming (YouTube-style)
+        range_header = request.headers.get('Range', None)
+        
+        if range_header and is_video:
+            # Parse range header (format: "bytes=start-end")
+            try:
+                byte_start = 0
+                byte_end = file_size - 1
+                
+                # Extract range values
+                range_match = range_header.replace('bytes=', '').split('-')
+                if range_match[0]:
+                    byte_start = int(range_match[0])
+                if range_match[1]:
+                    byte_end = int(range_match[1])
+                
+                # Ensure valid range
+                if byte_start >= file_size:
+                    return Response(status=416)  # Range Not Satisfiable
+                
+                if byte_end >= file_size:
+                    byte_end = file_size - 1
+                
+                # Calculate content length
+                content_length = byte_end - byte_start + 1
+                
+                # Read the requested byte range
+                def generate():
+                    with open(full_path, 'rb') as f:
+                        f.seek(byte_start)
+                        remaining = content_length
+                        # Use larger chunks for video streaming (64KB) for better performance
+                        # Smaller chunks (8KB) are fine for small files, but videos benefit from larger chunks
+                        chunk_size = 65536  # 64KB chunks for efficient video streaming
+                        
+                        while remaining > 0:
+                            read_size = min(chunk_size, remaining)
+                            chunk = f.read(read_size)
+                            if not chunk:
+                                break
+                            remaining -= len(chunk)
+                            yield chunk
+                
+                # Create response with 206 Partial Content status
+                response = Response(
+                    generate(),
+                    206,  # Partial Content
+                    {
+                        'Content-Type': mime_type,
+                        'Content-Range': f'bytes {byte_start}-{byte_end}/{file_size}',
+                        'Accept-Ranges': 'bytes',
+                        'Content-Length': str(content_length),
+                        'Content-Disposition': f'inline; filename="{os.path.basename(full_path)}"',
+                        'X-Content-Type-Options': 'nosniff',
+                        'X-Frame-Options': 'SAMEORIGIN',
+                        'Cache-Control': 'public, max-age=86400',  # 24 hours cache
+                    }
+                )
+                
+                # Add ETag for caching
+                etag = hashlib.md5(f"{full_path}{file_stat.st_mtime}{file_stat.st_size}".encode()).hexdigest()
+                response.headers['ETag'] = f'"{etag}"'
+                
+                return response
+                
+            except (ValueError, IOError) as e:
+                current_app.logger.error(f"Error handling range request: {str(e)}")
+                # Fall through to regular file serving
+        
+        # Regular file serving (non-range request or non-video file)
+        # For video files without range header, send full file but with Accept-Ranges header
+        # so browser can request ranges in future
         response = send_file(
             full_path,
             mimetype=mime_type,
             as_attachment=False,  # Display inline instead of downloading
             conditional=True  # Enable conditional requests (304 Not Modified)
         )
+        
         # Add headers for proper display
         response.headers['Content-Disposition'] = f'inline; filename="{os.path.basename(full_path)}"'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         # Allow embedding in iframe for file viewer (students)
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        
+        # Add Accept-Ranges header for video files to enable range requests
+        if is_video:
+            response.headers['Accept-Ranges'] = 'bytes'
+        
         # Optimized cache headers - longer cache for static files
         response.cache_control.max_age = 86400  # 24 hours
         response.cache_control.public = True
+        
         # Add ETag for better caching
-        file_stat = os.stat(full_path)
         etag = hashlib.md5(f"{full_path}{file_stat.st_mtime}{file_stat.st_size}".encode()).hexdigest()
         response.headers['ETag'] = f'"{etag}"'
+        
         return response
     
     @app.route("/uploads/<path:file_path>")
