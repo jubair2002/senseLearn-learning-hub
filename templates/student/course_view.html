@@ -253,3 +253,267 @@
                 el.classList.add('!bg-white/20', '!text-white');
             });
         }
+        
+        // Track file view (progress updates will reflect on course cards)
+        if (fileId) {
+            trackFileView(parseInt(fileId));
+        }
+        
+        // Show file in main content area
+        showFileViewer(url, fileName, fileType);
+        
+        // Update navigation buttons
+        updateNavigationButtons();
+    }
+    
+    // Show file content in main area
+    function showFileViewer(url, fileName, fileType) {
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const fileViewer = document.getElementById('file-content-viewer');
+        const fileContentArea = document.getElementById('file-content-area');
+        const contentTitle = document.getElementById('content-title');
+        
+        if (!fileViewer || !fileContentArea) return;
+        
+        // Hide welcome screen, show file viewer
+        welcomeScreen.classList.add('hidden');
+        fileViewer.classList.remove('hidden');
+        
+        // Update title
+        contentTitle.textContent = fileName;
+        
+        // Clear previous content
+        fileContentArea.innerHTML = '<div class="flex items-center justify-center h-full"><div class="text-center"><i class="fas fa-spinner fa-spin text-4xl text-emerald-600 mb-4"></i><p class="text-slate-600">Loading file...</p></div></div>';
+        
+        // Handle different file types
+        const fileTypeLower = (fileType || '').toLowerCase();
+        
+        if (fileTypeLower === 'pdf') {
+            // PDF viewer using iframe
+            const iframe = document.createElement('iframe');
+            iframe.src = url;
+            iframe.className = 'w-full border-0';
+            iframe.style.height = 'calc(100vh - 150px)';
+            fileContentArea.innerHTML = '';
+            fileContentArea.appendChild(iframe);
+        } else if (['jpg', 'jpeg', 'png', 'gif'].includes(fileTypeLower)) {
+            // Image viewer
+            const img = document.createElement('img');
+            img.src = url;
+            img.className = 'max-w-full h-auto mx-auto';
+            img.alt = fileName;
+            fileContentArea.innerHTML = '';
+            fileContentArea.appendChild(img);
+        } else if (['mp4', 'webm', 'avi', 'mov', 'mkv'].includes(fileTypeLower)) {
+            // Video player
+            const videoContainer = document.createElement('div');
+            videoContainer.className = 'w-full flex justify-center';
+            const video = document.createElement('video');
+            video.src = url;
+            video.controls = true;
+            video.className = 'max-w-full max-h-[calc(100vh-200px)] rounded-lg shadow-lg';
+            video.style.width = '100%';
+            video.style.height = 'auto';
+            const source = document.createElement('source');
+            source.src = url;
+            source.type = `video/${fileTypeLower}`;
+            video.appendChild(source);
+            videoContainer.appendChild(video);
+            fileContentArea.innerHTML = '';
+            fileContentArea.appendChild(videoContainer);
+        } else if (fileTypeLower === 'txt') {
+            // Text file viewer
+            fetch(url)
+                .then(response => response.text())
+                .then(text => {
+                    const pre = document.createElement('pre');
+                    pre.className = 'bg-slate-900 text-slate-100 p-6 rounded overflow-auto text-sm font-mono whitespace-pre-wrap';
+                    pre.style.maxHeight = 'calc(100vh - 200px)';
+                    pre.textContent = text;
+                    fileContentArea.innerHTML = '';
+                    fileContentArea.appendChild(pre);
+                })
+                .catch(error => {
+                    fileContentArea.innerHTML = `
+                        <div class="text-center py-12 text-red-500">
+                            <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                            <p class="text-lg font-semibold">Failed to load file content</p>
+                            <p class="text-sm mt-2 text-slate-600">${error.message}</p>
+                        </div>
+                    `;
+                });
+        } else if (['doc', 'docx', 'ppt', 'pptx'].includes(fileTypeLower)) {
+            // Office documents
+            fileContentArea.innerHTML = `
+                <div class="text-center py-12">
+                    <div class="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-file-${fileTypeLower.includes('ppt') ? 'powerpoint' : 'word'} text-emerald-600 text-4xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3">Office Document</h3>
+                    <p class="text-slate-600 mb-6">This file type cannot be previewed in the browser.</p>
+                    <a href="${url}" download="${fileName}" class="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition font-medium">
+                        <i class="fas fa-download"></i>
+                        Download File
+                    </a>
+                </div>
+            `;
+        } else {
+            // Unknown file type
+            fileContentArea.innerHTML = `
+                <div class="text-center py-12">
+                    <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-file text-slate-600 text-4xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3">File Preview Not Available</h3>
+                    <p class="text-slate-600 mb-6">This file type cannot be previewed in the browser.</p>
+                    <a href="${url}" download="${fileName}" class="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition font-medium">
+                        <i class="fas fa-download"></i>
+                        Download File
+                    </a>
+                </div>
+            `;
+        }
+    }
+    
+    // Navigate to previous/next file
+    function navigateFile(direction) {
+        if (allFiles.length === 0 || currentFileIndex === -1) return;
+        
+        const newIndex = currentFileIndex + direction;
+        if (newIndex >= 0 && newIndex < allFiles.length) {
+            const file = allFiles[newIndex];
+            // Find module ID and file index from the element
+            const element = file.element;
+            const moduleId = element.closest('.module-files')?.id.replace('files-', '');
+            const fileIndex = Array.from(element.parentElement.children).indexOf(element);
+            openFile(file.url, file.fileName, file.fileType, moduleId, fileIndex, file.fileId);
+        }
+    }
+    
+    // Update navigation buttons visibility
+    function updateNavigationButtons() {
+        const prevBtn = document.getElementById('prev-file-btn');
+        const nextBtn = document.getElementById('next-file-btn');
+        
+        if (prevBtn && nextBtn) {
+            if (allFiles.length > 1 && currentFileIndex !== -1) {
+                prevBtn.classList.remove('hidden');
+                nextBtn.classList.remove('hidden');
+                prevBtn.disabled = currentFileIndex === 0;
+                nextBtn.disabled = currentFileIndex === allFiles.length - 1;
+            } else {
+                prevBtn.classList.add('hidden');
+                nextBtn.classList.add('hidden');
+            }
+        }
+    }
+    
+    // Close file viewer and show welcome screen
+    function closeFileViewer() {
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const fileViewer = document.getElementById('file-content-viewer');
+        const contentTitle = document.getElementById('content-title');
+        const prevBtn = document.getElementById('prev-file-btn');
+        const nextBtn = document.getElementById('next-file-btn');
+        
+        if (welcomeScreen) welcomeScreen.classList.remove('hidden');
+        if (fileViewer) fileViewer.classList.add('hidden');
+        if (contentTitle) contentTitle.textContent = '{{ course.name }}';
+        if (prevBtn) prevBtn.classList.add('hidden');
+        if (nextBtn) nextBtn.classList.add('hidden');
+        
+        // Remove active styling
+        document.querySelectorAll('.file-link').forEach(link => {
+            link.classList.remove('active');
+            // Reset text colors
+            const textElements = link.querySelectorAll('.text-slate-800, .text-slate-500');
+            textElements.forEach(el => {
+                el.classList.remove('!text-white', '!text-emerald-100');
+            });
+            // Reset background
+            const bgElements = link.querySelectorAll('.bg-slate-100');
+            bgElements.forEach(el => {
+                el.classList.remove('!bg-white/20', '!text-white');
+            });
+        });
+        
+        currentFileIndex = -1;
+    }
+    
+    // Auto-expand first module on load (but don't auto-load first file)
+    (function() {
+        setTimeout(() => {
+            const firstModule = document.querySelector('.module-header');
+            if (firstModule) {
+                const moduleId = firstModule.getAttribute('onclick').match(/\d+/)[0];
+                toggleModule(moduleId);
+            }
+        }, 300);
+    })();
+</script>
+
+<style>
+    .module-files {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out, opacity 0.2s ease-out;
+        opacity: 0;
+    }
+    
+    .module-files:not(.hidden) {
+        opacity: 1;
+    }
+    
+    .module-chevron {
+        transition: transform 0.3s ease-out;
+    }
+    
+    .file-link.active {
+        background-color: #059669 !important;
+        border-color: #047857 !important;
+    }
+    
+    .file-link.active .text-slate-800 {
+        color: white !important;
+    }
+    
+    .file-link.active .text-slate-500 {
+        color: #d1fae5 !important;
+    }
+    
+    .file-link.active .bg-slate-100 {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+    }
+    
+    .file-link.active:hover {
+        background-color: #047857 !important;
+    }
+    
+    /* Smooth scrollbar */
+    .overflow-y-auto::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .overflow-y-auto::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    
+    .overflow-y-auto::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+    
+    .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+</style>
+
+<script>
+    // Close viewer on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeFileViewer();
+        }
+    });
+</script>
