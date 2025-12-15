@@ -310,6 +310,28 @@ def add_file_to_module(module_id):
         # Determine file type from extension
         file_type = ext if ext else 'unknown'
         
+        # Automatically convert video files to streamable format (fast start)
+        video_extensions = {'mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'm4v'}
+        if ext.lower() in video_extensions:
+            try:
+                from src.utils.make_video_streamable import make_streamable
+                from flask import current_app
+                
+                # Convert video to streamable format (replaces the file)
+                success, converted_path, error = make_streamable(full_path, full_path, logger=current_app.logger)
+                
+                if success:
+                    # Update file size after conversion (may have changed slightly)
+                    file_size = os.path.getsize(full_path)
+                    current_app.logger.info(f"Video {file.filename} automatically converted to streamable format")
+                else:
+                    # If conversion fails, continue with original file
+                    current_app.logger.warning(f"Video conversion failed for {file.filename}: {error}. Uploading original file.")
+            except Exception as e:
+                # If conversion fails, continue with original file
+                from flask import current_app
+                current_app.logger.warning(f"Error during video conversion: {str(e)}. Uploading original file.")
+        
         # Create ModuleFile record
         module_file = ModuleFile(
             module_id=module_id,
