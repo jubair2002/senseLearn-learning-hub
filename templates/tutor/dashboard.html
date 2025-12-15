@@ -1133,8 +1133,44 @@
                         loadCourses(searchQuery);
                     }
                 }, 100);
+            } else if (sectionName === 'course-view') {
+                // If switching to course-view, restore the course if one was being viewed
+                const savedCourseId = localStorage.getItem('tutor_current_course_id');
+                if (savedCourseId) {
+                    const courseId = parseInt(savedCourseId);
+                    if (!isNaN(courseId)) {
+                        setTimeout(() => {
+                            if (typeof openCourse === 'function') {
+                                // Check if course content is already loaded
+                                const contentEl = document.getElementById('course-view-content');
+                                const hasContent = contentEl && contentEl.innerHTML.trim() !== '';
+                                const hasCourseStructure = contentEl && contentEl.querySelector('[data-course-id]');
+                                
+                                // Only load if content is empty or doesn't have the course structure
+                                if (!hasContent || !hasCourseStructure) {
+                                    openCourse(courseId);
+                                }
+                            }
+                        }, 100);
+                    }
+                } else {
+                    // No saved course ID - show message or redirect to courses list
+                    const contentEl = document.getElementById('course-view-content');
+                    if (contentEl) {
+                        contentEl.innerHTML = '<div class="text-center py-12 text-slate-400"><i class="fas fa-book-open text-6xl mb-4"></i><p class="text-lg">No course selected</p><p class="text-sm mt-2">Please select a course from the courses list</p><button onclick="showSection(\'courses\')" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Go to Courses</button></div>';
+                    }
+                }
             }
         };
+        
+        // Restore course view if needed (after all functions are set up)
+        // This runs after the wrapped showSection is defined, so it will trigger the restoration logic
+        if (initialSection === 'course-view') {
+            // Trigger the wrapped showSection again to ensure course restoration happens
+            setTimeout(() => {
+                showSection('course-view', false);
+            }, 100);
+        }
         
         // Load documents if verification section is active on initial page load
         // This runs after all functions are defined
@@ -1850,6 +1886,9 @@
 
         // Open course - load course content within dashboard
         async function openCourse(courseId) {
+            // Save course ID to localStorage for persistence across refreshes
+            localStorage.setItem('tutor_current_course_id', courseId.toString());
+            
             // Switch to course-view section
             showSection('course-view');
             
