@@ -430,77 +430,23 @@
             fileContentArea.innerHTML = '';
             fileContentArea.appendChild(videoContainer);
             
-            // Add streaming verification info and test
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs';
-            
-            const testButton = document.createElement('button');
-            testButton.className = 'mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition';
-            testButton.innerHTML = '<i class="fas fa-vial mr-1"></i>Test Streaming';
-            testButton.onclick = function() {
-                if (!video.duration || video.duration === 0) {
-                    alert('Please wait for video metadata to load first');
-                    return;
-                }
-                
-                const testTime = Math.min(300, video.duration * 0.3); // Seek to 30% or 5 minutes, whichever is less
-                const beforeTime = Date.now();
-                
-                console.log(`🧪 Testing streaming: Seeking to ${testTime.toFixed(1)}s...`);
-                video.currentTime = testTime;
-                
-                video.addEventListener('seeked', function onSeeked() {
-                    const afterTime = Date.now();
-                    const seekTime = afterTime - beforeTime;
-                    video.removeEventListener('seeked', onSeeked);
-                    
-                    if (seekTime < 2000) {
-                        console.log(`✅ Streaming WORKING! Seek took ${seekTime}ms (fast = streaming)`);
-                        alert(`✅ Streaming is working!\n\nSeek to ${testTime.toFixed(1)}s took only ${seekTime}ms.\n\nThis means the video is streamable - only the needed chunk was downloaded, not the entire file.`);
-                    } else {
-                        console.log(`⚠️ Seek took ${seekTime}ms (may be downloading entire file)`);
-                        alert(`⚠️ Seek took ${seekTime}ms\n\nCheck Browser DevTools → Network tab:\n- If you see "206 Partial Content" = Streaming working ✓\n- If you see "200 OK" downloading entire file = Not streamable`);
-                    }
-                }, { once: true });
-            };
-            
-            infoDiv.innerHTML = `
-                <div class="flex items-start gap-2">
-                    <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
-                    <div class="flex-1">
-                        <p class="font-semibold text-slate-700 mb-1">Streaming Status Check:</p>
-                        <p class="text-slate-600 mb-2">Click the test button below to verify if streaming is working, or check Browser DevTools → Network tab.</p>
-                        <div class="mt-2">
-                            <strong class="text-green-600">✓ Streaming:</strong> Multiple <code class="bg-green-100 px-1 rounded">206 Partial Content</code> requests<br>
-                            <strong class="text-red-600">✗ Not Streaming:</strong> One <code class="bg-red-100 px-1 rounded">200 OK</code> downloading entire file
-                        </div>
-                    </div>
-                </div>
-            `;
-            infoDiv.appendChild(testButton);
-            
-            // Monitor video buffering to show streaming status
+            // Monitor video buffering (logging only, no UI)
             let lastBufferedTime = 0;
             video.addEventListener('progress', () => {
                 if (video.buffered.length > 0 && video.duration) {
                     const bufferedEnd = getBufferedEnd(video, video.currentTime || 0);
                     const bufferedAhead = bufferedEnd - (video.currentTime || 0);
-                    const bufferedPercent = ((bufferedEnd / video.duration) * 100).toFixed(1);
                     
                     // Only log if buffering changed significantly
                     if (Math.abs(bufferedEnd - lastBufferedTime) > 1) {
                         lastBufferedTime = bufferedEnd;
-                        console.log(`📹 Streaming Status: ${bufferedAhead.toFixed(1)}s buffered ahead (${bufferedPercent}% of video)`);
-                        
-                        // If buffering is small (<30s), streaming is working
+                        // Log streaming status to console (for debugging, not shown to user)
                         if (bufferedAhead < 30 && bufferedAhead > 0) {
-                            console.log('✅ Streaming working correctly - only buffering small chunks');
+                            console.log(`Streaming: ${bufferedAhead.toFixed(1)}s buffered ahead`);
                         }
                     }
                 }
             });
-            
-            videoContainer.appendChild(infoDiv);
         } else if (fileTypeLower === 'txt') {
             // Text file viewer
             fetch(url)
