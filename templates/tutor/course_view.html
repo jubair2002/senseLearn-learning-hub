@@ -75,15 +75,39 @@
         <!-- Module Content Area -->
         <div id="module-content" class="flex-1 overflow-y-auto p-6 bg-slate-50">
             {% if modules and modules|length > 0 %}
-                <!-- Auto-select first module on load -->
+                <!-- Auto-select module on load - check localStorage first for saved module -->
                 <script>
                     (function() {
+                        const courseId = {{ course_id }};
+                        const firstModuleId = {{ modules[0].id if modules else 'null' }};
+                        
                         // Wait for functions to be available
                         function trySelectModule() {
-                            if (typeof selectModule === 'function' && typeof currentSelectedModuleId !== 'undefined') {
-                                const firstModule = {{ modules[0].id if modules else 'null' }};
-                                if (firstModule) {
-                                    selectModule({{ course_id }}, firstModule);
+                            if (typeof selectModule === 'function') {
+                                // Check localStorage for saved module ID for this course
+                                const savedModuleId = localStorage.getItem('tutor_selected_module_' + courseId);
+                                
+                                let moduleIdToSelect = null;
+                                
+                                if (savedModuleId) {
+                                    // Check if the saved module still exists in the current modules list
+                                    const moduleIds = [{% for module in modules %}{{ module.id }}{% if not loop.last %}, {% endif %}{% endfor %}];
+                                    const savedId = parseInt(savedModuleId);
+                                    
+                                    if (moduleIds.includes(savedId)) {
+                                        // Saved module exists, use it
+                                        moduleIdToSelect = savedId;
+                                    } else {
+                                        // Saved module doesn't exist anymore (might have been deleted), use first module
+                                        moduleIdToSelect = firstModuleId;
+                                    }
+                                } else {
+                                    // No saved module, use first module
+                                    moduleIdToSelect = firstModuleId;
+                                }
+                                
+                                if (moduleIdToSelect) {
+                                    selectModule(courseId, moduleIdToSelect);
                                 }
                             } else {
                                 setTimeout(trySelectModule, 50);
