@@ -1205,6 +1205,9 @@
         function viewStudentCourse(courseId) {
             currentStudentCourseId = courseId;
             
+            // Save course ID to localStorage for persistence across refreshes
+            localStorage.setItem('student_current_course_id', courseId.toString());
+            
             // Hide ALL sections first
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
@@ -1288,6 +1291,9 @@
         function selectStudentModule(courseId, moduleId) {
             currentSelectedStudentModuleId = moduleId;
             currentStudentCourseId = courseId;
+            
+            // Save selected module to localStorage for persistence across refreshes
+            localStorage.setItem(`student_selected_module_${courseId}`, moduleId.toString());
             
             // Update active module styling
             document.querySelectorAll('.module-item').forEach(item => {
@@ -1412,33 +1418,70 @@
         // Override showSection to handle course view
         const originalShowSection = showSection;
         showSection = function(sectionName, updateUrl = true) {
-            // Hide course view container when switching sections
-            const courseViewContainer = document.getElementById('course-view-container');
-            if (courseViewContainer) {
-                courseViewContainer.style.display = 'none';
-                courseViewContainer.classList.remove('active');
+            // Check if we're restoring course view on courses section
+            let shouldRestoreCourse = false;
+            if (sectionName === 'courses') {
+                const savedCourseId = localStorage.getItem('student_current_course_id');
+                if (savedCourseId) {
+                    const courseId = parseInt(savedCourseId);
+                    if (!isNaN(courseId) && typeof viewStudentCourse === 'function') {
+                        // Check if course content is already loaded
+                        const courseViewContainer = document.getElementById('course-view-container');
+                        const hasContent = courseViewContainer && courseViewContainer.innerHTML.trim() !== '';
+                        const hasCourseStructure = courseViewContainer && courseViewContainer.querySelector('[data-course-id]');
+                        
+                        // Only restore if content is empty or doesn't have the course structure
+                        if (!hasContent || !hasCourseStructure) {
+                            shouldRestoreCourse = true;
+                        }
+                    }
+                }
             }
             
-            // Show courses section if it was hidden
-            const coursesSection = document.getElementById('section-courses');
-            if (coursesSection) {
-                coursesSection.style.display = 'block';
+            // Hide course view container when switching sections (unless we're restoring it)
+            if (sectionName !== 'courses' || !shouldRestoreCourse) {
+                const courseViewContainer = document.getElementById('course-view-container');
+                if (courseViewContainer) {
+                    courseViewContainer.style.display = 'none';
+                    courseViewContainer.classList.remove('active');
+                }
+            }
+            
+            // Show courses section if it was hidden (unless we're restoring course view)
+            if (!shouldRestoreCourse) {
+                const coursesSection = document.getElementById('section-courses');
+                if (coursesSection) {
+                    coursesSection.style.display = 'block';
+                }
             }
             
             // Call original showSection
             originalShowSection(sectionName, updateUrl);
             
-            // Load courses when courses section is shown
+            // Handle courses section
             if (sectionName === 'courses') {
-                loadEnrolledCourses();
+                if (shouldRestoreCourse) {
+                    // Restore course view
+                    const savedCourseId = localStorage.getItem('student_current_course_id');
+                    const courseId = parseInt(savedCourseId);
+                    setTimeout(() => {
+                        viewStudentCourse(courseId);
+                    }, 100);
+                } else {
+                    // No saved course, load courses list
+                    loadEnrolledCourses();
+                }
             }
         };
 
-        // Load courses when page loads if courses section is active
-        // Use the same logic as initialization
+        // Restore course view if needed on page load (after all functions are set up)
+        // This runs after the wrapped showSection is defined, so it will trigger the restoration logic
         const currentSection = localStorage.getItem('studentCurrentSection') || getSectionFromUrl();
         if (currentSection === 'courses') {
-            loadEnrolledCourses();
+            // Trigger the wrapped showSection again to ensure course restoration happens
+            setTimeout(() => {
+                showSection('courses', false);
+            }, 100);
         }
     </script>
 </body>
