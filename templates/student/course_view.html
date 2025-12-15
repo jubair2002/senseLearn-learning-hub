@@ -305,22 +305,148 @@
             fileContentArea.innerHTML = '';
             fileContentArea.appendChild(img);
         } else if (['mp4', 'webm', 'avi', 'mov', 'mkv'].includes(fileTypeLower)) {
-            // Video player
+            // Video player with true streaming support (HTTP Range requests)
             const videoContainer = document.createElement('div');
-            videoContainer.className = 'w-full flex justify-center';
+            videoContainer.className = 'w-full flex flex-col items-center relative';
+            
+            // Loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg z-10';
+            loadingDiv.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin text-4xl text-emerald-600 mb-2"></i><p class="text-slate-600">Loading video...</p></div>';
+            
             const video = document.createElement('video');
             video.src = url;
             video.controls = true;
+            video.preload = 'metadata'; // Load metadata only (not entire video) - allows seeking
             video.className = 'max-w-full max-h-[calc(100vh-200px)] rounded-lg shadow-lg';
             video.style.width = '100%';
             video.style.height = 'auto';
+            
+            // Critical: Enable streaming by preventing full buffering
+            video.setAttribute('playsinline', 'true'); // For mobile
+            video.setAttribute('webkit-playsinline', 'true'); // For older iOS
+            
+            // Add source element with proper MIME type
             const source = document.createElement('source');
             source.src = url;
-            source.type = `video/${fileTypeLower}`;
+            // Set proper MIME type for better browser compatibility
+            const mimeTypes = {
+                'mp4': 'video/mp4',
+                'webm': 'video/webm',
+                'avi': 'video/x-msvideo',
+                'mov': 'video/quicktime',
+                'mkv': 'video/x-matroska'
+            };
+            source.type = mimeTypes[fileTypeLower] || `video/${fileTypeLower}`;
             video.appendChild(source);
+            
+            // Track loading state
+            let metadataLoaded = false;
+            let loadTimeout = null;
+            
+            // Handle video loading events
+            video.addEventListener('loadedmetadata', () => {
+                metadataLoaded = true;
+                if (loadTimeout) clearTimeout(loadTimeout);
+                loadingDiv.remove();
+                console.log('Video metadata loaded. Duration:', video.duration, 'seconds');
+                console.log('Video ready for streaming - can seek to any position');
+            });
+            
+            video.addEventListener('canplay', () => {
+                // Video can start playing
+                if (!metadataLoaded) {
+                    loadingDiv.remove();
+                }
+            });
+            
+            video.addEventListener('error', (e) => {
+                console.error('Video error:', e, video.error);
+                if (loadTimeout) clearTimeout(loadTimeout);
+                const errorMsg = video.error ? 
+                    `Error ${video.error.code}: ${getVideoErrorMessage(video.error.code)}` : 
+                    'Failed to load video';
+                loadingDiv.innerHTML = `<div class="text-center text-red-600 p-4"><i class="fas fa-exclamation-triangle text-4xl mb-2"></i><p class="font-semibold">${errorMsg}</p><p class="text-sm mt-2">The video file may not be streamable or may be corrupted.</p><p class="text-xs mt-1 text-slate-500">Try downloading the file or contact support</p></div>`;
+            });
+            
+            video.addEventListener('loadstart', () => {
+                console.log('Video load started');
+                // Set timeout to show error if metadata doesn't load
+                loadTimeout = setTimeout(() => {
+                    if (!metadataLoaded) {
+                        loadingDiv.innerHTML = '<div class="text-center text-yellow-600 p-4"><i class="fas fa-exclamation-triangle text-4xl mb-2"></i><p>Taking longer than expected...</p><p class="text-sm mt-2">The video may not be streamable (metadata at end of file)</p><p class="text-xs mt-1">Try downloading the file or use the utility to make it streamable</p></div>';
+                    }
+                }, 10000); // 10 second timeout
+            });
+            
+            // Helper function to get error messages
+            function getVideoErrorMessage(errorCode) {
+                const errors = {
+                    1: 'MEDIA_ERR_ABORTED - Video loading aborted',
+                    2: 'MEDIA_ERR_NETWORK - Network error',
+                    3: 'MEDIA_ERR_DECODE - Video decoding error',
+                    4: 'MEDIA_ERR_SRC_NOT_SUPPORTED - Video format not supported'
+                };
+                return errors[errorCode] || 'Unknown error';
+            }
+            
+            // Handle seeking - this is where streaming happens
+            video.addEventListener('seeking', () => {
+                console.log('User seeking to:', video.currentTime, 'seconds');
+            });
+            
+            video.addEventListener('seeked', () => {
+                console.log('Seek completed at:', video.currentTime, 'seconds');
+            });
+            
+            // Monitor buffering progress
+            video.addEventListener('progress', () => {
+                if (video.buffered.length > 0) {
+                    const currentTime = video.currentTime || 0;
+                    const bufferedEnd = getBufferedEnd(video, currentTime);
+                    
+                    if (bufferedEnd > 0) {
+                        const bufferedAhead = bufferedEnd - currentTime;
+                        // Log buffering info
+                        if (bufferedAhead > 0) {
+                            console.log('Buffered:', bufferedAhead.toFixed(1), 'seconds ahead');
+                        }
+                    }
+                }
+            });
+            
+            // Helper function to get buffered end time for current position
+            function getBufferedEnd(videoElement, currentTime) {
+                for (let i = 0; i < videoElement.buffered.length; i++) {
+                    if (currentTime >= videoElement.buffered.start(i) && currentTime < videoElement.buffered.end(i)) {
+                        return videoElement.buffered.end(i);
+                    }
+                }
+                return 0;
+            }
+            
+            videoContainer.appendChild(loadingDiv);
             videoContainer.appendChild(video);
             fileContentArea.innerHTML = '';
             fileContentArea.appendChild(videoContainer);
+            
+            // Monitor video buffering (logging only, no UI)
+            let lastBufferedTime = 0;
+            video.addEventListener('progress', () => {
+                if (video.buffered.length > 0 && video.duration) {
+                    const bufferedEnd = getBufferedEnd(video, video.currentTime || 0);
+                    const bufferedAhead = bufferedEnd - (video.currentTime || 0);
+                    
+                    // Only log if buffering changed significantly
+                    if (Math.abs(bufferedEnd - lastBufferedTime) > 1) {
+                        lastBufferedTime = bufferedEnd;
+                        // Log streaming status to console (for debugging, not shown to user)
+                        if (bufferedAhead < 30 && bufferedAhead > 0) {
+                            console.log(`Streaming: ${bufferedAhead.toFixed(1)}s buffered ahead`);
+                        }
+                    }
+                }
+            });
         } else if (fileTypeLower === 'txt') {
             // Text file viewer
             fetch(url)

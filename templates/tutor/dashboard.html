@@ -1133,8 +1133,44 @@
                         loadCourses(searchQuery);
                     }
                 }, 100);
+            } else if (sectionName === 'course-view') {
+                // If switching to course-view, restore the course if one was being viewed
+                const savedCourseId = localStorage.getItem('tutor_current_course_id');
+                if (savedCourseId) {
+                    const courseId = parseInt(savedCourseId);
+                    if (!isNaN(courseId)) {
+                        setTimeout(() => {
+                            if (typeof openCourse === 'function') {
+                                // Check if course content is already loaded
+                                const contentEl = document.getElementById('course-view-content');
+                                const hasContent = contentEl && contentEl.innerHTML.trim() !== '';
+                                const hasCourseStructure = contentEl && contentEl.querySelector('[data-course-id]');
+                                
+                                // Only load if content is empty or doesn't have the course structure
+                                if (!hasContent || !hasCourseStructure) {
+                                    openCourse(courseId);
+                                }
+                            }
+                        }, 100);
+                    }
+                } else {
+                    // No saved course ID - show message or redirect to courses list
+                    const contentEl = document.getElementById('course-view-content');
+                    if (contentEl) {
+                        contentEl.innerHTML = '<div class="text-center py-12 text-slate-400"><i class="fas fa-book-open text-6xl mb-4"></i><p class="text-lg">No course selected</p><p class="text-sm mt-2">Please select a course from the courses list</p><button onclick="showSection(\'courses\')" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Go to Courses</button></div>';
+                    }
+                }
             }
         };
+        
+        // Restore course view if needed (after all functions are set up)
+        // This runs after the wrapped showSection is defined, so it will trigger the restoration logic
+        if (initialSection === 'course-view') {
+            // Trigger the wrapped showSection again to ensure course restoration happens
+            setTimeout(() => {
+                showSection('course-view', false);
+            }, 100);
+        }
         
         // Load documents if verification section is active on initial page load
         // This runs after all functions are defined
@@ -1850,6 +1886,9 @@
 
         // Open course - load course content within dashboard
         async function openCourse(courseId) {
+            // Save course ID to localStorage for persistence across refreshes
+            localStorage.setItem('tutor_current_course_id', courseId.toString());
+            
             // Switch to course-view section
             showSection('course-view');
             
@@ -1899,6 +1938,9 @@
 
         // Course view functions (used by loaded course_view.html)
         async function loadCourseView(courseId) {
+            // Save the currently selected module ID before reloading
+            const savedModuleId = currentSelectedModuleId || localStorage.getItem(`tutor_selected_module_${courseId}`);
+            
             const contentEl = document.getElementById('course-view-content');
             contentEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Refreshing...</p></div>';
             
@@ -1920,6 +1962,30 @@
                 
                 if (result.success && result.html) {
                     contentEl.innerHTML = result.html;
+                    
+                    // After HTML is loaded, restore the selected module if one was saved
+                    if (savedModuleId) {
+                        // Wait a bit for the DOM to be ready, then restore the module
+                        setTimeout(() => {
+                            const moduleId = parseInt(savedModuleId);
+                            if (!isNaN(moduleId) && typeof selectModule === 'function') {
+                                // Check if the module still exists in the DOM
+                                const moduleElement = document.querySelector(`[data-module-id="${moduleId}"]`);
+                                if (moduleElement) {
+                                    selectModule(courseId, moduleId);
+                                } else {
+                                    // Module might have been deleted, try to select first module
+                                    const firstModule = document.querySelector('.module-item[data-module-id]');
+                                    if (firstModule) {
+                                        const firstModuleId = parseInt(firstModule.getAttribute('data-module-id'));
+                                        if (!isNaN(firstModuleId)) {
+                                            selectModule(courseId, firstModuleId);
+                                        }
+                                    }
+                                }
+                            }
+                        }, 300);
+                    }
                 } else {
                     // Show error message from server
                     const errorMsg = result.error || 'Unknown error';
@@ -2242,6 +2308,9 @@
         function selectModule(courseId, moduleId) {
             currentSelectedModuleId = moduleId;
             
+            // Save selected module to localStorage for persistence across refreshes
+            localStorage.setItem(`tutor_selected_module_${courseId}`, moduleId.toString());
+            
             // Update active state in sidebar
             document.querySelectorAll('.module-item').forEach(item => {
                 item.classList.remove('bg-blue-50', 'border-blue-300');
@@ -2304,15 +2373,21 @@
                                     </p>
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    ${files.map(file => `
+                                    ${files.map(file => {
+                                        const isVideo = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'm4v'].includes(file.file_type.toLowerCase());
+                                        const fileIcon = getFileIcon(file.file_type);
+                                        const iconClass = isVideo ? 'fas fa-video' : `fas fa-file-${fileIcon}`;
+                                        const iconColor = isVideo ? 'text-red-600' : 'text-blue-600';
+                                        
+                                        return `
                                         <div class="border border-slate-200 rounded-lg p-4 hover:shadow-lg transition-all bg-white">
                                             <div class="flex items-start justify-between mb-3">
                                                 <div class="flex-1 min-w-0">
                                                     <div class="flex items-center gap-2 mb-2">
-                                                        <i class="fas fa-file-${getFileIcon(file.file_type)} text-3xl text-blue-600"></i>
+                                                        <i class="${iconClass} ${iconColor} text-3xl"></i>
                                                         <div class="flex-1 min-w-0">
                                                             <h4 class="font-semibold text-slate-800 text-sm truncate" title="${file.file_name}">${file.file_name}</h4>
-                                                            <p class="text-xs text-slate-500">${formatFileSize(file.file_size)} • ${file.file_type.toUpperCase()}</p>
+                                                            <p class="text-xs text-slate-500">${formatFileSize(file.file_size)} • ${file.file_type.toUpperCase()}${isVideo ? ' • Video' : ''}</p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -2331,7 +2406,8 @@
                                                 </a>
                                             </div>
                                         </div>
-                                    `).join('')}
+                                    `;
+                                    }).join('')}
                                 </div>
                             </div>
                         `;
@@ -2366,6 +2442,7 @@
             if (['ppt', 'pptx'].includes(type)) return 'powerpoint';
             if (['doc', 'docx'].includes(type)) return 'word';
             if (['jpg', 'jpeg', 'png', 'gif'].includes(type)) return 'image';
+            if (['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'm4v'].includes(type)) return 'video';
             return 'alt';
         }
         
@@ -2607,37 +2684,42 @@
                     setTimeout(() => notification.remove(), 3000);
                     
                     closeAddFileModal();
+                    
                     // Get courseId from the course view container
                     const courseViewContainer = document.querySelector('#course-view-content [data-course-id]');
+                    let courseId = null;
+                    
                     if (courseViewContainer) {
-                        const courseId = parseInt(courseViewContainer.dataset.courseId);
-                        loadModuleFiles(courseId, moduleId);
-                        loadCourseView(courseId); // Reload to update file counts in sidebar
+                        courseId = parseInt(courseViewContainer.dataset.courseId);
                     } else {
-                        // Fallback: try to get courseId from URL or reload module files
-                        const courseIdMatch = window.location.href.match(/course[_-]?id[=:](\d+)/i);
-                        if (courseIdMatch) {
-                            const courseId = parseInt(courseIdMatch[1]);
-                            loadModuleFiles(courseId, moduleId);
-                            loadCourseView(courseId);
-                        } else {
-                            // Last resort: try to find courseId from module item's parent
-                            const moduleItem = document.querySelector(`[data-module-id="${moduleId}"]`);
-                            if (moduleItem) {
-                                const parentContainer = moduleItem.closest('[data-course-id]');
-                                if (parentContainer) {
-                                    const courseId = parseInt(parentContainer.dataset.courseId);
-                                    loadModuleFiles(courseId, moduleId);
-                                    loadCourseView(courseId);
-                                } else {
-                                    // Just reload module files (will work without courseId)
-                                    loadModuleFiles(null, moduleId);
-                                }
-                            } else {
-                                // Last resort: reload module files only
-                                loadModuleFiles(null, moduleId);
+                        // Fallback: try to find courseId from module item's parent
+                        const moduleItem = document.querySelector(`[data-module-id="${moduleId}"]`);
+                        if (moduleItem) {
+                            const parentContainer = moduleItem.closest('[data-course-id]');
+                            if (parentContainer) {
+                                courseId = parseInt(parentContainer.dataset.courseId);
                             }
                         }
+                    }
+                    
+                    if (courseId) {
+                        // Save current module selection before reloading
+                        localStorage.setItem(`tutor_selected_module_${courseId}`, moduleId.toString());
+                        currentSelectedModuleId = moduleId; // Also update global variable
+                        
+                        // Reload course view first to update sidebar file counts
+                        await loadCourseView(courseId);
+                        
+                        // Then reload module files to show the new file
+                        // Wait a bit for course view to finish loading
+                        setTimeout(() => {
+                            console.log('Refreshing module files after upload:', moduleId);
+                            loadModuleFiles(courseId, moduleId);
+                        }, 500);
+                    } else {
+                        console.warn('Could not find courseId, reloading module files only');
+                        // Fallback: just reload module files
+                        loadModuleFiles(null, moduleId);
                     }
                 } else {
                     alert('Error: ' + (result.error || 'Failed to upload file'));
