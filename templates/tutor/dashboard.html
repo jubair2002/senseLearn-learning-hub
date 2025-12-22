@@ -1,0 +1,2761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutor Dashboard - SenseLearn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar-transition bg-white border-r border-slate-200 w-64 flex flex-col">
+            <!-- Logo Section -->
+            <div class="p-6 border-b border-slate-200">
+                <div class="flex items-center gap-3" id="logo-content">
+                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white flex-shrink-0">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <div id="logo-text" class="sidebar-text">
+                        <h1 class="text-lg font-bold text-slate-800">SenseLearn</h1>
+                        <p class="text-xs text-slate-500">Tutor Portal</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <a href="#" data-section="dashboard" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 text-blue-700 font-medium hover:bg-blue-100 transition">
+                    <i class="fas fa-home w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Dashboard</span>
+                </a>
+                <a href="#" data-section="profile" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-user w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Profile</span>
+                </a>
+                <a href="#" data-section="courses" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-book w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Courses</span>
+                </a>
+                <a href="#" data-section="students" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-users w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">My Students</span>
+                </a>
+                <a href="#" data-section="verification" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-shield-alt w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Verification</span>
+                </a>
+                <a href="#" data-section="settings" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-cog w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Settings</span>
+                </a>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <div class="p-4 border-t border-slate-200">
+                <div class="bg-blue-50 rounded-lg p-3 text-xs text-blue-700 sidebar-text">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <strong>Need help?</strong>
+                    <p class="mt-1">Contact support anytime</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Header -->
+            <header class="bg-white border-b border-slate-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <!-- Sidebar Toggle & Page Title -->
+                    <div class="flex items-center gap-4">
+                        <button id="sidebar-toggle" class="p-2 rounded-lg hover:bg-slate-100 transition text-slate-600">
+                            <i class="fas fa-bars text-lg"></i>
+                        </button>
+                        <div>
+                            <h2 id="page-title" class="text-xl font-bold text-slate-800">Dashboard</h2>
+                            <p class="text-sm text-slate-500">Welcome back, {{ user.full_name }}</p>
+                        </div>
+                    </div>
+
+                    <!-- User Menu -->
+                    <div class="flex items-center gap-4">
+                        <!-- Notifications -->
+                        <button class="relative p-2 rounded-lg hover:bg-slate-100 transition text-slate-600">
+                            <i class="fas fa-bell"></i>
+                            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                        </button>
+
+                        <!-- User Dropdown -->
+                        <div class="relative" id="user-menu-container">
+                            <button id="user-menu-button" class="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-slate-100 transition">
+                                <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                    {{ user.full_name[0].upper() }}
+                                </div>
+                                <div class="text-left hidden md:block">
+                                    <p class="text-sm font-medium text-slate-800">{{ user.full_name }}</p>
+                                    <p class="text-xs text-slate-500">Tutor</p>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-400 text-xs"></i>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50">
+                                <div class="px-4 py-3 border-b border-slate-200">
+                                    <p class="text-sm font-semibold text-slate-800">{{ user.full_name }}</p>
+                                    <p class="text-xs text-slate-500">{{ user.email }}</p>
+                                </div>
+                                <a href="#" data-section="profile" class="nav-link flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition">
+                                    <i class="fas fa-user w-4"></i>
+                                    <span>My Profile</span>
+                                </a>
+                                <a href="#" data-section="settings" class="nav-link flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition">
+                                    <i class="fas fa-cog w-4"></i>
+                                    <span>Settings</span>
+                                </a>
+                                <div class="border-t border-slate-200 my-1"></div>
+                                <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition">
+                                    <i class="fas fa-sign-out-alt w-4"></i>
+                                    <span>Logout</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content - All Sections -->
+            <main class="flex-1 overflow-y-auto p-6">
+                <!-- Dashboard Section -->
+                <div id="section-dashboard" class="content-section active">
+    {% if not user.is_verified %}
+                    <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded-lg">
+        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle text-yellow-500 text-lg mr-3"></i>
+                            <div>
+                                <p class="text-sm text-yellow-800 font-medium">
+                    Your tutor account is not verified yet. 
+                                    <a href="#" data-section="verification" class="nav-link font-bold underline hover:text-yellow-900">Complete verification →</a>
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-600 mb-1">Total Students</p>
+                                    <p class="text-3xl font-bold text-slate-800" id="total-students">0</p>
+                </div>
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-users text-blue-600 text-xl"></i>
+                </div>
+            </div>
+        </div>
+        
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                <div>
+                                    <p class="text-sm text-slate-600 mb-1">Avg. Rating</p>
+                                    <p class="text-3xl font-bold text-slate-800" id="avg-rating">0.0</p>
+                    <div class="flex items-center mt-1">
+                                        <i class="fas fa-star text-yellow-400 text-sm"></i>
+                                        <i class="fas fa-star text-yellow-400 text-sm"></i>
+                                        <i class="fas fa-star text-yellow-400 text-sm"></i>
+                                        <i class="fas fa-star text-yellow-400 text-sm"></i>
+                                        <i class="fas fa-star text-yellow-400 text-sm"></i>
+                                    </div>
+                                </div>
+                                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-star text-purple-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Content Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Left Column -->
+                        <div class="lg:col-span-2 space-y-6">
+
+                            <!-- Your Subjects -->
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4">Your Subjects</h3>
+                                <div class="flex flex-wrap gap-3">
+                                    {% if user.subjects %}
+                                        {% for subject in user.subjects.split(',') %}
+                                        <span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium border border-blue-200">
+                                            {{ subject.strip() }}
+                                        </span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <p class="text-slate-500 text-sm">No subjects added yet</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div class="space-y-6">
+                            <!-- Profile Summary -->
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <div class="flex items-center justify-between mb-6">
+                                    <h3 class="text-lg font-bold text-slate-800">Profile Summary</h3>
+                                    <a href="#" data-section="profile" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                        Edit <i class="fas fa-arrow-right ml-1"></i>
+                                    </a>
+                                </div>
+                                <div class="space-y-4">
+                                    <div class="flex justify-between items-center pb-3 border-b border-slate-200">
+                                        <span class="text-slate-600 text-sm">Hourly Rate:</span>
+                                        <span class="font-bold text-blue-600">৳{{ "%.2f"|format(user.hourly_rate) if user.hourly_rate else '0.00' }}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center pb-3 border-b border-slate-200">
+                                        <span class="text-slate-600 text-sm">Experience:</span>
+                                        <span class="font-bold text-slate-800">{{ user.experience_years or 0 }} years</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-slate-600 text-sm">Status:</span>
+                                        <span class="font-bold {% if user.is_verified %}text-emerald-600{% else %}text-yellow-600{% endif %}">
+                                            <i class="fas {% if user.is_verified %}fa-check-circle{% else %}fa-clock{% endif %} mr-1"></i>
+                                            {% if user.is_verified %}Verified{% else %}Pending{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Actions -->
+                            <div class="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-6">
+                                <h3 class="text-lg font-bold text-blue-800 mb-4">Quick Actions</h3>
+                                <div class="space-y-3">
+                                    <a href="#" data-section="students" class="nav-link flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-300 hover:bg-blue-100 transition">
+                                        <i class="fas fa-users text-blue-600"></i>
+                                        <span class="font-medium text-slate-800 text-sm">View Students</span>
+                                    </a>
+                                    <a href="#" data-section="profile" class="nav-link flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-300 hover:bg-blue-100 transition">
+                                        <i class="fas fa-user-edit text-blue-600"></i>
+                                        <span class="font-medium text-slate-800 text-sm">Edit Profile</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profile Section -->
+                <div id="section-profile" class="content-section">
+                    <div class="w-full">
+                        <!-- Profile View Mode -->
+                        <div id="profile-view-mode" class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 mb-6">
+                            <div class="flex items-center justify-between mb-8">
+                                <h3 class="text-3xl font-bold text-slate-800">Profile</h3>
+                                <button id="profile-edit-btn" class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2 text-lg">
+                                    <i class="fas fa-edit"></i>
+                                    Edit Profile
+                                </button>
+                            </div>
+                            
+                            <!-- First Row: Basic Info -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 mb-6">
+                                <div class="p-6 bg-slate-50 rounded-lg">
+                                    <p class="text-base text-slate-500 mb-3 font-medium">Full Name</p>
+                                    <p class="font-bold text-slate-800 text-lg" id="view-full-name">{{ user.full_name }}</p>
+                                </div>
+                                <div class="p-6 bg-slate-50 rounded-lg">
+                                    <p class="text-base text-slate-500 mb-3 font-medium">Email</p>
+                                    <p class="font-bold text-slate-800 text-lg truncate" title="{{ user.email }}">{{ user.email }}</p>
+                                </div>
+                                <div class="p-6 bg-slate-50 rounded-lg">
+                                    <p class="text-base text-slate-500 mb-3 font-medium">Phone</p>
+                                    <p class="font-bold text-slate-800 text-lg" id="view-phone">{{ user.phone_number or 'N/A' }}</p>
+                                </div>
+                                <div class="p-6 bg-slate-50 rounded-lg">
+                                    <p class="text-base text-slate-500 mb-3 font-medium">Hourly Rate</p>
+                                    <p class="font-bold text-slate-800 text-lg" id="view-hourly-rate">৳{{ "%.2f"|format(user.hourly_rate) if user.hourly_rate else '0.00' }}</p>
+                                </div>
+                                <div class="p-6 bg-slate-50 rounded-lg">
+                                    <p class="text-base text-slate-500 mb-3 font-medium">Experience</p>
+                                    <p class="font-bold text-slate-800 text-lg" id="view-experience">{{ user.experience_years or 0 }} years</p>
+                                </div>
+                            </div>
+
+                            <!-- Second Row: Status & Account -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 mb-6">
+                                <div class="p-6 bg-slate-50 rounded-lg">
+                                    <p class="text-base text-slate-500 mb-3 font-medium">Account Type</p>
+                                    <span class="inline-flex items-center px-4 py-2 rounded-full text-base font-semibold bg-blue-100 text-blue-800">
+                                        Tutor
+                                    </span>
+                                </div>
+                                <div class="p-6 bg-slate-50 rounded-lg">
+                                    <p class="text-base text-slate-500 mb-3 font-medium">Verification</p>
+                                    <span class="inline-flex items-center px-4 py-2 rounded-full text-base font-semibold {% if user.is_verified %}bg-emerald-100 text-emerald-800{% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                        {% if user.is_verified %}Verified{% else %}Pending{% endif %}
+                                    </span>
+                                </div>
+                                <div class="p-6 bg-slate-50 rounded-lg">
+                                    <p class="text-base text-slate-500 mb-3 font-medium">Member Since</p>
+                                    <p class="font-bold text-slate-800 text-lg">{{ user.created_at.strftime('%b %d, %Y') if user.created_at else 'N/A' }}</p>
+                                </div>
+                                <div class="p-6 bg-slate-50 rounded-lg md:col-span-2 lg:col-span-2">
+                                    <p class="text-base text-slate-500 mb-3 font-medium">Subjects</p>
+                                    <div class="flex flex-wrap gap-3 mt-3">
+                                        {% if user.subjects %}
+                                            {% for subject in user.subjects.split(',')[:5] %}
+                                            <span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-base font-semibold">
+                                                {{ subject.strip() }}
+                                            </span>
+                                            {% endfor %}
+                                            {% if user.subjects.split(',')|length > 5 %}
+                                            <span class="px-4 py-2 text-blue-600 text-base font-semibold">+{{ user.subjects.split(',')|length - 5 }} more</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <p class="text-slate-500 text-base">No subjects</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Third Row: Qualifications & Bio (Horizontal) -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="p-6 bg-slate-50 rounded-lg">
+                                    <p class="text-base text-slate-500 mb-3 font-medium">Qualifications</p>
+                                    <p class="font-semibold text-slate-800 text-lg overflow-hidden" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; max-height: 6rem;" id="view-qualifications" title="{{ user.qualifications or 'Not provided' }}">{{ user.qualifications or 'Not provided' }}</p>
+                                </div>
+                                <div class="p-6 bg-slate-50 rounded-lg">
+                                    <p class="text-base text-slate-500 mb-3 font-medium">Bio</p>
+                                    <p class="text-slate-800 text-lg overflow-hidden" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; max-height: 6rem;" id="view-bio" title="{{ user.bio or 'Not provided' }}">{{ user.bio or 'Not provided' }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Profile Edit Mode -->
+                        <div id="profile-edit-mode" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6" style="display: none;">
+                            <h3 class="text-2xl font-bold text-slate-800 mb-6">Edit Profile</h3>
+                            
+                            <div id="profile-message" class="mb-4"></div>
+                            
+                            <form id="profile-form" class="space-y-5">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-2">Full Name <span class="text-red-500">*</span></label>
+                                        <input type="text" name="full_name" id="profile-full-name" value="{{ user.full_name }}" 
+                                               class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                               required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-2">Phone Number</label>
+                                        <input type="tel" name="phone_number" id="profile-phone" value="{{ user.phone_number or '' }}" 
+                                               class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+                                    <input type="email" value="{{ user.email }}" 
+                                           class="w-full border border-slate-300 rounded-lg px-4 py-3 bg-slate-100"
+                                           disabled>
+                                    <p class="text-xs text-slate-500 mt-1">Email cannot be changed</p>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2">Qualifications <span class="text-red-500">*</span></label>
+                                    <textarea name="qualifications" id="profile-qualifications" rows="3"
+                                              class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                              required>{{ user.qualifications or '' }}</textarea>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-2">Years of Experience <span class="text-red-500">*</span></label>
+                                        <input type="number" name="experience_years" id="profile-experience" value="{{ user.experience_years or 0 }}" 
+                                               class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                               min="0" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-700 mb-2">Hourly Rate (BDT) <span class="text-red-500">*</span></label>
+                                        <input type="number" name="hourly_rate" id="profile-hourly-rate" value="{{ user.hourly_rate or 0 }}" 
+                                               class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                               min="0" step="0.01" required>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2">Subjects (comma separated) <span class="text-red-500">*</span></label>
+                                    <input type="text" name="subjects" id="profile-subjects" value="{{ user.subjects or '' }}" 
+                                           class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                           placeholder="e.g., Mathematics, Physics, Computer Science" required>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2">Bio <span class="text-red-500">*</span></label>
+                                    <textarea name="bio" id="profile-bio" rows="4"
+                                              class="w-full border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                              required>{{ user.bio or '' }}</textarea>
+                                </div>
+                                
+                                <div class="flex gap-4 pt-4">
+                                    <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium">
+                                        Save Changes
+                                    </button>
+                                    <button type="button" id="profile-cancel-btn" class="bg-slate-200 text-slate-700 px-6 py-3 rounded-lg hover:bg-slate-300 transition font-medium">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Courses Section -->
+                <div id="section-courses" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-2xl font-bold text-slate-800">My Courses</h3>
+                            <button onclick="refreshCourses()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-sync-alt mr-2"></i>Refresh
+                            </button>
+                        </div>
+                        
+                        <!-- Search Bar -->
+                        <div class="mb-6">
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    id="course-search-input" 
+                                    placeholder="Search courses by name or description..." 
+                                    class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    oninput="handleCourseSearch(event)"
+                                    onkeyup="handleCourseSearch(event)"
+                                >
+                                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                                <button 
+                                    onclick="clearCourseSearch()" 
+                                    id="clear-search-btn" 
+                                    class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                                >
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="courses-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div class="text-center py-12 col-span-full">
+                                <i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i>
+                                <p class="text-slate-600">Loading courses...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Course View Section (loaded dynamically) -->
+                <div id="section-course-view" class="content-section">
+                    <div id="course-view-content">
+                        <!-- Course content will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Students Section -->
+                <div id="section-students" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6">My Students</h3>
+                        <div class="text-center py-12">
+                            <i class="fas fa-users text-6xl text-slate-300 mb-4"></i>
+                            <p class="text-slate-600">No students assigned yet</p>
+                            <p class="text-sm text-slate-500 mt-2">Your students will appear here once they book sessions</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Verification Section -->
+                <div id="section-verification" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                        <div class="flex items-start mb-6">
+                            <div class="p-3 rounded-full {% if user.is_verified %}bg-emerald-100 text-emerald-600{% else %}bg-yellow-100 text-yellow-600{% endif %} mr-4 flex-shrink-0">
+                                <i class="fas {% if user.is_verified %}fa-check-circle{% else %}fa-clock{% endif %} text-3xl"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-bold text-slate-800">
+                                    {% if user.is_verified %}Account Verified{% else %}Verification Pending{% endif %}
+                                </h2>
+                                <p class="text-slate-600 mt-2">
+                                    {% if user.is_verified %}
+                                        Your tutor account has been successfully verified. You can now accept students and start teaching.
+                                    {% else %}
+                                        Your tutor account is currently under review by our team. This usually takes 1-2 business days.
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Documents Section -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-bold text-slate-800">Your Documents</h3>
+                            <button onclick="loadDocuments()" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+                                <i class="fas fa-sync-alt mr-1"></i>Refresh
+                            </button>
+                        </div>
+                        
+                        <!-- Upload New Document -->
+                        <div class="border border-slate-200 rounded-lg p-4 mb-4 bg-slate-50">
+                            <h4 class="font-semibold text-slate-800 mb-3">
+                                {% if user.is_verified %}
+                                    <i class="fas fa-plus-circle text-blue-600 mr-2"></i>Add More Documents
+                                {% else %}
+                                    <i class="fas fa-upload text-blue-600 mr-2"></i>Upload New Document
+                                {% endif %}
+                            </h4>
+                            {% if user.is_verified %}
+                            <p class="text-sm text-slate-600 mb-3">
+                                <i class="fas fa-info-circle text-blue-500 mr-1"></i>
+                                You can continue to add documents to your profile at any time.
+                            </p>
+                            {% endif %}
+                            <form id="upload-document-form" class="space-y-3">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Document Type</label>
+                                        <select id="document-type" name="file_type" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                            <option value="certificate">Certificate</option>
+                                            <option value="qualification">Qualification</option>
+                                            <option value="recommendation">Recommendation</option>
+                                            <option value="vendor_cert">Vendor Certificate</option>
+                                            <option value="identification">Identification</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Select File</label>
+                                        <input type="file" id="document-file" name="file" accept=".pdf,.PDF,.doc,.DOC,.docx,.DOCX,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.ppt,.PPT,.pptx,.PPTX,.gif,.GIF,.txt,.TXT" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                                        <p class="text-xs text-slate-500 mt-1">Accepted: PDF, DOC, DOCX, JPG, JPEG, PNG, PPT, PPTX, GIF, TXT (Max 10MB)</p>
+                                    </div>
+                                </div>
+                                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                                    <i class="fas fa-upload mr-2"></i>Upload Document
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Documents List -->
+                        <div id="documents-list" class="space-y-3">
+                            <div class="text-center py-8">
+                                <i class="fas fa-spinner fa-spin text-3xl text-slate-400 mb-2"></i>
+                                <p class="text-slate-600">Loading documents...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if not user.is_verified %}
+                    <div class="bg-blue-50 border border-blue-300 rounded-xl p-6 shadow-md">
+                        <h3 class="text-xl font-bold text-blue-800 mb-3">Verification Status</h3>
+                        <p class="text-blue-700 mb-4">
+                            Your tutor account is currently under review. Please upload all required documents above. Our team will review your credentials and verify your account.
+                        </p>
+                        <p class="text-sm text-blue-700">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Processing time is typically 48 hours after all documents are submitted.
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+                <!-- Settings Section -->
+                <div id="section-settings" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6">Settings</h3>
+                        <div class="space-y-6">
+                            <div>
+                                <h4 class="font-semibold text-slate-700 mb-3">Notification Preferences</h4>
+                                <div class="space-y-3">
+                                    <label class="flex items-center gap-3">
+                                        <input type="checkbox" class="w-4 h-4 text-blue-600 border-slate-300 rounded">
+                                        <span class="text-slate-700">Email notifications</span>
+                                    </label>
+                                    <label class="flex items-center gap-3">
+                                        <input type="checkbox" class="w-4 h-4 text-blue-600 border-slate-300 rounded" checked>
+                                        <span class="text-slate-700">Session reminders</span>
+                                    </label>
+                                    <label class="flex items-center gap-3">
+                                        <input type="checkbox" class="w-4 h-4 text-blue-600 border-slate-300 rounded" checked>
+                                        <span class="text-slate-700">New student requests</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="border-t border-slate-200 pt-6">
+                                <h4 class="font-semibold text-slate-700 mb-3">Privacy</h4>
+                                <p class="text-sm text-slate-600">Manage your privacy settings and data preferences.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 max-w-md w-full">
+            <h3 id="confirmation-title" class="text-xl font-bold text-slate-800 mb-4">Confirm Action</h3>
+            <div id="confirmation-message" class="mb-6 text-slate-600"></div>
+            <div class="flex gap-3 justify-end">
+                <button id="confirmation-cancel" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
+                    Cancel
+                </button>
+                <button id="confirmation-confirm" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Module Modal (persistent - outside content sections) -->
+    <div id="create-module-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 max-w-md w-full">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-slate-800">Create New Module</h3>
+                <button onclick="closeCreateModuleModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="create-module-form" onsubmit="event.preventDefault(); createModule(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Module Name *</label>
+                    <input type="text" id="module-name" required class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Introduction to Sign Language">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Description (Optional)</label>
+                    <textarea id="module-description" rows="3" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Brief description of this module..."></textarea>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" onclick="closeCreateModuleModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                        Create Module
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add File Modal (persistent - outside content sections) -->
+    <div id="add-file-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 max-w-md w-full">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-slate-800">
+                    <i class="fas fa-file-upload mr-2"></i>Upload File
+                </h3>
+                <button onclick="closeAddFileModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="add-file-form" onsubmit="event.preventDefault(); addFileToModule(event)">
+                <input type="hidden" id="current-module-id">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        <i class="fas fa-file-upload mr-1"></i>Select File to Upload
+                    </label>
+                    <div id="drop-zone" class="border-2 border-dashed border-blue-400 rounded-lg p-6 text-center hover:border-blue-500 hover:bg-blue-50 transition cursor-pointer bg-slate-50" onclick="document.getElementById('module-file-input').click()">
+                        <input type="file" id="module-file-input" required class="hidden" accept=".pdf,.PDF,.pptx,.PPTX,.ppt,.PPT,.doc,.DOC,.docx,.DOCX,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.gif,.GIF,.txt,.TXT,.mp4,.MP4,.webm,.WEBM,.avi,.AVI,.mov,.MOV,.mkv,.MKV">
+                        <i class="fas fa-cloud-upload-alt text-5xl text-blue-500 mb-3" id="upload-icon"></i>
+                        <p class="text-base font-semibold text-slate-700 mb-1" id="drop-text">Click to browse or drag and drop</p>
+                        <p class="text-xs text-slate-500 font-medium" id="file-name-display">No file selected</p>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Supported: PDF, PPTX, PPT, DOC, DOCX, JPG, PNG, GIF, TXT, MP4, WEBM, AVI, MOV, MKV (Max 10MB)
+                    </p>
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" onclick="closeAddFileModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-upload mr-2"></i>Upload File
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Declare module management variables at the very top to avoid initialization errors
+        let currentSelectedModuleId = null;
+        let currentCourseIdForModule = null;
+        
+        // Page titles mapping
+        const pageTitles = {
+            'dashboard': 'Dashboard',
+            'profile': 'Profile',
+            'courses': 'My Courses',
+            'course-view': 'Course',
+            'students': 'My Students',
+            'verification': 'Verification',
+            'settings': 'Settings'
+        };
+
+        // Get base URL for dashboard
+        const baseUrl = '/tutor/dashboard';
+        
+        // Get initial section from URL or template variable
+        function getSectionFromUrl() {
+            const path = window.location.pathname;
+            const match = path.match(/\/tutor\/dashboard\/([^\/]+)/);
+            if (match) {
+                return match[1];
+            }
+            // Check if default_section is passed from backend
+            {% if default_section %}
+            return '{{ default_section }}';
+            {% else %}
+            return 'dashboard';
+            {% endif %}
+        }
+
+        // Navigation handler with URL update
+        function showSection(sectionName, updateUrl = true) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Show selected section
+            const targetSection = document.getElementById(`section-${sectionName}`);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+            
+            // Update page title
+            document.getElementById('page-title').textContent = pageTitles[sectionName] || 'Dashboard';
+            
+            // Update active nav link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('bg-blue-50', 'text-blue-700', 'font-medium');
+                link.classList.add('text-slate-700');
+            });
+            
+            const activeLink = document.querySelector(`[data-section="${sectionName}"]`);
+            if (activeLink) {
+                activeLink.classList.add('bg-blue-50', 'text-blue-700', 'font-medium');
+                activeLink.classList.remove('text-slate-700');
+            }
+            
+            // Close user dropdown if open
+            document.getElementById('user-dropdown').classList.add('hidden');
+            
+            // Update URL without page reload
+            if (updateUrl) {
+                const newUrl = sectionName === 'dashboard' 
+                    ? baseUrl 
+                    : `${baseUrl}/${sectionName}`;
+                window.history.pushState({ section: sectionName }, '', newUrl);
+            }
+        }
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', (e) => {
+            const section = e.state?.section || getSectionFromUrl();
+            showSection(section, false); // Don't update URL again
+        });
+
+        // Setup navigation links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = link.getAttribute('data-section');
+                if (section) {
+                    showSection(section);
+                }
+            });
+        });
+
+        // Initialize section on page load
+        const initialSection = getSectionFromUrl();
+        showSection(initialSection, false); // Don't update URL on initial load
+
+        // Profile Edit Mode Toggle
+        const profileViewMode = document.getElementById('profile-view-mode');
+        const profileEditMode = document.getElementById('profile-edit-mode');
+        const profileEditBtn = document.getElementById('profile-edit-btn');
+        const profileCancelBtn = document.getElementById('profile-cancel-btn');
+
+        if (profileEditBtn && profileViewMode && profileEditMode) {
+            profileEditBtn.addEventListener('click', () => {
+                profileViewMode.style.display = 'none';
+                profileEditMode.style.display = 'block';
+            });
+        }
+
+        if (profileCancelBtn && profileViewMode && profileEditMode) {
+            profileCancelBtn.addEventListener('click', () => {
+                profileEditMode.style.display = 'none';
+                profileViewMode.style.display = 'block';
+                document.getElementById('profile-message').innerHTML = '';
+            });
+        }
+
+        // Profile form submission (AJAX with JSON)
+        const profileForm = document.getElementById('profile-form');
+        if (profileForm) {
+            profileForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const messageDiv = document.getElementById('profile-message');
+                
+                const formData = {
+                    full_name: document.getElementById('profile-full-name').value.trim(),
+                    phone_number: document.getElementById('profile-phone').value.trim() || null,
+                    qualifications: document.getElementById('profile-qualifications').value.trim(),
+                    experience_years: document.getElementById('profile-experience').value.trim(),
+                    subjects: document.getElementById('profile-subjects').value.trim(),
+                    hourly_rate: document.getElementById('profile-hourly-rate').value.trim(),
+                    bio: document.getElementById('profile-bio').value.trim()
+                };
+                
+                messageDiv.innerHTML = '<div class="p-3 bg-blue-100 text-blue-700 rounded-lg">Updating profile...</div>';
+                
+                try {
+                    const response = await fetch('/tutor/profile', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.success) {
+                        messageDiv.innerHTML = '<div class="p-3 bg-emerald-100 text-emerald-700 rounded-lg">' + (data.message || 'Profile updated successfully!') + '</div>';
+                        
+                        // Update view mode fields
+                        if (data.data) {
+                            if (document.getElementById('view-full-name')) {
+                                document.getElementById('view-full-name').textContent = data.data.full_name || '';
+                            }
+                            if (document.getElementById('view-phone')) {
+                                document.getElementById('view-phone').textContent = data.data.phone_number || 'N/A';
+                            }
+                            if (document.getElementById('view-hourly-rate')) {
+                                document.getElementById('view-hourly-rate').textContent = '৳' + (parseFloat(data.data.hourly_rate) || 0).toFixed(2);
+                            }
+                            if (document.getElementById('view-experience')) {
+                                document.getElementById('view-experience').textContent = (data.data.experience_years || 0) + ' years';
+                            }
+                            if (document.getElementById('view-qualifications')) {
+                                document.getElementById('view-qualifications').textContent = data.data.qualifications || 'Not provided';
+                            }
+                            if (document.getElementById('view-bio')) {
+                                document.getElementById('view-bio').textContent = data.data.bio || 'Not provided';
+                            }
+                            
+                            // Update subjects display
+                            const subjectsContainer = document.querySelector('#profile-view-mode [class*="flex flex-wrap gap-3"]');
+                            if (subjectsContainer && data.data.subjects) {
+                                const subjects = data.data.subjects.split(',').map(s => s.trim()).filter(s => s);
+                                if (subjects.length > 0) {
+                                    const displaySubjects = subjects.slice(0, 5);
+                                    const remaining = subjects.length - 5;
+                                    let subjectsHtml = displaySubjects.map(subject => 
+                                        `<span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-base font-semibold">${subject}</span>`
+                                    ).join('');
+                                    if (remaining > 0) {
+                                        subjectsHtml += `<span class="px-4 py-2 text-blue-600 text-base font-semibold">+${remaining} more</span>`;
+                                    }
+                                    subjectsContainer.innerHTML = subjectsHtml;
+                                } else {
+                                    subjectsContainer.innerHTML = '<p class="text-slate-500 text-base">No subjects</p>';
+                                }
+                            }
+                        }
+                        
+                        // Switch back to view mode after 1.5 seconds
+                        setTimeout(() => {
+                            if (profileViewMode && profileEditMode) {
+                                profileViewMode.style.display = 'block';
+                                profileEditMode.style.display = 'none';
+                                messageDiv.innerHTML = '';
+                            }
+                        }, 1500);
+                    } else {
+                        messageDiv.innerHTML = '<div class="p-3 bg-red-100 text-red-700 rounded-lg">' + (data.error || 'Failed to update profile. Please try again.') + '</div>';
+                    }
+                } catch (error) {
+                    messageDiv.innerHTML = '<div class="p-3 bg-red-100 text-red-700 rounded-lg">Network error. Please try again.</div>';
+                }
+            });
+        }
+
+        // Sidebar Toggle with localStorage persistence
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const sidebarTexts = document.querySelectorAll('.sidebar-text');
+        
+        // Load saved sidebar state from localStorage
+        const savedSidebarState = localStorage.getItem('tutorSidebarCollapsed');
+        let sidebarCollapsed = savedSidebarState === 'true';
+        
+        // Apply saved state on page load
+        function applySidebarState(collapsed) {
+            if (collapsed) {
+                sidebar.style.width = '80px';
+                sidebarTexts.forEach(text => {
+                    text.style.display = 'none';
+                });
+            } else {
+                sidebar.style.width = '256px';
+                sidebarTexts.forEach(text => {
+                    text.style.display = 'block';
+                });
+            }
+        }
+        
+        // Apply saved state immediately on page load
+        applySidebarState(sidebarCollapsed);
+        
+        sidebarToggle.addEventListener('click', () => {
+            sidebarCollapsed = !sidebarCollapsed;
+            
+            // Save state to localStorage
+            localStorage.setItem('tutorSidebarCollapsed', sidebarCollapsed.toString());
+            
+            // Apply the new state
+            applySidebarState(sidebarCollapsed);
+        });
+
+        // User Menu Dropdown
+        const userMenuButton = document.getElementById('user-menu-button');
+        const userDropdown = document.getElementById('user-dropdown');
+
+        userMenuButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!userMenuButton.contains(e.target) && !userDropdown.contains(e.target)) {
+                userDropdown.classList.add('hidden');
+            }
+        });
+
+        // Load dashboard stats
+        fetch('/tutor/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-students').textContent = data.total_students || 0;
+                document.getElementById('avg-rating').textContent = (data.avg_rating || 0).toFixed(1);
+            })
+            .catch(error => {
+                console.error('Error loading stats:', error);
+            });
+
+        // Documents functionality for verification section
+        const API_BASE = '/tutor/api';
+        
+        // Load documents function
+        async function loadDocuments() {
+            const listEl = document.getElementById('documents-list');
+            if (!listEl) return; // Only run if documents list exists
+            
+            listEl.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-slate-400 mb-2"></i><p class="text-slate-600">Loading documents...</p></div>';
+            
+            try {
+                const response = await fetch(API_BASE + '/documents');
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.documents && result.documents.length > 0) {
+                        listEl.innerHTML = result.documents.map(doc => {
+                            const fileSizeMB = (doc.file_size / 1024 / 1024).toFixed(2);
+                            const uploadDate = new Date(doc.uploaded_at).toLocaleDateString();
+                            const fileIcon = doc.mime_type?.includes('pdf') ? 'fa-file-pdf' : 
+                                           doc.mime_type?.includes('image') ? 'fa-file-image' : 
+                                           doc.mime_type?.includes('word') ? 'fa-file-word' : 'fa-file';
+                            const fileColor = doc.mime_type?.includes('pdf') ? 'text-red-600' : 
+                                            doc.mime_type?.includes('image') ? 'text-blue-600' : 
+                                            doc.mime_type?.includes('word') ? 'text-blue-500' : 'text-slate-600';
+                            
+                            return `
+                                <div class="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex items-center gap-3 flex-1">
+                                            <i class="fas ${fileIcon} ${fileColor} text-2xl"></i>
+                                            <div class="flex-1">
+                                                <h5 class="font-semibold text-slate-800">${doc.file_name}</h5>
+                                                <p class="text-xs text-slate-500">
+                                                    ${doc.file_type} • ${fileSizeMB} MB • Uploaded ${uploadDate}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <a href="${doc.file_url}" target="_blank" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+                                                <i class="fas fa-eye mr-1"></i>View
+                                            </a>
+                                            <button onclick="deleteDocument(${doc.id})" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
+                                                <i class="fas fa-trash mr-1"></i>Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        listEl.innerHTML = '<div class="text-center py-8"><i class="fas fa-file text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No documents uploaded yet</p><p class="text-sm text-slate-500 mt-2">Upload your documents above to get verified</p></div>';
+                    }
+                } else {
+                    listEl.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading documents</p></div>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading documents: ' + error.message + '</p></div>';
+            }
+        }
+        
+        // Cache for documents to avoid unnecessary reloads
+        let documentsCache = null;
+        let documentsCacheTime = 0;
+        const CACHE_DURATION = 30000; // 30 seconds
+        
+        // Store original loadDocuments function
+        const originalLoadDocuments = loadDocuments;
+        
+        // Override loadDocuments to add caching
+        loadDocuments = async function() {
+            const listEl = document.getElementById('documents-list');
+            if (!listEl) return;
+            
+            // Check cache first
+            const now = Date.now();
+            if (documentsCache && (now - documentsCacheTime) < CACHE_DURATION) {
+                listEl.innerHTML = documentsCache;
+                return;
+            }
+            
+            // Load fresh data
+            listEl.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-slate-400 mb-2"></i><p class="text-slate-600">Loading documents...</p></div>';
+            
+            try {
+                const response = await fetch(API_BASE + '/documents');
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.documents && result.documents.length > 0) {
+                        const html = result.documents.map(doc => {
+                            const fileSizeMB = (doc.file_size / 1024 / 1024).toFixed(2);
+                            const uploadDate = new Date(doc.uploaded_at).toLocaleDateString();
+                            const fileIcon = doc.mime_type?.includes('pdf') ? 'fa-file-pdf' : 
+                                           doc.mime_type?.includes('image') ? 'fa-file-image' : 
+                                           doc.mime_type?.includes('word') ? 'fa-file-word' : 'fa-file';
+                            const fileColor = doc.mime_type?.includes('pdf') ? 'text-red-600' : 
+                                            doc.mime_type?.includes('image') ? 'text-blue-600' : 
+                                            doc.mime_type?.includes('word') ? 'text-blue-500' : 'text-slate-600';
+                            
+                            return `
+                                <div class="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex items-center gap-3 flex-1">
+                                            <i class="fas ${fileIcon} ${fileColor} text-2xl"></i>
+                                            <div class="flex-1">
+                                                <h5 class="font-semibold text-slate-800">${doc.file_name}</h5>
+                                                <p class="text-xs text-slate-500">
+                                                    ${doc.file_type} • ${fileSizeMB} MB • Uploaded ${uploadDate}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <a href="${doc.file_url}" target="_blank" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+                                                <i class="fas fa-eye mr-1"></i>View
+                                            </a>
+                                            <button onclick="deleteDocument(${doc.id})" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
+                                                <i class="fas fa-trash mr-1"></i>Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        listEl.innerHTML = html;
+                        // Cache the result
+                        documentsCache = html;
+                        documentsCacheTime = Date.now();
+                    } else {
+                        const isVerified = {% if user.is_verified %}true{% else %}false{% endif %};
+                        const emptyMessage = isVerified 
+                            ? '<div class="text-center py-8"><i class="fas fa-file text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No documents uploaded yet</p><p class="text-sm text-slate-500 mt-2">Upload documents to add them to your profile</p></div>'
+                            : '<div class="text-center py-8"><i class="fas fa-file text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No documents uploaded yet</p><p class="text-sm text-slate-500 mt-2">Upload your documents above to get verified</p></div>';
+                        listEl.innerHTML = emptyMessage;
+                        documentsCache = emptyMessage;
+                        documentsCacheTime = Date.now();
+                    }
+                } else {
+                    listEl.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading documents</p></div>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading documents: ' + error.message + '</p></div>';
+            }
+        };
+        
+        // Optimized: Load documents only when verification section is shown
+        const originalShowSection = showSection;
+        showSection = function(sectionName, updateUrl = true) {
+            originalShowSection(sectionName, updateUrl);
+            if (sectionName === 'verification') {
+                // Clear cache when switching to verification section to ensure fresh data
+                documentsCache = null;
+                setTimeout(() => {
+                    if (typeof loadDocuments === 'function') {
+                        loadDocuments();
+                    }
+                }, 100);
+            } else if (sectionName === 'courses') {
+                // Load courses when courses section is shown
+                setTimeout(() => {
+                    if (typeof loadCourses === 'function') {
+                        // Check if there's a search query in the input field
+                        const searchInput = document.getElementById('course-search-input');
+                        const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+                        loadCourses(searchQuery);
+                    }
+                }, 100);
+            } else if (sectionName === 'course-view') {
+                // If switching to course-view, restore the course if one was being viewed
+                const savedCourseId = localStorage.getItem('tutor_current_course_id');
+                if (savedCourseId) {
+                    const courseId = parseInt(savedCourseId);
+                    if (!isNaN(courseId)) {
+                        setTimeout(() => {
+                            if (typeof openCourse === 'function') {
+                                // Check if course content is already loaded
+                                const contentEl = document.getElementById('course-view-content');
+                                const hasContent = contentEl && contentEl.innerHTML.trim() !== '';
+                                const hasCourseStructure = contentEl && contentEl.querySelector('[data-course-id]');
+                                
+                                // Only load if content is empty or doesn't have the course structure
+                                if (!hasContent || !hasCourseStructure) {
+                                    openCourse(courseId);
+                                }
+                            }
+                        }, 100);
+                    }
+                } else {
+                    // No saved course ID - show message or redirect to courses list
+                    const contentEl = document.getElementById('course-view-content');
+                    if (contentEl) {
+                        contentEl.innerHTML = '<div class="text-center py-12 text-slate-400"><i class="fas fa-book-open text-6xl mb-4"></i><p class="text-lg">No course selected</p><p class="text-sm mt-2">Please select a course from the courses list</p><button onclick="showSection(\'courses\')" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Go to Courses</button></div>';
+                    }
+                }
+            }
+        };
+        
+        // Restore course view if needed (after all functions are set up)
+        // This runs after the wrapped showSection is defined, so it will trigger the restoration logic
+        if (initialSection === 'course-view') {
+            // Trigger the wrapped showSection again to ensure course restoration happens
+            setTimeout(() => {
+                showSection('course-view', false);
+            }, 100);
+        }
+        
+        // Load documents if verification section is active on initial page load
+        // This runs after all functions are defined
+        if (initialSection === 'verification') {
+            setTimeout(() => {
+                const listEl = document.getElementById('documents-list');
+                if (listEl && typeof loadDocuments === 'function') {
+                    loadDocuments();
+                }
+            }, 400);
+        }
+        
+        // Load courses if courses section is active on initial page load
+        if (initialSection === 'courses') {
+            setTimeout(() => {
+                if (typeof loadCourses === 'function') {
+                    // Check if there's a search query in the input field
+                    const searchInput = document.getElementById('course-search-input');
+                    const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+                    loadCourses(searchQuery);
+                }
+            }, 400);
+        }
+        
+        // ==================== COURSE MANAGEMENT FUNCTIONS ====================
+
+        // Course search state
+        let courseSearchTimeout = null;
+        let currentSearchQuery = '';
+
+        // Handle course search input - dynamic search
+        function handleCourseSearch(event) {
+            const searchInput = document.getElementById('course-search-input');
+            const clearBtn = document.getElementById('clear-search-btn');
+            const query = searchInput ? searchInput.value.trim() : '';
+            
+            // Show/hide clear button
+            if (clearBtn) {
+                if (query) {
+                    clearBtn.classList.remove('hidden');
+                } else {
+                    clearBtn.classList.add('hidden');
+                }
+            }
+            
+            // Clear previous timeout
+            if (courseSearchTimeout) {
+                clearTimeout(courseSearchTimeout);
+            }
+            
+            // If query is empty, immediately load all courses (no debounce)
+            if (!query) {
+                currentSearchQuery = '';
+                loadCourses('');
+                return;
+            }
+            
+            // Debounce search - wait 50ms after user stops typing for instant dynamic response
+            courseSearchTimeout = setTimeout(() => {
+                currentSearchQuery = query;
+                loadCourses(query);
+            }, 50);
+        }
+
+        // Clear course search
+        function clearCourseSearch() {
+            const searchInput = document.getElementById('course-search-input');
+            const clearBtn = document.getElementById('clear-search-btn');
+            searchInput.value = '';
+            clearBtn.classList.add('hidden');
+            currentSearchQuery = '';
+            loadCourses('');
+        }
+
+        // Refresh courses while preserving search query
+        function refreshCourses() {
+            const searchInput = document.getElementById('course-search-input');
+            const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+            loadCourses(searchQuery);
+        }
+
+        // Load courses assigned to tutor
+        async function loadCourses(searchQuery = '') {
+            const listEl = document.getElementById('courses-list');
+            if (!listEl) return;
+            
+            listEl.innerHTML = '<div class="text-center py-12 col-span-full"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading courses...</p></div>';
+            
+            try {
+                // Build URL with search parameter
+                let url = '/tutor/api/courses';
+                if (searchQuery) {
+                    url += `?search=${encodeURIComponent(searchQuery)}`;
+                }
+                
+                console.log('Fetching courses from', url);
+                const response = await fetch(url);
+                console.log('Response status:', response.status);
+                
+                const contentType = response.headers.get('content-type') || '';
+                console.log('Content-Type:', contentType);
+                
+                let result;
+                if (contentType.includes('application/json')) {
+                    result = await response.json();
+                    console.log('Parsed JSON result:', result);
+                } else {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text.substring(0, 500));
+                    throw new Error('Server returned non-JSON response');
+                }
+                
+                if (result.success) {
+                    if (result.courses && result.courses.length > 0) {
+                        // Build course cards HTML
+                        const coursesHTML = result.courses.map((course, index) => {
+                            const courseId = parseInt(course.id);
+                            return `
+                                <div class="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200 flex flex-col">
+                                    <div class="flex-1">
+                                        <h4 class="text-xl font-bold text-slate-800 mb-3">${course.name || 'Unnamed Course'}</h4>
+                                        ${course.description ? `<p class="text-sm text-slate-600 mb-4 line-clamp-3">${course.description}</p>` : '<p class="text-sm text-slate-400 mb-4">No description</p>'}
+                                        <div class="flex items-center gap-4 text-sm text-slate-500 mb-4">
+                                            <span class="flex items-center gap-1">
+                                                <i class="fas fa-user-graduate"></i>
+                                                <span>${course.student_count || 0} Student${course.student_count !== 1 ? 's' : ''}</span>
+                                            </span>
+                                            ${course.pending_requests > 0 ? `
+                                                <span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium flex items-center gap-1">
+                                                    <i class="fas fa-bell"></i>
+                                                    <span>${course.pending_requests}</span>
+                                                </span>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col gap-2 pt-4 border-t border-slate-200">
+                                        <button onclick="openCourse(${courseId})" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-center font-medium">
+                                            <i class="fas fa-door-open mr-2"></i>Open
+                                        </button>
+                                        <button data-course-id="${courseId}" class="w-full px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition font-medium view-details-btn" type="button">
+                                            <i class="fas fa-info-circle mr-2"></i>View Details
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        
+                        listEl.innerHTML = coursesHTML;
+                        
+                        // Add event listeners after DOM is updated
+                        document.querySelectorAll('.view-details-btn').forEach(btn => {
+                            btn.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                const courseId = parseInt(this.getAttribute('data-course-id'));
+                                console.log('Button clicked for course ID:', courseId);
+                                viewCourseDetails(courseId);
+                            });
+                        });
+                    } else {
+                        if (searchQuery) {
+                            listEl.innerHTML = '<div class="text-center py-12 col-span-full"><i class="fas fa-search text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No courses found</p><p class="text-sm text-slate-500 mt-2">Try adjusting your search terms</p></div>';
+                        } else {
+                            listEl.innerHTML = '<div class="text-center py-12 col-span-full"><i class="fas fa-book text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No courses assigned yet</p><p class="text-sm text-slate-500 mt-2">You will see courses here once an admin assigns you to them</p></div>';
+                        }
+                    }
+                } else {
+                    const errorMsg = result.error || 'Unknown error';
+                    const details = result.details ? '<p class="text-xs mt-2 text-red-400">' + result.details + '</p>' : '';
+                    listEl.innerHTML = `<div class="text-center py-12 text-red-600 col-span-full"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading courses: ${errorMsg}</p>${details}</div>`;
+                    console.error('Server error:', result);
+                }
+            } catch (error) {
+                console.error('Error loading courses:', error);
+                listEl.innerHTML = `<div class="text-center py-12 text-red-600 col-span-full"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading courses: ${error.message}</p><p class="text-sm mt-2">Check browser console for details.</p></div>`;
+            }
+        }
+
+        // View course details
+        async function viewCourseDetails(courseId) {
+            // Close any existing modal first
+            closeCourseModal();
+            
+            try {
+                // Convert to number and validate courseId
+                courseId = parseInt(courseId);
+                if (!courseId || isNaN(courseId)) {
+                    alert('Invalid course ID: ' + courseId);
+                    console.error('Invalid courseId:', courseId);
+                    return;
+                }
+                
+                console.log('Loading course details for ID:', courseId);
+                
+                const response = await fetch(`/tutor/api/courses/${courseId}`);
+                
+                // Check response
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error Response:', errorText);
+                    throw new Error(`HTTP ${response.status}: Failed to load course details`);
+                }
+                
+                const result = await response.json();
+                console.log('Course details result:', result);
+                
+                if (result.success && result.course) {
+                    const course = result.course;
+                    
+                    // Ensure students array exists
+                    if (!course.students || !Array.isArray(course.students)) {
+                        course.students = [];
+                    }
+                    
+                    // Also load requests
+                    const requestsResponse = await fetch(`/tutor/api/courses/${courseId}/requests`);
+                    const requestsResult = await requestsResponse.json();
+                    const requests = requestsResult.success ? (requestsResult.requests || []) : [];
+                    const pendingRequests = requests.filter(r => r && r.status === 'pending');
+                    
+                    // Create modal content - Minimal Design (with consistent inline styles)
+                    const modalContent = `
+                        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl mx-auto max-h-[90vh] overflow-hidden flex flex-col" style="background-color: white; border-radius: 1rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); max-width: 56rem; width: 100%; margin: 0 auto; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column;">
+                            <!-- Header -->
+                            <div class="px-8 py-6 border-b border-slate-100">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <h3 class="text-2xl font-semibold text-slate-900 mb-2">${course.name}</h3>
+                                        <div id="course-description-display">
+                                            ${course.description ? `<p class="text-slate-600 text-sm leading-relaxed">${course.description}</p>` : '<p class="text-slate-400 text-sm italic">No description</p>'}
+                                        </div>
+                                        <div id="course-description-edit" style="display: none;" class="mt-2">
+                                            <textarea id="edit-description-input" rows="3" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="Enter course description...">${course.description || ''}</textarea>
+                                            <div class="flex gap-2 mt-2">
+                                                <button onclick="saveCourseDescription(${courseId})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                                    <i class="fas fa-check mr-1"></i>Save
+                                                </button>
+                                                <button onclick="cancelEditDescription()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium">
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 ml-4">
+                                        <button onclick="editCourseDescription()" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit Description">
+                                            <i class="fas fa-edit text-sm"></i>
+                                        </button>
+                                        <button onclick="closeCourseModal()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition">
+                                            <i class="fas fa-times text-lg"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Content Scroll Area -->
+                            <div class="flex-1 overflow-y-auto px-8 py-6 space-y-8">
+                                <!-- Student Requests Section -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div class="flex items-center gap-3">
+                                            <h4 class="text-lg font-medium text-slate-900">Student Requests</h4>
+                                            ${pendingRequests.length > 0 ? `<span class="px-2.5 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs font-medium">${pendingRequests.length} pending</span>` : ''}
+                                        </div>
+                                    </div>
+                                    ${pendingRequests.length > 0 ? `
+                                        <div class="space-y-3">
+                                            ${pendingRequests.map(req => `
+                                                <div class="group border border-slate-200 rounded-xl p-4 hover:border-slate-300 hover:shadow-sm transition-all">
+                                                    <div class="flex items-start justify-between gap-4">
+                                                        <div class="flex-1 min-w-0">
+                                                            <p class="font-medium text-slate-900 mb-1">${req.student_name}</p>
+                                                            <p class="text-sm text-slate-600 mb-2">${req.student_email}</p>
+                                                            <div class="flex items-center gap-3 text-xs text-slate-500">
+                                                                ${req.disability_type ? `<span><i class="fas fa-user-tag mr-1"></i>${req.disability_type}</span>` : ''}
+                                                                <span><i class="far fa-clock mr-1"></i>${new Date(req.requested_at).toLocaleDateString()}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex gap-2 flex-shrink-0">
+                                                            <button onclick="respondToRequest(${req.id}, ${courseId}, 'accept')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                                                Accept
+                                                            </button>
+                                                            <button onclick="respondToRequest(${req.id}, ${courseId}, 'reject')" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition text-sm font-medium">
+                                                                Reject
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : `
+                                        <div class="text-center py-12 border border-dashed border-slate-200 rounded-xl">
+                                            <i class="fas fa-inbox text-4xl text-slate-300 mb-3"></i>
+                                            <p class="text-slate-500 text-sm">No pending requests</p>
+                                        </div>
+                                    `}
+                                </div>
+                                
+                                <!-- Enrolled Students Section -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h4 class="text-lg font-medium text-slate-900">Enrolled Students</h4>
+                                        <button onclick="assignStudentsToCourse(${courseId})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                            <i class="fas fa-plus mr-1.5"></i>Add Students
+                                        </button>
+                                    </div>
+                                    ${course.students.length > 0 ? `
+                                        <div class="space-y-2">
+                                            ${course.students.map(student => `
+                                                <div class="group flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:border-slate-300 hover:shadow-sm transition-all">
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="font-medium text-slate-900 mb-1">${student.full_name}</p>
+                                                        <div class="flex items-center gap-3 text-sm text-slate-600">
+                                                            <span>${student.email}</span>
+                                                            ${student.disability_type ? `<span class="text-slate-400">•</span><span>${student.disability_type}</span>` : ''}
+                                                        </div>
+                                                    </div>
+                                                    <button onclick="removeStudentFromCourse(${courseId}, ${student.id})" class="ml-4 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded-lg transition text-sm font-medium">
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : `
+                                        <div class="text-center py-12 border border-dashed border-slate-200 rounded-xl">
+                                            <i class="fas fa-user-friends text-4xl text-slate-300 mb-3"></i>
+                                            <p class="text-slate-500 text-sm mb-2">No students enrolled yet</p>
+                                            <button onclick="assignStudentsToCourse(${courseId})" class="mt-3 px-4 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition">
+                                                Add Students
+                                            </button>
+                                        </div>
+                                    `}
+                                </div>
+                                
+                                <!-- Student Progress Section -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h4 class="text-lg font-medium text-slate-900">Student Progress</h4>
+                                        <button onclick="loadStudentProgress(${courseId})" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-sm font-medium">
+                                            <i class="fas fa-chart-line mr-1.5"></i>View Progress
+                                        </button>
+                                    </div>
+                                    <div id="student-progress-content-${courseId}" class="space-y-4">
+                                        <div class="text-center py-8 border border-dashed border-slate-200 rounded-xl bg-slate-50">
+                                            <i class="fas fa-chart-bar text-4xl text-slate-300 mb-3"></i>
+                                            <p class="text-slate-500 text-sm">Click "View Progress" to see student progress</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Footer -->
+                            <div class="px-8 py-5 border-t border-slate-100 bg-slate-50/50">
+                                <div class="flex items-center justify-end gap-3">
+                                    <button onclick="closeCourseModal()" class="px-5 py-2.5 text-slate-700 hover:bg-white border border-slate-300 rounded-lg transition font-medium">
+                                        Close
+                                    </button>
+                                    <button onclick="openCourse(${courseId}); closeCourseModal();" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                                        Open Course
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Remove existing modal if any
+                    const existingModal = document.getElementById('course-modal');
+                    if (existingModal) {
+                        existingModal.remove();
+                    }
+                    
+                    // Create new modal with consistent structure and inline styles
+                    const modal = document.createElement('div');
+                    modal.id = 'course-modal';
+                    modal.className = 'fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm z-[55] flex items-center justify-center p-4';
+                    // Ensure consistent styling with inline styles
+                    modal.setAttribute('style', 'position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; background-color: rgba(0, 0, 0, 0.4) !important; backdrop-filter: blur(4px) !important; z-index: 55 !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 1rem !important;');
+                    modal.innerHTML = modalContent;
+                    
+                    // Close modal when clicking backdrop
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) {
+                            closeCourseModal();
+                        }
+                    });
+                    
+                    // Append to body and show
+                    document.body.appendChild(modal);
+                    
+                    console.log('Modal created and displayed for course:', courseId);
+                } else {
+                    alert('Error loading course details: ' + (result.error || 'Unknown error'));
+                    console.error('Course details error:', result);
+                }
+            } catch (error) {
+                console.error('Error in viewCourseDetails:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Close course modal
+        function closeCourseModal() {
+            const modal = document.getElementById('course-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Edit course description
+        function editCourseDescription() {
+            const displayDiv = document.getElementById('course-description-display');
+            const editDiv = document.getElementById('course-description-edit');
+            if (displayDiv && editDiv) {
+                displayDiv.style.display = 'none';
+                editDiv.style.display = 'block';
+                const textarea = document.getElementById('edit-description-input');
+                if (textarea) {
+                    textarea.focus();
+                    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+                }
+            }
+        }
+
+        // Cancel editing description
+        function cancelEditDescription() {
+            const displayDiv = document.getElementById('course-description-display');
+            const editDiv = document.getElementById('course-description-edit');
+            if (displayDiv && editDiv) {
+                editDiv.style.display = 'none';
+                displayDiv.style.display = 'block';
+                // Reset textarea to original value
+                const originalDescription = displayDiv.textContent.trim();
+                const textarea = document.getElementById('edit-description-input');
+                if (textarea && originalDescription !== 'No description') {
+                    textarea.value = originalDescription;
+                } else if (textarea) {
+                    textarea.value = '';
+                }
+            }
+        }
+
+        // Save course description
+        async function saveCourseDescription(courseId) {
+            const textarea = document.getElementById('edit-description-input');
+            if (!textarea) {
+                alert('Error: Could not find description input');
+                return;
+            }
+
+            const description = textarea.value.trim();
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/description`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ description: description })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Update the display
+                    const displayDiv = document.getElementById('course-description-display');
+                    if (displayDiv) {
+                        displayDiv.innerHTML = description 
+                            ? `<p class="text-slate-600 text-sm leading-relaxed">${description}</p>`
+                            : '<p class="text-slate-400 text-sm italic">No description</p>';
+                    }
+                    
+                    // Hide edit, show display
+                    cancelEditDescription();
+                    
+                    // Refresh course list to show updated description
+                    if (typeof loadCourses === 'function') {
+                        const searchInput = document.getElementById('course-search-input');
+                        const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+                        loadCourses(searchQuery);
+                    }
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to update description'));
+                }
+            } catch (error) {
+                console.error('Error saving description:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // View course requests
+        async function viewCourseRequests(courseId) {
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/requests`);
+                const result = await response.json();
+                
+                if (result.success && result.requests) {
+                    const requests = result.requests;
+                    
+                    // Create modal content - Minimal Design
+                    const modalContent = `
+                        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl mx-auto max-h-[90vh] overflow-hidden flex flex-col">
+                            <!-- Header -->
+                            <div class="px-8 py-6 border-b border-slate-100">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-2xl font-semibold text-slate-900">Student Requests</h3>
+                                    <button onclick="closeCourseModal()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition">
+                                        <i class="fas fa-times text-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Content Scroll Area -->
+                            <div class="flex-1 overflow-y-auto px-8 py-6">
+                                ${requests.length > 0 ? `
+                                    <div class="space-y-3">
+                                        ${requests.map(req => `
+                                            <div class="border border-slate-200 rounded-xl p-4 hover:border-slate-300 hover:shadow-sm transition-all ${req.status === 'pending' ? 'bg-amber-50/50' : req.status === 'accepted' ? 'bg-emerald-50/50' : 'bg-red-50/50'}">
+                                                <div class="flex items-start justify-between gap-4">
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="flex items-center gap-2 mb-2">
+                                                            <h5 class="font-medium text-slate-900">${req.student_name}</h5>
+                                                            ${req.status !== 'pending' ? `
+                                                                <span class="px-2 py-0.5 ${req.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'} rounded-full text-xs font-medium">
+                                                                    ${req.status === 'accepted' ? 'Accepted' : 'Rejected'}
+                                                                </span>
+                                                            ` : ''}
+                                                        </div>
+                                                        <p class="text-sm text-slate-600 mb-2">${req.student_email}</p>
+                                                        <div class="flex items-center gap-3 text-xs text-slate-500">
+                                                            ${req.disability_type ? `<span><i class="fas fa-user-tag mr-1"></i>${req.disability_type}</span>` : ''}
+                                                            <span><i class="far fa-clock mr-1"></i>${new Date(req.requested_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                    </div>
+                                                    ${req.status === 'pending' ? `
+                                                        <div class="flex gap-2 flex-shrink-0">
+                                                            <button onclick="respondToRequest(${req.id}, ${courseId}, 'accept')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                                                Accept
+                                                            </button>
+                                                            <button onclick="respondToRequest(${req.id}, ${courseId}, 'reject')" class="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition text-sm font-medium">
+                                                                Reject
+                                                            </button>
+                                                        </div>
+                                                    ` : ''}
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : `
+                                    <div class="text-center py-16 border border-dashed border-slate-200 rounded-xl">
+                                        <i class="fas fa-inbox text-4xl text-slate-300 mb-3"></i>
+                                        <p class="text-slate-500 text-sm">No requests found</p>
+                                    </div>
+                                `}
+                            </div>
+                            
+                            <!-- Footer -->
+                            <div class="px-8 py-5 border-t border-slate-100 bg-slate-50/50">
+                                <div class="flex items-center justify-end">
+                                    <button onclick="closeCourseModal()" class="px-5 py-2.5 text-slate-700 hover:bg-white border border-slate-300 rounded-lg transition font-medium">
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Show modal
+                    let modal = document.getElementById('course-modal');
+                    if (!modal) {
+                        modal = document.createElement('div');
+                        modal.id = 'course-modal';
+                        modal.className = 'fixed inset-0 bg-black/40 backdrop-blur-sm z-[55] flex items-center justify-center p-4';
+                        modal.style.display = 'none';
+                        // Close modal when clicking backdrop
+                        modal.addEventListener('click', (e) => {
+                            if (e.target === modal) {
+                                closeCourseModal();
+                            }
+                        });
+                        document.body.appendChild(modal);
+                    }
+                    modal.innerHTML = modalContent;
+                    modal.style.display = 'flex';
+                } else {
+                    alert('Error loading requests');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Respond to student request
+        async function respondToRequest(requestId, courseId, action) {
+            if (!confirm(`Are you sure you want to ${action} this request?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/requests/${requestId}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: action})
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    viewCourseDetails(courseId); // Refresh the View Details modal
+                    const searchInput = document.getElementById('course-search-input');
+                    const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+                    loadCourses(searchQuery); // Refresh course list
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Assign students to course
+        async function assignStudentsToCourse(courseId) {
+            // Close the View Details modal first to avoid confusion
+            closeCourseModal();
+            
+            try {
+                // Load students from tutor API
+                const response = await fetch('/tutor/api/students');
+                
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error('Server returned non-JSON response. Status: ' + response.status);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success && result.students) {
+                    const studentOptions = result.students.map(student => 
+                        `<option value="${student.id}">${student.full_name} (${student.email}) - ${student.disability_type || 'N/A'}</option>`
+                    ).join('');
+                    
+                    // Create a simple confirmation modal for student selection
+                    const confirmed = await showConfirmation(
+                        `<div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Select Students</label>
+                            <select id="assign-students-select" multiple class="w-full border border-slate-300 rounded-lg px-4 py-2" style="min-height: 200px;">
+                                ${studentOptions}
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">Hold Ctrl/Cmd to select multiple students</p>
+                        </div>`,
+                        'Add Students to Course'
+                    );
+                    
+                    if (confirmed) {
+                        const select = document.getElementById('assign-students-select');
+                        const studentIds = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+                        
+                        if (studentIds.length === 0) {
+                            alert('Please select at least one student');
+                            return;
+                        }
+                        
+                        const assignResponse = await fetch(`/tutor/api/courses/${courseId}/students`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({student_ids: studentIds})
+                        });
+                        
+                        // Check if response is JSON
+                        const assignContentType = assignResponse.headers.get('content-type');
+                        if (!assignContentType || !assignContentType.includes('application/json')) {
+                            const text = await assignResponse.text();
+                            throw new Error('Server returned non-JSON response. Status: ' + assignResponse.status);
+                        }
+                        
+                        const assignResult = await assignResponse.json();
+                        if (assignResult.success) {
+                            alert(assignResult.message);
+                            viewCourseDetails(courseId);
+                            loadCourses(); // Refresh course list
+                        } else {
+                            alert('Error: ' + assignResult.error);
+                        }
+                    }
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Remove student from course
+        async function removeStudentFromCourse(courseId, studentId) {
+            if (!confirm('Are you sure you want to remove this student from the course?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/students/${studentId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    viewCourseDetails(courseId);
+                    loadCourses(); // Refresh course list
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Open course - load course content within dashboard
+        async function openCourse(courseId) {
+            // Save course ID to localStorage for persistence across refreshes
+            localStorage.setItem('tutor_current_course_id', courseId.toString());
+            
+            // Switch to course-view section
+            showSection('course-view');
+            
+            const contentEl = document.getElementById('course-view-content');
+            contentEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading course...</p></div>';
+            
+            try {
+                // Load course content via AJAX
+                const url = `/tutor/api/courses/${courseId}/view`;
+                console.log('Fetching course view from:', url);
+                
+                const response = await fetch(url);
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                // Check content type first
+                const contentType = response.headers.get('content-type') || '';
+                console.log('Content-Type:', contentType);
+                
+                let result;
+                
+                if (contentType.includes('application/json')) {
+                    // Parse JSON even for error status codes
+                    result = await response.json();
+                    console.log('Parsed JSON result:', result);
+                } else {
+                    // Non-JSON response - try to get text for debugging
+                    const text = await response.text();
+                    console.error('Non-JSON response received:', text.substring(0, 500));
+                    throw new Error('Server returned non-JSON response. Status: ' + response.status + '. Response: ' + text.substring(0, 200));
+                }
+                
+                if (result.success && result.html) {
+                    contentEl.innerHTML = result.html;
+                } else {
+                    // Show error message from server
+                    const errorMsg = result.error || 'Unknown error';
+                    const details = result.details ? '<p class="text-xs mt-2 text-red-400">' + result.details + '</p>' : '';
+                    contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading course: ' + errorMsg + '</p>' + details + '</div>';
+                    console.error('Server error details:', result);
+                }
+            } catch (error) {
+                console.error('Error loading course:', error);
+                contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error: ' + error.message + '</p><p class="text-sm mt-2">Check browser console for details.</p></div>';
+            }
+        }
+
+        // Course view functions (used by loaded course_view.html)
+        async function loadCourseView(courseId) {
+            // Save the currently selected module ID before reloading
+            const savedModuleId = currentSelectedModuleId || localStorage.getItem(`tutor_selected_module_${courseId}`);
+            
+            const contentEl = document.getElementById('course-view-content');
+            contentEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Refreshing...</p></div>';
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/view`);
+                
+                // Check content type first
+                const contentType = response.headers.get('content-type');
+                let result;
+                
+                if (contentType && contentType.includes('application/json')) {
+                    // Parse JSON even for error status codes
+                    result = await response.json();
+                } else {
+                    // Non-JSON response (shouldn't happen, but handle gracefully)
+                    const text = await response.text();
+                    throw new Error('Server returned non-JSON response: ' + text.substring(0, 100));
+                }
+                
+                if (result.success && result.html) {
+                    contentEl.innerHTML = result.html;
+                    
+                    // After HTML is loaded, restore the selected module if one was saved
+                    if (savedModuleId) {
+                        // Wait a bit for the DOM to be ready, then restore the module
+                        setTimeout(() => {
+                            const moduleId = parseInt(savedModuleId);
+                            if (!isNaN(moduleId) && typeof selectModule === 'function') {
+                                // Check if the module still exists in the DOM
+                                const moduleElement = document.querySelector(`[data-module-id="${moduleId}"]`);
+                                if (moduleElement) {
+                                    selectModule(courseId, moduleId);
+                                } else {
+                                    // Module might have been deleted, try to select first module
+                                    const firstModule = document.querySelector('.module-item[data-module-id]');
+                                    if (firstModule) {
+                                        const firstModuleId = parseInt(firstModule.getAttribute('data-module-id'));
+                                        if (!isNaN(firstModuleId)) {
+                                            selectModule(courseId, firstModuleId);
+                                        }
+                                    }
+                                }
+                            }
+                        }, 300);
+                    }
+                } else {
+                    // Show error message from server
+                    const errorMsg = result.error || 'Unknown error';
+                    contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><p>Error loading course: ' + errorMsg + '</p></div>';
+                }
+            } catch (error) {
+                console.error('Error loading course:', error);
+                contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><p>Error: ' + error.message + '</p></div>';
+            }
+        }
+
+        async function respondToRequestView(courseId, requestId, action) {
+            if (!confirm(`Are you sure you want to ${action} this request?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/requests/${requestId}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: action})
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    loadCourseView(courseId);
+                    if (typeof loadCourses === 'function') {
+                        const searchInput = document.getElementById('course-search-input');
+                        const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+                        loadCourses(searchQuery); // Refresh course list
+                    }
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function removeStudentFromCourseView(courseId, studentId) {
+            if (!confirm('Are you sure you want to remove this student from the course?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/students/${studentId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                    loadCourseView(courseId);
+                    if (typeof loadCourses === 'function') {
+                        const searchInput = document.getElementById('course-search-input');
+                        const searchQuery = searchInput && searchInput.value.trim() ? searchInput.value.trim() : '';
+                        loadCourses(searchQuery); // Refresh course list
+                    }
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Load and display student progress for a course
+        async function loadStudentProgress(courseId) {
+            const progressContent = document.getElementById(`student-progress-content-${courseId}`);
+            if (!progressContent) return;
+            
+            progressContent.innerHTML = `<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-blue-600 mb-3"></i><p class="text-slate-600">Loading progress...</p></div>`;
+            
+            try {
+                const response = await fetch(`/tutor/api/courses/${courseId}/students/progress`);
+                const result = await response.json();
+                
+                if (result.success && result.students) {
+                    if (result.students.length === 0) {
+                        progressContent.innerHTML = `<div class="text-center py-12 border border-dashed border-slate-200 rounded-xl"><i class="fas fa-user-friends text-4xl text-slate-300 mb-3"></i><p class="text-slate-500 text-sm">No enrolled students to track</p></div>`;
+                        return;
+                    }
+                    
+                    const progressHTML = result.students.map(student => `
+                        <div class="border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all bg-white">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex-1">
+                                    <h5 class="font-semibold text-slate-900 text-lg mb-1">${student.student_name}</h5>
+                                    <p class="text-sm text-slate-600 mb-2">${student.student_email}</p>
+                                    ${student.enrolled_at ? `<p class="text-xs text-slate-500">Enrolled: ${new Date(student.enrolled_at).toLocaleDateString()}</p>` : ''}
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold text-emerald-600 mb-1">${student.percentage}%</div>
+                                    <p class="text-xs text-slate-500">${student.viewed_files} / ${student.total_files} files</p>
+                                </div>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-3 mb-3">
+                                <div class="bg-emerald-600 h-3 rounded-full transition-all duration-500" style="width: ${student.percentage}%"></div>
+                            </div>
+                            <details class="mt-3">
+                                <summary class="cursor-pointer text-sm font-medium text-slate-700 hover:text-slate-900 transition">
+                                    <i class="fas fa-chevron-down text-xs mr-1"></i>Module Breakdown
+                                </summary>
+                                <div class="mt-3 space-y-2 pl-4 border-l-2 border-slate-200">
+                                    ${student.modules.map(module => `
+                                        <div class="py-2">
+                                            <div class="flex items-center justify-between mb-1">
+                                                <span class="text-sm font-medium text-slate-700">${module.module_name}</span>
+                                                <span class="text-xs font-semibold text-emerald-600">${module.percentage}%</span>
+                                            </div>
+                                            <div class="w-full bg-slate-100 rounded-full h-1.5">
+                                                <div class="bg-emerald-500 h-1.5 rounded-full" style="width: ${module.percentage}%"></div>
+                                            </div>
+                                            <p class="text-xs text-slate-500 mt-1">${module.viewed_files} / ${module.total_files} files</p>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </details>
+                        </div>
+                    `).join('');
+                    
+                    progressContent.innerHTML = progressHTML;
+                } else {
+                    progressContent.innerHTML = `<div class="text-center py-8 text-red-500"><i class="fas fa-exclamation-triangle text-3xl mb-3"></i><p class="text-sm">Error: ${result.error || 'Unknown error'}</p></div>`;
+                }
+            } catch (error) {
+                progressContent.innerHTML = `<div class="text-center py-8 text-red-500"><i class="fas fa-exclamation-triangle text-3xl mb-3"></i><p class="text-sm">Error: ${error.message}</p></div>`;
+            }
+        }
+        
+        async function assignStudentsToCourseView(courseId) {
+            try {
+                const response = await fetch('/tutor/api/students');
+                
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error('Server returned non-JSON response. Status: ' + response.status);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success && result.students) {
+                    const studentOptions = result.students.map(student => 
+                        `<option value="${student.id}">${student.full_name} (${student.email}) - ${student.disability_type || 'N/A'}</option>`
+                    ).join('');
+                    
+                    const confirmed = await showConfirmation(
+                        `<div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Select Students</label>
+                            <select id="assign-students-select-view" multiple class="w-full border border-slate-300 rounded-lg px-4 py-2" style="min-height: 200px;">
+                                ${studentOptions}
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">Hold Ctrl/Cmd to select multiple students</p>
+                        </div>`,
+                        'Add Students to Course'
+                    );
+                    
+                    if (confirmed) {
+                        const select = document.getElementById('assign-students-select-view');
+                        const studentIds = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+                        
+                        if (studentIds.length === 0) {
+                            alert('Please select at least one student');
+                            return;
+                        }
+                        
+                        const assignResponse = await fetch(`/tutor/api/courses/${courseId}/students`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({student_ids: studentIds})
+                        });
+                        
+                        // Check if response is JSON
+                        const assignContentType2 = assignResponse.headers.get('content-type');
+                        if (!assignContentType2 || !assignContentType2.includes('application/json')) {
+                            const text = await assignResponse.text();
+                            throw new Error('Server returned non-JSON response. Status: ' + assignResponse.status);
+                        }
+                        
+                        const assignResult = await assignResponse.json();
+                        if (assignResult.success) {
+                            alert(assignResult.message);
+                            loadCourseView(courseId);
+                            if (typeof loadCourses === 'function') {
+                                loadCourses(); // Refresh course list
+                            }
+                        } else {
+                            alert('Error: ' + assignResult.error);
+                        }
+                    }
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Confirmation modal system
+        function showConfirmation(message, title = 'Confirm Action') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirmation-modal');
+                const titleEl = document.getElementById('confirmation-title');
+                const messageEl = document.getElementById('confirmation-message');
+                const confirmBtn = document.getElementById('confirmation-confirm');
+                const cancelBtn = document.getElementById('confirmation-cancel');
+                
+                titleEl.textContent = title;
+                // Support both HTML and text content
+                if (message.includes('<')) {
+                    messageEl.innerHTML = message;
+                } else {
+                    messageEl.textContent = message;
+                }
+                
+                modal.classList.remove('hidden');
+                
+                const cleanup = () => {
+                    modal.classList.add('hidden');
+                    confirmBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                };
+                
+                confirmBtn.onclick = () => {
+                    cleanup();
+                    resolve(true);
+                };
+                
+                cancelBtn.onclick = () => {
+                    cleanup();
+                    resolve(false);
+                };
+                
+                // Close on overlay click
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        cleanup();
+                        resolve(false);
+                    }
+                };
+            });
+        }
+        
+        // Clear cache on upload/delete
+        const originalDeleteDocument = deleteDocument;
+        deleteDocument = async function(docId) {
+            if (!confirm('Are you sure you want to delete this document?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(API_BASE + '/documents/' + docId, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Document deleted successfully!');
+                    documentsCache = null; // Clear cache
+                    loadDocuments();
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to delete document'));
+                }
+            } catch (error) {
+                alert('Error deleting document: ' + error.message);
+            }
+        };
+        
+        // Update upload handler to clear cache
+        const uploadForm = document.getElementById('upload-document-form');
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const form = e.target;
+                const fileInput = document.getElementById('document-file');
+                const fileType = document.getElementById('document-type').value;
+                const submitBtn = form.querySelector('button[type="submit"]');
+                
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    alert('Please select a file to upload');
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                formData.append('file_type', fileType);
+                
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Uploading...';
+                
+                try {
+                    const response = await fetch(API_BASE + '/documents', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        alert('Document uploaded successfully!');
+                        form.reset();
+                        documentsCache = null; // Clear cache
+                        loadDocuments();
+                    } else {
+                        alert('Error: ' + (result.error || 'Failed to upload document'));
+                    }
+                } catch (error) {
+                    alert('Error uploading document: ' + error.message);
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>Upload Document';
+                }
+            });
+        }
+        
+        // Module management functions
+        function selectModule(courseId, moduleId) {
+            currentSelectedModuleId = moduleId;
+            
+            // Save selected module to localStorage for persistence across refreshes
+            localStorage.setItem(`tutor_selected_module_${courseId}`, moduleId.toString());
+            
+            // Update active state in sidebar
+            document.querySelectorAll('.module-item').forEach(item => {
+                item.classList.remove('bg-blue-50', 'border-blue-300');
+                item.classList.add('border-slate-200');
+            });
+            const selectedItem = document.querySelector(`[data-module-id="${moduleId}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('bg-blue-50', 'border-blue-300');
+                selectedItem.classList.remove('border-slate-200');
+            }
+            
+            // Load module files
+            loadModuleFiles(courseId, moduleId);
+        }
+        
+        async function loadModuleFiles(courseId, moduleId) {
+            const contentEl = document.getElementById('module-content');
+            if (!contentEl) return;
+            
+            contentEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading module...</p></div>';
+            
+            try {
+                const response = await fetch(`/tutor/api/modules/${moduleId}/files`);
+                
+                // Check content type before parsing
+                const contentType = response.headers.get('content-type') || '';
+                let result;
+                
+                if (contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text.substring(0, 500));
+                    throw new Error('Server returned non-JSON response. Status: ' + response.status);
+                }
+                
+                if (result.success) {
+                    const files = result.files || [];
+                    const moduleItem = document.querySelector(`[data-module-id="${moduleId}"]`);
+                    const moduleName = moduleItem ? moduleItem.querySelector('h4').textContent : 'Module';
+                    const moduleDesc = moduleItem ? (moduleItem.querySelector('p.text-xs.text-slate-500')?.textContent || '') : '';
+                    
+                    if (files.length > 0) {
+                        contentEl.innerHTML = `
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200">
+                                    <div>
+                                        <h3 class="text-2xl font-bold text-slate-800 mb-1">${moduleName}</h3>
+                                        ${moduleDesc ? `<p class="text-sm text-slate-600">${moduleDesc}</p>` : ''}
+                                    </div>
+                                    <button onclick="showAddFileModal(${moduleId})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                                        <i class="fas fa-plus"></i>
+                                        <span>Add File</span>
+                                    </button>
+                                </div>
+                                <div class="mb-4">
+                                    <p class="text-sm text-slate-600">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        ${files.length} file${files.length !== 1 ? 's' : ''} in this module
+                                    </p>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    ${files.map(file => {
+                                        const isVideo = ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'm4v'].includes(file.file_type.toLowerCase());
+                                        const fileIcon = getFileIcon(file.file_type);
+                                        const iconClass = isVideo ? 'fas fa-video' : `fas fa-file-${fileIcon}`;
+                                        const iconColor = isVideo ? 'text-red-600' : 'text-blue-600';
+                                        
+                                        return `
+                                        <div class="border border-slate-200 rounded-lg p-4 hover:shadow-lg transition-all bg-white">
+                                            <div class="flex items-start justify-between mb-3">
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-2 mb-2">
+                                                        <i class="${iconClass} ${iconColor} text-3xl"></i>
+                                                        <div class="flex-1 min-w-0">
+                                                            <h4 class="font-semibold text-slate-800 text-sm truncate" title="${file.file_name}">${file.file_name}</h4>
+                                                            <p class="text-xs text-slate-500">${formatFileSize(file.file_size)} • ${file.file_type.toUpperCase()}${isVideo ? ' • Video' : ''}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button onclick="deleteModuleFile(${moduleId}, ${file.id}, ${courseId})" class="ml-2 text-red-600 hover:text-red-700 p-1 rounded hover:bg-red-50 transition" title="Delete file">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                            <div class="flex gap-2 mt-3">
+                                                <a href="${file.url}" target="_blank" rel="noopener noreferrer" class="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm text-center hover:bg-blue-700 transition flex items-center justify-center gap-1">
+                                                    <i class="fas fa-external-link-alt"></i>
+                                                    <span>Open</span>
+                                                </a>
+                                                <a href="${file.url}" download class="flex-1 px-3 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm text-center hover:bg-slate-300 transition flex items-center justify-center gap-1">
+                                                    <i class="fas fa-download"></i>
+                                                    <span>Download</span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        contentEl.innerHTML = `
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center">
+                                <h3 class="text-2xl font-bold text-slate-800 mb-2">${moduleName}</h3>
+                                ${moduleDesc ? `<p class="text-sm text-slate-600 mb-4">${moduleDesc}</p>` : ''}
+                                <div class="py-8">
+                                    <i class="fas fa-folder-open text-6xl text-slate-300 mb-4"></i>
+                                    <p class="text-slate-500 mb-2 text-lg">No files in this module yet</p>
+                                    <p class="text-sm text-slate-400 mb-6">Upload PDFs, presentations, documents, or images to share with students</p>
+                                    <button onclick="showAddFileModal(${moduleId})" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-base font-medium">
+                                        <i class="fas fa-plus mr-2"></i>Upload File
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><p>Error loading module files</p></div>';
+                }
+            } catch (error) {
+                console.error('Error loading module files:', error);
+                contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><p>Error: ' + error.message + '</p></div>';
+            }
+        }
+        
+        function getFileIcon(fileType) {
+            const type = fileType.toLowerCase();
+            if (type === 'pdf') return 'pdf';
+            if (['ppt', 'pptx'].includes(type)) return 'powerpoint';
+            if (['doc', 'docx'].includes(type)) return 'word';
+            if (['jpg', 'jpeg', 'png', 'gif'].includes(type)) return 'image';
+            if (['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'm4v'].includes(type)) return 'video';
+            return 'alt';
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        function showCreateModuleModal(courseId) {
+            currentCourseIdForModule = courseId;
+            const modal = document.getElementById('create-module-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('module-name').value = '';
+                document.getElementById('module-description').value = '';
+            }
+        }
+        
+        function closeCreateModuleModal() {
+            document.getElementById('create-module-modal').classList.add('hidden');
+        }
+        
+        async function createModule(event) {
+            event.preventDefault();
+            
+            if (!currentCourseIdForModule) {
+                alert('Course ID not found. Please try again.');
+                return;
+            }
+            
+            const name = document.getElementById('module-name').value.trim();
+            const description = document.getElementById('module-description').value.trim();
+            
+            if (!name) {
+                alert('Module name is required');
+                return;
+            }
+            
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
+            
+            try {
+                const courseId = currentCourseIdForModule;
+                const url = `/tutor/api/courses/${courseId}/modules`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, description})
+                });
+                
+                const contentType = response.headers.get('content-type') || '';
+                let result;
+                
+                if (contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    const text = await response.text();
+                    throw new Error(`Server returned non-JSON response. Status: ${response.status}. Response: ${text.substring(0, 200)}`);
+                }
+                
+                if (result.success) {
+                    alert('Module created successfully!');
+                    closeCreateModuleModal();
+                    loadCourseView(courseId); // Reload course view to show new module
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to create module'));
+                }
+            } catch (error) {
+                console.error('Error creating module:', error);
+                alert('Error: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        }
+        
+        function showAddFileModal(moduleId) {
+            const modal = document.getElementById('add-file-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.getElementById('current-module-id').value = moduleId;
+                const fileInput = document.getElementById('module-file-input');
+                if (fileInput) {
+                    fileInput.value = '';
+                    
+                    // Reset file name display
+                    const displayEl = document.getElementById('file-name-display');
+                    if (displayEl) {
+                        displayEl.textContent = 'No file selected';
+                        displayEl.className = 'text-xs text-slate-500 font-medium';
+                    }
+                    
+                    // Reset drop zone styling
+                    const dropZone = document.getElementById('drop-zone');
+                    if (dropZone) {
+                        dropZone.classList.remove('border-green-500', 'bg-green-50', 'border-blue-500', 'bg-blue-50');
+                        dropZone.classList.add('border-blue-400', 'bg-slate-50');
+                    }
+                    
+                    // Reset text
+                    const dropText = document.getElementById('drop-text');
+                    if (dropText) {
+                        dropText.textContent = 'Click to browse or drag and drop';
+                    }
+                    
+                    // Ensure change listener is attached
+                    fileInput.onchange = function(e) {
+                        handleFileSelect(e.target.files[0]);
+                    };
+                }
+                
+                // Setup drag and drop handlers
+                setupDragAndDrop();
+            }
+        }
+        
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('module-file-input');
+            if (!dropZone || !fileInput) return;
+            
+            // Prevent default drag behaviors
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            // Highlight drop zone when item is dragged over it
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, function(e) {
+                    dropZone.classList.remove('border-blue-400', 'bg-slate-50');
+                    dropZone.classList.add('border-green-500', 'bg-green-50');
+                    const dropText = document.getElementById('drop-text');
+                    if (dropText) {
+                        dropText.textContent = 'Drop file here';
+                    }
+                }, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, function(e) {
+                    dropZone.classList.remove('border-green-500', 'bg-green-50');
+                    dropZone.classList.add('border-blue-400', 'bg-slate-50');
+                    const dropText = document.getElementById('drop-text');
+                    if (dropText) {
+                        dropText.textContent = 'Click to browse or drag and drop';
+                    }
+                }, false);
+            });
+            
+            // Handle dropped files
+            dropZone.addEventListener('drop', function(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    handleFileSelect(files[0]);
+                    // Set the file input
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(files[0]);
+                    fileInput.files = dataTransfer.files;
+                }
+            }, false);
+        }
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        function handleFileSelect(file) {
+            if (!file) return;
+            
+            const displayEl = document.getElementById('file-name-display');
+            if (displayEl) {
+                displayEl.textContent = file.name;
+                displayEl.className = 'text-xs text-blue-600 font-medium';
+            }
+            
+            // Update drop zone to show file is selected
+            const dropZone = document.getElementById('drop-zone');
+            if (dropZone) {
+                dropZone.classList.remove('border-green-500', 'bg-green-50');
+                dropZone.classList.add('border-blue-500', 'bg-blue-50');
+            }
+        }
+        
+        function closeAddFileModal() {
+            document.getElementById('add-file-modal').classList.add('hidden');
+        }
+        
+        async function addFileToModule(event) {
+            event.preventDefault();
+            
+            const moduleId = parseInt(document.getElementById('current-module-id').value);
+            const fileInput = document.getElementById('module-file-input');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Please select a file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Uploading...';
+            
+            try {
+                const response = await fetch(`/tutor/api/modules/${moduleId}/files`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                // Check content type before parsing
+                const contentType = response.headers.get('content-type') || '';
+                let result;
+                
+                if (contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text.substring(0, 500));
+                    throw new Error('Server returned non-JSON response. Status: ' + response.status);
+                }
+                
+                if (result.success) {
+                    // Show success notification
+                    const notification = document.createElement('div');
+                    notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2';
+                    notification.innerHTML = '<i class="fas fa-check-circle"></i><span>File uploaded successfully!</span>';
+                    document.body.appendChild(notification);
+                    setTimeout(() => notification.remove(), 3000);
+                    
+                    closeAddFileModal();
+                    
+                    // Get courseId from the course view container
+                    const courseViewContainer = document.querySelector('#course-view-content [data-course-id]');
+                    let courseId = null;
+                    
+                    if (courseViewContainer) {
+                        courseId = parseInt(courseViewContainer.dataset.courseId);
+                    } else {
+                        // Fallback: try to find courseId from module item's parent
+                        const moduleItem = document.querySelector(`[data-module-id="${moduleId}"]`);
+                        if (moduleItem) {
+                            const parentContainer = moduleItem.closest('[data-course-id]');
+                            if (parentContainer) {
+                                courseId = parseInt(parentContainer.dataset.courseId);
+                            }
+                        }
+                    }
+                    
+                    if (courseId) {
+                        // Save current module selection before reloading
+                        localStorage.setItem(`tutor_selected_module_${courseId}`, moduleId.toString());
+                        currentSelectedModuleId = moduleId; // Also update global variable
+                        
+                        // Reload course view first to update sidebar file counts
+                        await loadCourseView(courseId);
+                        
+                        // Then reload module files to show the new file
+                        // Wait a bit for course view to finish loading
+                        setTimeout(() => {
+                            console.log('Refreshing module files after upload:', moduleId);
+                            loadModuleFiles(courseId, moduleId);
+                        }, 500);
+                    } else {
+                        console.warn('Could not find courseId, reloading module files only');
+                        // Fallback: just reload module files
+                        loadModuleFiles(null, moduleId);
+                    }
+                } else {
+                    alert('Error: ' + (result.error || 'Failed to upload file'));
+                }
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                alert('Error: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Upload File';
+            }
+        }
+        
+        async function deleteModuleFile(moduleId, fileId, courseId) {
+            if (!confirm('Are you sure you want to delete this file?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/tutor/api/modules/${moduleId}/files/${fileId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('File deleted successfully!');
+                    loadModuleFiles(courseId, moduleId);
+                    loadCourseView(courseId); // Reload to update file counts
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

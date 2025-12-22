@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Tutor Dashboard{% endblock %} - SenseLearn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tutor-base.css') }}">
+</head>
+<body class="bg-gray-50 min-h-screen sidebar-expanded">
+    
+    <div id="sidebar" class="fixed top-0 left-0 h-full bg-white shadow-xl flex flex-col z-30 sidebar">
+        <div class="p-6 border-b flex items-center justify-center">
+            <a href="/" class="text-2xl font-extrabold text-blue-600 flex items-center space-x-2">
+                <i class="fas fa-graduation-cap"></i>
+                <span class="logo-text">SenseLearn</span>
+            </a>
+        </div>
+        
+        <nav class="flex-grow p-4 space-y-2">
+            <a href="/tutor/dashboard" class="flex items-center space-x-3 p-3 rounded-lg font-medium transition duration-150 ease-in-out sidebar-link-full 
+                {% if active_page == 'dashboard' %}text-white bg-blue-600{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                <i class="fas fa-home flex-shrink-0 w-6 text-center"></i>
+                <span class="sidebar-item-text">Dashboard</span>
+            </a>
+            <a href="/tutor/profile" class="flex items-center space-x-3 p-3 rounded-lg font-medium transition duration-150 ease-in-out sidebar-link-full
+                {% if active_page == 'profile' %}text-white bg-blue-600{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                <i class="fas fa-user-circle flex-shrink-0 w-6 text-center"></i>
+                <span class="sidebar-item-text">Profile</span>
+            </a>
+            <a href="/tutor/verification" class="flex items-center space-x-3 p-3 rounded-lg font-medium transition duration-150 ease-in-out sidebar-link-full
+                {% if active_page == 'verification' %}text-white bg-blue-600{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                <i class="fas fa-shield-alt flex-shrink-0 w-6 text-center"></i>
+                <span class="sidebar-item-text">Verification</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg font-medium transition duration-150 ease-in-out sidebar-link-full
+                {% if active_page == 'availability' %}text-white bg-blue-600{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                <i class="fas fa-calendar-alt flex-shrink-0 w-6 text-center"></i>
+                <span class="sidebar-item-text">Availability</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg font-medium transition duration-150 ease-in-out sidebar-link-full
+                {% if active_page == 'earnings' %}text-white bg-blue-600{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                <i class="fas fa-chart-line flex-shrink-0 w-6 text-center"></i>
+                <span class="sidebar-item-text">Earnings</span>
+            </a>
+             <a href="#" class="flex items-center space-x-3 p-3 rounded-lg font-medium transition duration-150 ease-in-out sidebar-link-full
+                {% if active_page == 'contents' %}text-white bg-blue-600{% else %}text-gray-700 hover:bg-gray-100{% endif %}">
+                <i class="fas fa-chart-line flex-shrink-0 w-6 text-center"></i>
+                <span class="sidebar-item-text">Contents</span>
+            </a>
+            {% block sidebar_links %}{% endblock %}
+        </nav>
+
+        <div class="p-4 border-t">
+            <div class="flex items-center justify-center mb-4">
+                <div class="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                    <i class="fas fa-user text-blue-600"></i>
+                </div>
+                <span class="text-sm font-semibold text-gray-800 truncate tutor-info-name">{{ user.full_name }}</span>
+            </div>
+            
+            <a href="/logout" class="flex items-center justify-center space-x-2 w-full py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition duration-150 ease-in-out sidebar-link-full">
+                <i class="fas fa-sign-out-alt flex-shrink-0 w-6 text-center"></i>
+                <span class="sidebar-item-text">Logout</span>
+            </a>
+        </div>
+    </div>
+
+    <div id="main-content" class="flex-grow p-8 main-content"> 
+        <div class="mb-8 border-b pb-4 flex justify-between items-center">
+            <h1 class="text-4xl font-extrabold text-gray-900">{% block content_header %}{% endblock %}</h1>
+            <button id="sidebar-toggle" onclick="toggleSidebar()" class="p-3 bg-white text-gray-700 rounded-full shadow hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <i id="toggle-icon" class="fas fa-arrow-left"></i>
+            </button>
+        </div>
+
+        <div class="max-w-7xl mx-auto">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    {% block scripts %}
+    <script src="{{ url_for('static', filename='js/tutor-base.js') }}"></script>
+    {% endblock %}
+
+</body>
+</html>

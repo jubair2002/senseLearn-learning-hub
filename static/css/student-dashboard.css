@@ -1,0 +1,15 @@
+.sidebar-transition {
+    transition: all 0.3s ease-in-out;
+}
+.content-section {
+    display: none !important;
+    position: relative;
+}
+.content-section.active {
+    display: block !important;
+}
+#course-view-container {
+    width: 100%;
+    position: relative;
+    z-index: 1;
+}

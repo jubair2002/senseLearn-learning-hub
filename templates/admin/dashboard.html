@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - SenseLearn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            min-width: 300px;
+            max-width: 500px;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .notification-success {
+            background-color: #10b981;
+            color: white;
+        }
+        .notification-error {
+            background-color: #ef4444;
+            color: white;
+        }
+        .notification-info {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease-out;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+    
+    <!-- Documents Modal -->
+    <div id="documents-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 95vw; max-height: 95vh; overflow-y: auto; width: 1200px;">
+            <div class="flex items-center justify-between mb-4 border-b pb-4">
+                <h3 id="documents-modal-title" class="text-xl font-bold text-slate-800">Tutor Documents</h3>
+                <button onclick="closeDocumentsModal()" class="text-slate-500 hover:text-slate-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="documents-list" class="space-y-4">
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-3xl text-slate-400 mb-2"></i>
+                    <p class="text-slate-600">Loading documents...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 text-xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800" id="confirmation-title">Confirm Action</h3>
+            </div>
+            <p class="text-slate-600 mb-6" id="confirmation-message">Are you sure you want to perform this action?</p>
+            <div class="flex items-center gap-3 justify-end">
+                <button id="confirmation-cancel" class="px-5 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition font-medium">
+                    Cancel
+                </button>
+                <button id="confirmation-confirm" class="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar-transition bg-white border-r border-slate-200 w-64 flex flex-col">
+            <!-- Logo Section -->
+            <div class="p-6 border-b border-slate-200">
+                <div class="flex items-center gap-3" id="logo-content">
+                    <div class="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center text-white flex-shrink-0">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div id="logo-text" class="sidebar-text">
+                        <h1 class="text-lg font-bold text-slate-800">SenseLearn</h1>
+                        <p class="text-xs text-slate-500">Admin Portal</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Menu -->
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <a href="#" data-section="dashboard" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg bg-purple-50 text-purple-700 font-medium hover:bg-purple-100 transition">
+                    <i class="fas fa-home w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Dashboard</span>
+                </a>
+                <a href="#" data-section="tutors" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-chalkboard-teacher w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Tutors</span>
+                </a>
+                <a href="#" data-section="students" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-user-graduate w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Students</span>
+                </a>
+                <a href="#" data-section="create-account" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-user-plus w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Create Account</span>
+                </a>
+                <a href="#" data-section="courses" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-book w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Courses</span>
+                </a>
+                <a href="#" data-section="settings" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fas fa-cog w-5 flex-shrink-0"></i>
+                    <span class="sidebar-text">Settings</span>
+                </a>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <div class="p-4 border-t border-slate-200">
+                <div class="bg-purple-50 rounded-lg p-3 text-xs text-purple-700 sidebar-text">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <strong>Admin Panel</strong>
+                    <p class="mt-1">Manage users & verify tutors</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Header -->
+            <header class="bg-white border-b border-slate-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <!-- Sidebar Toggle & Page Title -->
+                    <div class="flex items-center gap-4">
+                        <button id="sidebar-toggle" class="p-2 rounded-lg hover:bg-slate-100 transition text-slate-600">
+                            <i class="fas fa-bars text-lg"></i>
+                        </button>
+                        <div>
+                            <h2 id="page-title" class="text-xl font-bold text-slate-800">Dashboard</h2>
+                            <p class="text-sm text-slate-500">Welcome back, {{ user.full_name }}</p>
+                        </div>
+                    </div>
+
+                    <!-- User Menu -->
+                    <div class="flex items-center gap-4">
+                        <!-- User Dropdown -->
+                        <div class="relative" id="user-menu-container">
+                            <button id="user-menu-button" class="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-slate-100 transition">
+                                <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                    {{ user.full_name[0].upper() }}
+                                </div>
+                                <div class="text-left hidden md:block">
+                                    <p class="text-sm font-medium text-slate-800">{{ user.full_name }}</p>
+                                    <p class="text-xs text-slate-500">Administrator</p>
+                                </div>
+                                <i class="fas fa-chevron-down text-slate-400 text-xs"></i>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50">
+                                <div class="px-4 py-3 border-b border-slate-200">
+                                    <p class="text-sm font-semibold text-slate-800">{{ user.full_name }}</p>
+                                    <p class="text-xs text-slate-500">{{ user.email }}</p>
+                                </div>
+                                <a href="#" data-section="settings" class="nav-link flex items-center gap-3 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition">
+                                    <i class="fas fa-cog w-4"></i>
+                                    <span>Settings</span>
+                                </a>
+                                <div class="border-t border-slate-200 my-1"></div>
+                                <a href="/logout" class="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition">
+                                    <i class="fas fa-sign-out-alt w-4"></i>
+                                    <span>Logout</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content - All Sections -->
+            <main class="flex-1 overflow-y-auto p-6">
+                <!-- Dashboard Section -->
+                <div id="section-dashboard" class="content-section active">
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500 mb-1">Total Students</p>
+                                    <p id="stat-total-students" class="text-3xl font-bold text-slate-800">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-user-graduate text-blue-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500 mb-1">Total Tutors</p>
+                                    <p id="stat-total-tutors" class="text-3xl font-bold text-slate-800">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-chalkboard-teacher text-emerald-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500 mb-1">Verified Tutors</p>
+                                    <p id="stat-verified-tutors" class="text-3xl font-bold text-emerald-600">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-check-circle text-emerald-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500 mb-1">Pending Verification</p>
+                                    <p id="stat-pending-tutors" class="text-3xl font-bold text-yellow-600">0</p>
+                                </div>
+                                <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+                        <h3 class="text-xl font-bold text-slate-800 mb-4">Quick Actions</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <a href="#" data-section="tutors" class="nav-link flex items-center gap-4 p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-chalkboard-teacher text-purple-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-slate-800">Manage Tutors</p>
+                                    <p class="text-sm text-slate-500">View and verify tutors</p>
+                                </div>
+                            </a>
+                            <a href="#" data-section="create-account" class="nav-link flex items-center gap-4 p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-user-plus text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-slate-800">Create Account</p>
+                                    <p class="text-sm text-slate-500">Add new student or tutor</p>
+                                </div>
+                            </a>
+                            <a href="#" data-section="students" class="nav-link flex items-center gap-4 p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                                <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-user-graduate text-emerald-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-slate-800">Manage Students</p>
+                                    <p class="text-sm text-slate-500">View all students</p>
+                                </div>
+                            </a>
+                            <a href="#" data-section="courses" class="nav-link flex items-center gap-4 p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                                <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-book text-indigo-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-slate-800">Manage Courses</p>
+                                    <p class="text-sm text-slate-500">Create and manage courses</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tutors Section -->
+                <div id="section-tutors" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-2xl font-bold text-slate-800">Tutor Management</h3>
+                            <button onclick="loadTutors()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                                <i class="fas fa-sync-alt mr-2"></i>Refresh
+                            </button>
+                        </div>
+                        <div id="tutors-list" class="space-y-4">
+                            <div class="text-center py-12">
+                                <i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i>
+                                <p class="text-slate-600">Loading tutors...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Students Section -->
+                <div id="section-students" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-2xl font-bold text-slate-800">Student Management</h3>
+                            <button onclick="loadStudents()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-sync-alt mr-2"></i>Refresh
+                            </button>
+                        </div>
+                        <div id="students-list" class="space-y-4">
+                            <div class="text-center py-12">
+                                <i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i>
+                                <p class="text-slate-600">Loading students...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create Account Section -->
+                <div id="section-create-account" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6">Create New Account</h3>
+                        <form id="create-account-form" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Account Type *</label>
+                                    <select id="account-type" name="user_type" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" required>
+                                        <option value="">Select type...</option>
+                                        <option value="student">Student</option>
+                                        <option value="tutor">Tutor</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Email *</label>
+                                    <input type="email" id="account-email" name="email" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Full Name *</label>
+                                    <input type="text" id="account-full-name" name="full_name" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Username (Optional)</label>
+                                    <input type="text" id="account-username" name="username" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Phone Number (Optional)</label>
+                                    <input type="tel" id="account-phone" name="phone_number" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                </div>
+                            </div>
+
+                            <!-- Student Specific Fields -->
+                            <div id="student-fields" class="hidden space-y-4 border-t pt-6">
+                                <h4 class="text-lg font-semibold text-slate-800">Student Information</h4>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Disability Type *</label>
+                                    <select id="disability-type" name="disability_type" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                        <option value="">Select disability type...</option>
+                                        <option value="Deaf">Deaf</option>
+                                        <option value="Mute">Mute</option>
+                                        <option value="Blind">Blind</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Tutor Specific Fields -->
+                            <div id="tutor-fields" class="hidden space-y-4 border-t pt-6">
+                                <h4 class="text-lg font-semibold text-slate-800">Tutor Information</h4>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Qualifications *</label>
+                                    <textarea id="tutor-qualifications" name="qualifications" rows="3" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Enter qualifications and certifications"></textarea>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">Years of Experience *</label>
+                                        <input type="number" id="tutor-experience" name="experience_years" min="0" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-2">Hourly Rate (BDT) *</label>
+                                        <input type="number" id="tutor-hourly-rate" name="hourly_rate" min="0" step="0.01" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Subjects *</label>
+                                    <input type="text" id="tutor-subjects" name="subjects" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Comma-separated subjects">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">Bio *</label>
+                                    <textarea id="tutor-bio" name="bio" rows="4" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Short bio/description"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-4 pt-4 border-t">
+                                <button type="submit" class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
+                                    <i class="fas fa-user-plus mr-2"></i>Create Account
+                                </button>
+                                <button type="reset" class="px-6 py-3 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
+                                    Reset Form
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Courses Section -->
+                <div id="section-courses" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-2xl font-bold text-slate-800">Course Management</h3>
+                            <button onclick="showCreateCourseModal()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                                <i class="fas fa-plus mr-2"></i>Create Course
+                            </button>
+                        </div>
+                        <div id="courses-list" class="space-y-4">
+                            <div class="text-center py-12">
+                                <i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i>
+                                <p class="text-slate-600">Loading courses...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Section -->
+                <div id="section-settings" class="content-section">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6">Settings</h3>
+                        <p class="text-slate-600">Admin settings will be available here.</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Create Course Modal -->
+    <div id="create-course-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-slate-800">Create New Course</h3>
+                <button onclick="closeCreateCourseModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="create-course-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Course Name *</label>
+                    <input type="text" id="course-name" name="name" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Description</label>
+                    <textarea id="course-description" name="description" rows="3" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="Course description (optional)"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Target Disability Types *</label>
+                    <select id="course-disability-types" name="target_disability_types" class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" required>
+                        <option value="All">All Types</option>
+                        <option value="Deaf">Deaf</option>
+                        <option value="Mute">Mute</option>
+                        <option value="Blind">Blind</option>
+                        <option value="Other">Other</option>
+                        <option value="Deaf,Mute">Deaf & Mute</option>
+                        <option value="Deaf,Blind">Deaf & Blind</option>
+                        <option value="Mute,Blind">Mute & Blind</option>
+                        <option value="Deaf,Mute,Blind">Deaf, Mute & Blind</option>
+                    </select>
+                    <p class="text-xs text-slate-500 mt-1">Select which disability types this course is designed for</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Assign Tutors (Optional - Verified Only)</label>
+                    <select id="course-tutors" name="tutor_ids" multiple class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" style="min-height: 100px;">
+                        <!-- Tutors will be loaded dynamically -->
+                    </select>
+                    <p class="text-xs text-slate-500 mt-1">Hold Ctrl/Cmd to select multiple tutors. Only verified tutors are shown.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Assign Students (Optional)</label>
+                    <select id="course-students" name="student_ids" multiple class="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" style="min-height: 100px;">
+                        <!-- Students will be loaded dynamically -->
+                    </select>
+                    <p class="text-xs text-slate-500 mt-1">Hold Ctrl/Cmd to select multiple students.</p>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
+                        <i class="fas fa-plus mr-2"></i>Create Course
+                    </button>
+                    <button type="button" onclick="closeCreateCourseModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Course Details Modal -->
+    <div id="course-details-modal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="course-details-title" class="text-xl font-bold text-slate-800">Course Details</h3>
+                <button onclick="closeCourseDetailsModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="course-details-content" class="space-y-6">
+                <!-- Content will be loaded dynamically -->
+            </div>
+        </div>
+    </div>
+<script>
+        // Notification system
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            
+            const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+            notification.innerHTML = `
+                <i class="fas ${icon} text-xl"></i>
+                <span class="flex-1">${message}</span>
+                <button onclick="this.parentElement.remove()" class="ml-2 hover:opacity-80">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            container.appendChild(notification);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.style.animation = 'slideIn 0.3s ease-out reverse';
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // Confirmation modal system
+        function showConfirmation(message, title = 'Confirm Action') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirmation-modal');
+                const titleEl = document.getElementById('confirmation-title');
+                const messageEl = document.getElementById('confirmation-message');
+                const confirmBtn = document.getElementById('confirmation-confirm');
+                const cancelBtn = document.getElementById('confirmation-cancel');
+                
+                titleEl.textContent = title;
+                // Support both HTML and text content
+                if (message.includes('<')) {
+                    messageEl.innerHTML = message;
+                } else {
+                    messageEl.textContent = message;
+                }
+                
+                modal.classList.remove('hidden');
+                
+                const cleanup = () => {
+                    modal.classList.add('hidden');
+                    confirmBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                };
+                
+                confirmBtn.onclick = () => {
+                    cleanup();
+                    resolve(true);
+                };
+                
+                cancelBtn.onclick = () => {
+                    cleanup();
+                    resolve(false);
+                };
+                
+                // Close on overlay click
+                modal.onclick = (e) => {
+                    if (e.target === modal) {
+                        cleanup();
+                        resolve(false);
+                    }
+                };
+            });
+        }
+
+        // Sidebar toggle
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        let sidebarCollapsed = false;
+
+        sidebarToggle?.addEventListener('click', () => {
+            sidebarCollapsed = !sidebarCollapsed;
+            if (sidebarCollapsed) {
+                sidebar.classList.add('w-20');
+                document.querySelectorAll('.sidebar-text').forEach(el => el.style.display = 'none');
+            } else {
+                sidebar.classList.remove('w-20');
+                document.querySelectorAll('.sidebar-text').forEach(el => el.style.display = '');
+            }
+        });
+
+        // User menu toggle
+        const userMenuButton = document.getElementById('user-menu-button');
+        const userDropdown = document.getElementById('user-dropdown');
+        userMenuButton?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userDropdown?.classList.toggle('hidden');
+        });
+        document.addEventListener('click', () => {
+            userDropdown?.classList.add('hidden');
+        });
+        userDropdown?.addEventListener('click', (e) => e.stopPropagation());
+
+        // Navigation
+        const defaultSection = '{{ default_section or "dashboard" }}';
+        const pageTitles = {
+            'dashboard': 'Dashboard',
+            'tutors': 'Tutor Management',
+            'students': 'Student Management',
+            'create-account': 'Create Account',
+            'courses': 'Course Management',
+            'settings': 'Settings'
+        };
+
+        function getSectionFromUrl() {
+            const path = window.location.pathname;
+            const match = path.match(/\/dashboard\/([^\/]+)/);
+            return match ? match[1] : defaultSection;
+        }
+
+        function showSection(section) {
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('bg-purple-50', 'text-purple-700', 'font-medium'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.add('text-slate-700'));
+
+            const sectionEl = document.getElementById(`section-${section}`);
+            if (sectionEl) {
+                sectionEl.classList.add('active');
+            }
+
+            const navLink = document.querySelector(`[data-section="${section}"]`);
+            if (navLink) {
+                navLink.classList.add('bg-purple-50', 'text-purple-700', 'font-medium');
+                navLink.classList.remove('text-slate-700');
+            }
+
+            document.getElementById('page-title').textContent = pageTitles[section] || 'Dashboard';
+            
+            // Update URL without reload
+            const newUrl = `/admin/dashboard/${section}`;
+            window.history.pushState({section}, '', newUrl);
+
+            // Load data for specific sections
+            if (section === 'tutors') {
+                loadTutors();
+            } else if (section === 'students') {
+                loadStudents();
+            } else if (section === 'courses') {
+                loadCourses();
+            } else if (section === 'dashboard') {
+                loadStats();
+            }
+        }
+
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = link.getAttribute('data-section');
+                if (section) {
+                    showSection(section);
+                }
+            });
+        });
+
+        // Handle browser back/forward
+        window.addEventListener('popstate', () => {
+            const section = getSectionFromUrl();
+            showSection(section);
+        });
+
+        // Initialize
+        const initialSection = getSectionFromUrl();
+        showSection(initialSection);
+
+        // Account type toggle
+        document.getElementById('account-type')?.addEventListener('change', (e) => {
+            const type = e.target.value;
+            document.getElementById('student-fields').classList.toggle('hidden', type !== 'student');
+            document.getElementById('tutor-fields').classList.toggle('hidden', type !== 'tutor');
+        });
+
+        // Create account form
+        document.getElementById('create-account-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Remove empty optional fields
+            if (!data.username) delete data.username;
+            if (!data.phone_number) delete data.phone_number;
+
+            try {
+                const response = await fetch('/admin/api/create-account', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    e.target.reset();
+                    document.getElementById('student-fields').classList.add('hidden');
+                    document.getElementById('tutor-fields').classList.add('hidden');
+                    // Refresh lists if on relevant sections
+                    if (document.getElementById('section-tutors').classList.contains('active')) {
+                        loadTutors();
+                    } else if (document.getElementById('section-students').classList.contains('active')) {
+                        loadStudents();
+                    }
+                    loadStats(); // Refresh stats
+                } else {
+                    showNotification('Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error creating account: ' + error.message, 'error');
+            }
+        });
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const response = await fetch('/admin/api/stats');
+                const stats = await response.json();
+                document.getElementById('stat-total-students').textContent = stats.total_students || 0;
+                document.getElementById('stat-total-tutors').textContent = stats.total_tutors || 0;
+                document.getElementById('stat-verified-tutors').textContent = stats.verified_tutors || 0;
+                document.getElementById('stat-pending-tutors').textContent = stats.pending_tutors || 0;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Load tutors
+        async function loadTutors() {
+            const listEl = document.getElementById('tutors-list');
+            listEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading tutors...</p></div>';
+            
+            try {
+                const response = await fetch('/admin/api/tutors');
+                const result = await response.json();
+                
+                if (result.success && result.tutors.length > 0) {
+                    listEl.innerHTML = result.tutors.map(tutor => `
+                        <div class="border border-slate-200 rounded-lg p-6 hover:shadow-md transition">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <h4 class="text-lg font-bold text-slate-800">${tutor.full_name}</h4>
+                                        ${tutor.is_verified ? '<span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-medium"><i class="fas fa-check-circle mr-1"></i>Verified</span>' : '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium"><i class="fas fa-clock mr-1"></i>Pending</span>'}
+                                        ${tutor.document_count > 0 ? `<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"><i class="fas fa-file mr-1"></i>${tutor.document_count} Document${tutor.document_count > 1 ? 's' : ''}</span>` : '<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium"><i class="fas fa-exclamation-circle mr-1"></i>No Documents</span>'}
+                                    </div>
+                                    <p class="text-sm text-slate-600 mb-1"><i class="fas fa-envelope mr-2"></i>${tutor.email}</p>
+                                    ${tutor.phone_number ? `<p class="text-sm text-slate-600 mb-1"><i class="fas fa-phone mr-2"></i>${tutor.phone_number}</p>` : ''}
+                                    <p class="text-sm text-slate-600 mb-1"><i class="fas fa-book mr-2"></i>${tutor.subjects || 'N/A'}</p>
+                                    <p class="text-sm text-slate-600 mb-1"><i class="fas fa-money-bill-wave mr-2"></i>৳${tutor.hourly_rate || '0'}/hour</p>
+                                    <p class="text-sm text-slate-600 mb-3"><i class="fas fa-briefcase mr-2"></i>${tutor.experience_years || 0} years experience</p>
+                                    <p class="text-sm text-slate-500 line-clamp-2">${tutor.bio || 'No bio provided'}</p>
+                                </div>
+                                <div class="ml-4 flex flex-col gap-2">
+                                    <button onclick="viewTutorDocuments(${tutor.id}, '${tutor.full_name}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                        <i class="fas fa-file-alt mr-2"></i>View Documents
+                                    </button>
+                                    ${!tutor.is_verified ? `<button onclick="verifyTutor(${tutor.id}, true)" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"><i class="fas fa-check mr-2"></i>Verify</button>` : `<button onclick="verifyTutor(${tutor.id}, false)" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition"><i class="fas fa-times mr-2"></i>Unverify</button>`}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-chalkboard-teacher text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No tutors found</p></div>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading tutors</p></div>';
+            }
+        }
+
+        // Load students
+        async function loadStudents() {
+            const listEl = document.getElementById('students-list');
+            listEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading students...</p></div>';
+            
+            try {
+                const response = await fetch('/admin/api/students');
+                const result = await response.json();
+                
+                if (result.success && result.students.length > 0) {
+                    listEl.innerHTML = result.students.map(student => `
+                        <div class="border border-slate-200 rounded-lg p-6 hover:shadow-md transition">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <h4 class="text-lg font-bold text-slate-800 mb-2">${student.full_name}</h4>
+                                    <p class="text-sm text-slate-600 mb-1"><i class="fas fa-envelope mr-2"></i>${student.email}</p>
+                                    ${student.phone_number ? `<p class="text-sm text-slate-600 mb-1"><i class="fas fa-phone mr-2"></i>${student.phone_number}</p>` : ''}
+                                    <p class="text-sm text-slate-600 mb-1"><i class="fas fa-user-tag mr-2"></i>${student.disability_type || 'N/A'}</p>
+                                    <p class="text-xs text-slate-500 mt-2">Joined: ${new Date(student.created_at).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-user-graduate text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No students found</p></div>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading students</p></div>';
+            }
+        }
+
+        // View tutor documents
+        async function viewTutorDocuments(tutorId, tutorName) {
+            const modal = document.getElementById('documents-modal');
+            const titleEl = document.getElementById('documents-modal-title');
+            const listEl = document.getElementById('documents-list');
+            
+            titleEl.textContent = `Documents - ${tutorName}`;
+            modal.classList.remove('hidden');
+            listEl.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-slate-400 mb-2"></i><p class="text-slate-600">Loading documents...</p></div>';
+            
+            try {
+                const response = await fetch(`/admin/api/tutors/${tutorId}/documents`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.documents && result.documents.length > 0) {
+                        listEl.innerHTML = result.documents.map((doc, index) => {
+                            const fileSizeMB = (doc.file_size / 1024 / 1024).toFixed(2);
+                            const uploadDate = new Date(doc.uploaded_at).toLocaleDateString();
+                            const fileIcon = doc.mime_type?.includes('pdf') ? 'fa-file-pdf' : 
+                                           doc.mime_type?.includes('image') ? 'fa-file-image' : 
+                                           doc.mime_type?.includes('word') ? 'fa-file-word' : 'fa-file';
+                            const fileColor = doc.mime_type?.includes('pdf') ? 'text-red-600' : 
+                                            doc.mime_type?.includes('image') ? 'text-blue-600' : 
+                                            doc.mime_type?.includes('word') ? 'text-blue-500' : 'text-slate-600';
+                            
+                            // Determine if we can show inline preview
+                            const isPDF = doc.mime_type?.includes('pdf');
+                            const isImage = doc.mime_type?.includes('image');
+                            
+                            return `
+                                <div class="border border-slate-200 rounded-lg p-4 bg-white hover:bg-slate-50 transition">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <i class="fas ${fileIcon} ${fileColor} text-2xl"></i>
+                                            <div>
+                                                <h5 class="font-semibold text-slate-800">${doc.file_name}</h5>
+                                                <p class="text-xs text-slate-500">
+                                                    ${doc.file_type} • ${fileSizeMB} MB • Uploaded ${uploadDate}
+                                                    ${doc.uploaded_by_admin ? ' • <span class="text-blue-600">Uploaded by Admin</span>' : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <a href="${doc.file_url}" target="_blank" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                                                <i class="fas fa-external-link-alt mr-1"></i>Open
+                                            </a>
+                                            <a href="${doc.file_url}" target="_blank" download="${doc.file_name}" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium">
+                                                <i class="fas fa-download mr-1"></i>Download
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        listEl.innerHTML = '<div class="text-center py-8"><i class="fas fa-file text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No documents uploaded yet</p></div>';
+                    }
+                } else {
+                    listEl.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading documents: ' + (result.error || 'Unknown error') + '</p></div>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="text-center py-8 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading documents: ' + error.message + '</p></div>';
+            }
+        }
+
+        // Close documents modal
+        function closeDocumentsModal() {
+            document.getElementById('documents-modal').classList.add('hidden');
+        }
+
+        // Close documents modal on overlay click
+        document.getElementById('documents-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'documents-modal') {
+                closeDocumentsModal();
+            }
+        });
+
+        // Verify tutor
+        async function verifyTutor(tutorId, verify) {
+            const action = verify ? 'verify' : 'unverify';
+            const actionText = verify ? 'verify' : 'unverify';
+            const confirmMsg = `Are you sure you want to ${actionText} this tutor?`;
+            const confirmTitle = verify ? 'Verify Tutor' : 'Unverify Tutor';
+            
+            // Show custom confirmation modal
+            const confirmed = await showConfirmation(confirmMsg, confirmTitle);
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin/api/verify-tutor', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({tutor_id: tutorId, verify: verify})
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    loadTutors();
+                    loadStats();
+                } else {
+                    showNotification('Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error verifying tutor: ' + error.message, 'error');
+            }
+        }
+
+        // Load stats on dashboard
+        if (defaultSection === 'dashboard') {
+            loadStats();
+        }
+
+        // ==================== COURSE MANAGEMENT FUNCTIONS ====================
+
+        // Load courses
+        async function loadCourses() {
+            const listEl = document.getElementById('courses-list');
+            if (!listEl) return;
+            
+            listEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading courses...</p></div>';
+            
+            try {
+                const response = await fetch('/admin/api/courses');
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.courses && result.courses.length > 0) {
+                        listEl.innerHTML = result.courses.map(course => {
+                            const disabilityTypes = course.target_disability_types || 'All';
+                            const typesDisplay = disabilityTypes === 'All' ? 'All Types' : disabilityTypes;
+                            
+                            return `
+                            <div class="border border-slate-200 rounded-lg p-6 hover:shadow-md transition">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <h4 class="text-lg font-bold text-slate-800 mb-2">${course.name}</h4>
+                                        ${course.description ? `<p class="text-sm text-slate-600 mb-3">${course.description}</p>` : ''}
+                                        <div class="flex items-center gap-4 text-sm text-slate-500 mb-2">
+                                            <span><i class="fas fa-chalkboard-teacher mr-1"></i>${course.tutor_count} Tutor${course.tutor_count !== 1 ? 's' : ''}</span>
+                                            <span><i class="fas fa-user-graduate mr-1"></i>${course.student_count} Student${course.student_count !== 1 ? 's' : ''}</span>
+                                            <span><i class="fas fa-calendar mr-1"></i>${new Date(course.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-medium">
+                                                <i class="fas fa-users mr-1"></i>For: ${typesDisplay}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="ml-4 flex flex-col gap-2">
+                                        <button onclick="viewCourseDetails(${course.id})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                            <i class="fas fa-eye mr-2"></i>View Details
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        }).join('');
+                    } else {
+                        listEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-book text-6xl text-slate-300 mb-4"></i><p class="text-slate-600">No courses found</p><p class="text-sm text-slate-500 mt-2">Create your first course to get started</p></div>';
+                    }
+                } else {
+                    listEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading courses</p></div>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="text-center py-12 text-red-600"><i class="fas fa-exclamation-circle text-4xl mb-4"></i><p>Error loading courses: ' + error.message + '</p></div>';
+            }
+        }
+
+        // Show create course modal
+        async function showCreateCourseModal() {
+            const modal = document.getElementById('create-course-modal');
+            modal.classList.remove('hidden');
+            
+            // Load only verified tutors for selection
+            try {
+                const response = await fetch('/admin/api/tutors?verified_only=true');
+                const result = await response.json();
+                const tutorSelect = document.getElementById('course-tutors');
+                
+                if (result.success && result.tutors) {
+                    tutorSelect.innerHTML = result.tutors.map(tutor => 
+                        `<option value="${tutor.id}">${tutor.full_name} (${tutor.email})</option>`
+                    ).join('');
+                    
+                    if (result.tutors.length === 0) {
+                        tutorSelect.innerHTML = '<option disabled>No verified tutors available</option>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading tutors:', error);
+            }
+            
+            // Load students for selection
+            try {
+                const response = await fetch('/admin/api/students');
+                const result = await response.json();
+                const studentSelect = document.getElementById('course-students');
+                
+                if (result.success && result.students) {
+                    studentSelect.innerHTML = result.students.map(student => 
+                        `<option value="${student.id}">${student.full_name} (${student.email}) - ${student.disability_type || 'N/A'}</option>`
+                    ).join('');
+                    
+                    if (result.students.length === 0) {
+                        studentSelect.innerHTML = '<option disabled>No students available</option>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading students:', error);
+            }
+        }
+
+        // Close create course modal
+        function closeCreateCourseModal() {
+            document.getElementById('create-course-modal').classList.add('hidden');
+            document.getElementById('create-course-form').reset();
+            // Clear selections
+            document.getElementById('course-tutors').selectedIndex = -1;
+            document.getElementById('course-students').selectedIndex = -1;
+        }
+
+        // Create course form handler
+        document.getElementById('create-course-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const form = e.target;
+            const name = document.getElementById('course-name').value.trim();
+            const description = document.getElementById('course-description').value.trim();
+            const targetDisabilityTypes = document.getElementById('course-disability-types').value;
+            const tutorSelect = document.getElementById('course-tutors');
+            const tutorIds = Array.from(tutorSelect.selectedOptions).map(opt => parseInt(opt.value));
+            const studentSelect = document.getElementById('course-students');
+            const studentIds = Array.from(studentSelect.selectedOptions).map(opt => parseInt(opt.value));
+            
+            if (!name) {
+                showNotification('Course name is required', 'error');
+                return;
+            }
+            
+            if (!targetDisabilityTypes) {
+                showNotification('Target disability types is required', 'error');
+                return;
+            }
+            
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
+            
+            try {
+                const response = await fetch('/admin/api/courses', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        description: description,
+                        target_disability_types: targetDisabilityTypes,
+                        tutor_ids: tutorIds,
+                        student_ids: studentIds
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message || 'Course created successfully', 'success');
+                    closeCreateCourseModal();
+                    loadCourses();
+                } else {
+                    showNotification('Error: ' + (result.error || 'Failed to create course'), 'error');
+                }
+            } catch (error) {
+                showNotification('Error creating course: ' + error.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-plus mr-2"></i>Create Course';
+            }
+        });
+
+        // View course details
+        async function viewCourseDetails(courseId) {
+            const modal = document.getElementById('course-details-modal');
+            const titleEl = document.getElementById('course-details-title');
+            const contentEl = document.getElementById('course-details-content');
+            
+            modal.classList.remove('hidden');
+            contentEl.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-slate-400 mb-2"></i><p class="text-slate-600">Loading course details...</p></div>';
+            
+            try {
+                const response = await fetch(`/admin/api/courses/${courseId}`);
+                const result = await response.json();
+                
+                if (result.success && result.course) {
+                    const course = result.course;
+                    titleEl.textContent = course.name;
+                    
+                    const disabilityTypes = course.target_disability_types || 'All';
+                    const typesDisplay = disabilityTypes === 'All' ? 'All Types' : disabilityTypes;
+                    
+                    contentEl.innerHTML = `
+                        <div>
+                            <h4 class="font-semibold text-slate-800 mb-2">Description</h4>
+                            <p class="text-slate-600 mb-4">${course.description || 'No description provided'}</p>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-semibold text-slate-800 mb-2">Target Disability Types</h4>
+                            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded text-sm font-medium">
+                                <i class="fas fa-users mr-1"></i>${typesDisplay}
+                            </span>
+                        </div>
+                        
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="font-semibold text-slate-800">Tutors (${course.tutors.length})</h4>
+                                <button onclick="assignTutorsToCourse(${courseId})" class="px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm">
+                                    <i class="fas fa-plus mr-1"></i>Add Tutors
+                                </button>
+                            </div>
+                            ${course.tutors.length > 0 ? `
+                                <div class="space-y-2">
+                                    ${course.tutors.map(tutor => `
+                                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                            <div>
+                                                <p class="font-medium text-slate-800">${tutor.full_name}</p>
+                                                <p class="text-sm text-slate-500">${tutor.email}</p>
+                                            </div>
+                                            <button onclick="removeTutorFromCourse(${courseId}, ${tutor.id})" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
+                                                <i class="fas fa-times mr-1"></i>Remove
+                                            </button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : '<p class="text-slate-500 text-sm">No tutors assigned yet</p>'}
+                        </div>
+                        
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="font-semibold text-slate-800">Students (${course.students.length})</h4>
+                                <button onclick="assignStudentsToCourse(${courseId})" class="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm">
+                                    <i class="fas fa-plus mr-1"></i>Add Students
+                                </button>
+                            </div>
+                            ${course.students.length > 0 ? `
+                                <div class="space-y-2">
+                                    ${course.students.map(student => `
+                                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                            <div>
+                                                <p class="font-medium text-slate-800">${student.full_name}</p>
+                                                <p class="text-sm text-slate-500">${student.email} • ${student.disability_type || 'N/A'}</p>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs">${student.status}</span>
+                                                <button onclick="removeStudentFromCourse(${courseId}, ${student.id})" class="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
+                                                    <i class="fas fa-times mr-1"></i>Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : '<p class="text-slate-500 text-sm">No students enrolled yet</p>'}
+                        </div>
+                    `;
+                } else {
+                    contentEl.innerHTML = '<div class="text-center py-8 text-red-600"><p>Error loading course details</p></div>';
+                }
+            } catch (error) {
+                contentEl.innerHTML = '<div class="text-center py-8 text-red-600"><p>Error: ' + error.message + '</p></div>';
+            }
+        }
+
+        // Close course details modal
+        function closeCourseDetailsModal() {
+            document.getElementById('course-details-modal').classList.add('hidden');
+        }
+
+        // Assign tutors to course
+        async function assignTutorsToCourse(courseId) {
+            // Load only verified tutors and show selection modal
+            try {
+                const response = await fetch('/admin/api/tutors?verified_only=true');
+                const result = await response.json();
+                
+                if (result.success && result.tutors) {
+                    if (result.tutors.length === 0) {
+                        showNotification('No verified tutors available to assign', 'error');
+                        return;
+                    }
+                    
+                    const tutorOptions = result.tutors.map(tutor => 
+                        `<option value="${tutor.id}">${tutor.full_name} (${tutor.email})</option>`
+                    ).join('');
+                    
+                    const confirmed = await showConfirmation(
+                        `<div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Select Tutors</label>
+                            <select id="assign-tutors-select" multiple class="w-full border border-slate-300 rounded-lg px-4 py-2" style="min-height: 150px;">
+                                ${tutorOptions}
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+                        </div>`,
+                        'Assign Tutors to Course'
+                    );
+                    
+                    if (confirmed) {
+                        const select = document.getElementById('assign-tutors-select');
+                        const tutorIds = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+                        
+                        if (tutorIds.length === 0) {
+                            showNotification('Please select at least one tutor', 'error');
+                            return;
+                        }
+                        
+                        const assignResponse = await fetch(`/admin/api/courses/${courseId}/tutors`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({tutor_ids: tutorIds})
+                        });
+                        
+                        const assignResult = await assignResponse.json();
+                        if (assignResult.success) {
+                            showNotification(assignResult.message, 'success');
+                            viewCourseDetails(courseId);
+                        } else {
+                            showNotification('Error: ' + assignResult.error, 'error');
+                        }
+                    }
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Remove tutor from course
+        async function removeTutorFromCourse(courseId, tutorId) {
+            const confirmed = await showConfirmation('Are you sure you want to remove this tutor from the course?', 'Remove Tutor');
+            if (!confirmed) return;
+            
+            try {
+                const response = await fetch(`/admin/api/courses/${courseId}/tutors/${tutorId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    viewCourseDetails(courseId);
+                } else {
+                    showNotification('Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Assign students to course
+        async function assignStudentsToCourse(courseId) {
+            // Load students and show selection modal
+            try {
+                const response = await fetch('/admin/api/students');
+                const result = await response.json();
+                
+                if (result.success && result.students) {
+                    const studentOptions = result.students.map(student => 
+                        `<option value="${student.id}">${student.full_name} (${student.email}) - ${student.disability_type || 'N/A'}</option>`
+                    ).join('');
+                    
+                    const confirmed = await showConfirmation(
+                        `<div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Select Students</label>
+                            <select id="assign-students-select" multiple class="w-full border border-slate-300 rounded-lg px-4 py-2" style="min-height: 150px;">
+                                ${studentOptions}
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+                        </div>`,
+                        'Assign Students to Course'
+                    );
+                    
+                    if (confirmed) {
+                        const select = document.getElementById('assign-students-select');
+                        const studentIds = Array.from(select.selectedOptions).map(opt => parseInt(opt.value));
+                        
+                        if (studentIds.length === 0) {
+                            showNotification('Please select at least one student', 'error');
+                            return;
+                        }
+                        
+                        const assignResponse = await fetch(`/admin/api/courses/${courseId}/students`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({student_ids: studentIds})
+                        });
+                        
+                        const assignResult = await assignResponse.json();
+                        if (assignResult.success) {
+                            showNotification(assignResult.message, 'success');
+                            viewCourseDetails(courseId);
+                        } else {
+                            showNotification('Error: ' + assignResult.error, 'error');
+                        }
+                    }
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Remove student from course
+        async function removeStudentFromCourse(courseId, studentId) {
+            const confirmed = await showConfirmation('Are you sure you want to remove this student from the course?', 'Remove Student');
+            if (!confirmed) return;
+            
+            try {
+                const response = await fetch(`/admin/api/courses/${courseId}/students/${studentId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    viewCourseDetails(courseId);
+                } else {
+                    showNotification('Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            }
+        }
+
+        // Close modals on overlay click
+        document.getElementById('create-course-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'create-course-modal') {
+                closeCreateCourseModal();
+            }
+        });
+
+        document.getElementById('course-details-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'course-details-modal') {
+                closeCourseDetailsModal();
+            }
+        });
+    </script>
+</body>
+</html>
+
