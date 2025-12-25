@@ -293,7 +293,7 @@ def register():
 
 
 @auth_bp.route("/login", methods=["POST"])
-@rate_limit(max_requests=5, window_seconds=300, error_message="Too many login attempts. Please try again in 5 minutes.")
+@rate_limit(max_requests=5, window_seconds=60, error_message="Too many login attempts. Please try again in 1 minute.")
 def login():
     from src.security import get_account_lockout, SecurityLogger, InputValidator, sanitize_input
     

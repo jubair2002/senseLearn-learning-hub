@@ -103,7 +103,7 @@ def rate_limit(max_requests: int = 10, window_seconds: int = 60, per: str = 'ip'
     
     Example:
         @app.route('/api/login')
-        @rate_limit(max_requests=5, window_seconds=300)  # 5 requests per 5 minutes
+        @rate_limit(max_requests=5, window_seconds=60)  # 5 requests per 1 minute
         def login():
             ...
     """
