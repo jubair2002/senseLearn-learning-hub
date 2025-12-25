@@ -47,11 +47,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             console.log('Login response:', response.status, data);
+            console.log('Failed attempts:', data.failed_attempts, 'Max:', data.max_attempts, 'Remaining:', data.remaining_attempts);
             
             if (!response.ok) {
                 // Handle account lockout (423 status)
                 if (response.status === 423) {
-                    msg.textContent = data.message || 'Account is locked due to too many failed login attempts.';
+                    let lockoutMsg = '<strong>' + (data.message || 'Account is locked due to too many failed login attempts.') + '</strong>';
+                    
+                    // Show attempt count if available
+                    if (data.failed_attempts !== undefined && data.max_attempts !== undefined) {
+                        lockoutMsg += `<br><span style="color: #dc2626; font-weight: bold;">🔒 Attempt ${data.failed_attempts} of ${data.max_attempts} - Account Locked</span>`;
+                    }
+                    
+                    msg.innerHTML = lockoutMsg;
                     msg.className = 'mt-2 text-sm text-red-600 font-semibold';
                     
                     // Disable form inputs when account is locked
@@ -113,19 +121,47 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 // Handle regular failed login (401 status)
                 else if (response.status === 401) {
-                    let errorMsg = data.message || 'Invalid email or password';
+                    // Show attempt count and remaining attempts - ALWAYS show if data exists
+                    const failed = data.failed_attempts;
+                    const max = data.max_attempts;
+                    const remaining = data.remaining_attempts;
                     
-                    // Show remaining attempts if available
-                    if (data.remaining_attempts !== undefined) {
-                        if (data.remaining_attempts > 0) {
-                            errorMsg += ` (${data.remaining_attempts} attempt(s) remaining)`;
+                    console.log('🔍 Displaying 401 error - Failed:', failed, 'Max:', max, 'Remaining:', remaining);
+                    console.log('🔍 Full data object:', JSON.stringify(data, null, 2));
+                    
+                    let errorMsg = '';
+                    
+                    // Always show the main message
+                    errorMsg += `<div style="font-weight: 600; margin-bottom: 6px; color: #dc2626;">${data.message || 'Invalid email or password'}</div>`;
+                    
+                    // Show attempt count if available
+                    if (failed !== undefined && max !== undefined && !isNaN(failed) && !isNaN(max)) {
+                        errorMsg += `<div style="color: #dc2626; font-weight: bold; font-size: 15px; margin: 4px 0;">🔴 Attempt ${failed} of ${max}</div>`;
+                        
+                        if (remaining !== undefined && !isNaN(remaining)) {
+                            if (remaining > 0) {
+                                errorMsg += `<div style="color: #ea580c; font-size: 13px; margin-top: 4px;">⚠️ ${remaining} attempt(s) remaining before account lockout</div>`;
+                            } else {
+                                errorMsg += `<div style="color: #dc2626; font-weight: bold; font-size: 13px; margin-top: 4px;">⚠️ No attempts remaining - account will be locked!</div>`;
+                            }
+                        }
+                    } else if (remaining !== undefined && !isNaN(remaining)) {
+                        // Fallback if only remaining_attempts is available
+                        if (remaining > 0) {
+                            errorMsg += `<div style="color: #ea580c; margin-top: 4px;">⚠️ ${remaining} attempt(s) remaining</div>`;
                         } else {
-                            errorMsg += ' (No attempts remaining)';
+                            errorMsg += `<div style="color: #dc2626; margin-top: 4px;">⚠️ No attempts remaining</div>`;
                         }
                     }
                     
-                    msg.textContent = errorMsg;
+                    // Ensure message is visible and styled
+                    msg.innerHTML = errorMsg;
                     msg.className = 'mt-2 text-sm text-red-600';
+                    msg.style.display = 'block';
+                    msg.style.visibility = 'visible';
+                    msg.style.opacity = '1';
+                    
+                    console.log('✅ Message displayed:', errorMsg);
                 }
                 // Handle other errors
                 else {

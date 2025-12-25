@@ -69,8 +69,16 @@ class RateLimiter:
             # Remove old timestamps outside the window
             timestamps[:] = [ts for ts in timestamps if ts > cutoff]
             
-            # Check if limit exceeded
-            if len(timestamps) >= max_requests:
+            # Check if limit exceeded (check BEFORE adding current request)
+            # If we already have max_requests, we can't allow another one
+            current_count = len(timestamps)
+            if current_count >= max_requests:
+                # Log for debugging
+                import logging
+                logging.getLogger().warning(
+                    f"Rate limit exceeded: identifier={identifier}, "
+                    f"count={current_count}, max={max_requests}"
+                )
                 return False, 0
             
             # Add current request timestamp
@@ -116,35 +124,69 @@ def rate_limit(max_requests: int = 10, window_seconds: int = 60, per: str = 'ip'
                 if current_user.is_authenticated:
                     identifier = f"user:{current_user.id}"
                 else:
-                    identifier = f"ip:{request.remote_addr}"
+                    # Fallback to IP if user not authenticated
+                    ip = request.remote_addr or request.environ.get('REMOTE_ADDR', 'unknown')
+                    identifier = f"ip:{ip}"
             else:
-                identifier = f"ip:{request.remote_addr}"
+                # Get IP address with fallback
+                ip = request.remote_addr or request.environ.get('REMOTE_ADDR', 'unknown')
+                identifier = f"ip:{ip}"
             
             # Check rate limit
             is_allowed, remaining = _rate_limiter.is_allowed(
                 identifier, max_requests, window_seconds
             )
             
+            # Log rate limit check (info level for visibility)
+            current_app.logger.warning(
+                f"[RATE LIMIT] identifier={identifier}, "
+                f"is_allowed={is_allowed}, remaining={remaining}, "
+                f"max_requests={max_requests}, path={request.path}, "
+                f"ip={request.remote_addr}"
+            )
+            
             if not is_allowed:
-                current_app.logger.warning(
-                    f"Rate limit exceeded for {identifier} on {request.path}"
+                current_app.logger.error(
+                    f"🚫 RATE LIMIT EXCEEDED: identifier={identifier}, "
+                    f"path={request.path}, ip={request.remote_addr}"
                 )
-                return jsonify({
+                # Return 429 immediately - don't call the function
+                # Use make_response to ensure proper status code
+                from flask import make_response
+                response = make_response(jsonify({
                     'success': False,
                     'error': error_message,
                     'retry_after': window_seconds
-                }), 429
-            
-            # Add rate limit headers to response
-            response = f(*args, **kwargs)
-            if hasattr(response, 'headers'):
+                }), 429)
                 response.headers['X-RateLimit-Limit'] = str(max_requests)
-                response.headers['X-RateLimit-Remaining'] = str(remaining)
+                response.headers['X-RateLimit-Remaining'] = '0'
                 response.headers['X-RateLimit-Reset'] = str(
                     int(time.time()) + window_seconds
                 )
+                return response
             
-            return response
+            # Add rate limit headers to response
+            response = f(*args, **kwargs)
+            
+            # Handle tuple responses (response, status_code)
+            if isinstance(response, tuple):
+                response_obj, status_code = response
+            else:
+                response_obj = response
+                status_code = None
+            
+            # Add headers to response object
+            if hasattr(response_obj, 'headers'):
+                response_obj.headers['X-RateLimit-Limit'] = str(max_requests)
+                response_obj.headers['X-RateLimit-Remaining'] = str(remaining)
+                response_obj.headers['X-RateLimit-Reset'] = str(
+                    int(time.time()) + window_seconds
+                )
+            
+            # Return response in original format
+            if isinstance(response, tuple):
+                return response_obj, status_code
+            return response_obj
         
         return decorated_function
     return decorator

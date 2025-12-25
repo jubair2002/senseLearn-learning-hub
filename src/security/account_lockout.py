@@ -53,11 +53,17 @@ class AccountLockout:
             self._failed_attempts[identifier] += 1
             self._last_attempt_time[identifier] = current_time
             
+            current_attempts = self._failed_attempts[identifier]
+            current_app.logger.warning(
+                f"🔒 Failed login attempt {current_attempts}/{self.max_attempts} for: {identifier}"
+            )
+            
             # Lock account if threshold exceeded
-            if self._failed_attempts[identifier] >= self.max_attempts:
+            if current_attempts >= self.max_attempts:
                 self._lockout_until[identifier] = current_time + self.lockout_duration
-                current_app.logger.warning(
-                    f"Account locked: {identifier} after {self._failed_attempts[identifier]} failed attempts"
+                current_app.logger.error(
+                    f"🚫 ACCOUNT LOCKED: {identifier} after {current_attempts} failed attempts. "
+                    f"Locked until: {self._lockout_until[identifier]}"
                 )
     
     def record_successful_attempt(self, identifier: str):
@@ -94,10 +100,17 @@ class AccountLockout:
             
             if current_time > lockout_until:
                 # Lockout expired
+                current_app.logger.info(
+                    f"🔓 Account lockout expired for: {identifier}"
+                )
                 del self._lockout_until[identifier]
                 self._failed_attempts[identifier] = 0
                 return False, None
             
+            # Account is locked
+            current_app.logger.warning(
+                f"🔒 Account is LOCKED: {identifier}, locked until: {lockout_until}"
+            )
             return True, lockout_until
     
     def get_remaining_attempts(self, identifier: str) -> int:
@@ -113,6 +126,19 @@ class AccountLockout:
         with self._lock:
             attempts = self._failed_attempts.get(identifier, 0)
             return max(0, self.max_attempts - attempts)
+    
+    def get_failed_attempts(self, identifier: str) -> int:
+        """
+        Get the number of failed attempts for an identifier.
+        
+        Args:
+            identifier: User identifier (email or user_id)
+            
+        Returns:
+            Number of failed attempts
+        """
+        with self._lock:
+            return self._failed_attempts.get(identifier, 0)
     
     def reset(self, identifier: str):
         """

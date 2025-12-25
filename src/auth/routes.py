@@ -20,6 +20,7 @@ from src.auth.utils import (
 from src.auth.email_service import send_otp_email
 from src.common.file_utils import save_uploaded_file, delete_file
 from src.auth.models import TutorDocument
+from src.security import rate_limit
 import json
 import os
 
@@ -309,14 +310,27 @@ def login():
     if not InputValidator.validate_email(email):
         return jsonify({"message": "Please provide a valid email address"}), 400
     
-    # Check for account lockout
+    # Check for account lockout BEFORE processing login
     lockout = get_account_lockout()
     is_locked, lockout_until = lockout.is_locked(email)
     if is_locked:
         SecurityLogger.log_account_locked(email, "Too many failed attempts")
+        current_app.logger.warning(
+            f"🚫 Login blocked - Account locked: {email}, until: {lockout_until}"
+        )
+        # Calculate remaining lockout time
+        from datetime import datetime
+        if lockout_until:
+            remaining_seconds = int((lockout_until - datetime.utcnow()).total_seconds())
+            remaining_minutes = max(1, remaining_seconds // 60)
+        else:
+            remaining_minutes = 30
+        
         return jsonify({
-            "message": f"Account is locked due to too many failed login attempts. Please try again later.",
-            "lockout_until": lockout_until.isoformat() if lockout_until else None
+            "success": False,
+            "message": f"Account is locked due to too many failed login attempts. Please try again in {remaining_minutes} minute(s).",
+            "lockout_until": lockout_until.isoformat() if lockout_until else None,
+            "remaining_minutes": remaining_minutes
         }), 423  # 423 Locked
 
     # Optimize query - only select needed fields for login check (faster than full object)
@@ -328,28 +342,55 @@ def login():
     if not user_result:
         # Record failed attempt even if user doesn't exist (prevent user enumeration)
         lockout.record_failed_attempt(email)
+        failed_attempts = lockout.get_failed_attempts(email)
+        remaining = lockout.get_remaining_attempts(email)
         SecurityLogger.log_failed_login(email, "User not found")
-        return jsonify({"message": "Invalid email or password"}), 401
+        return jsonify({
+            "success": False,
+            "message": "Invalid email or password",
+            "remaining_attempts": remaining,
+            "failed_attempts": failed_attempts,
+            "max_attempts": lockout.max_attempts
+        }), 401
     
     # Verify password (fast operation)
     if not verify_password(password, user_result.password_hash):
-        # Record failed attempt
+        # Record failed attempt FIRST
         lockout.record_failed_attempt(email)
+        failed_attempts = lockout.get_failed_attempts(email)
         remaining = lockout.get_remaining_attempts(email)
         SecurityLogger.log_failed_login(email, "Invalid password")
         
-        # Check if account is now locked
+        # Check if account is now locked AFTER recording the attempt
         is_locked, lockout_until = lockout.is_locked(email)
         if is_locked:
             SecurityLogger.log_account_locked(email, "Too many failed attempts")
+            current_app.logger.error(
+                f"🚫 Account LOCKED after failed attempt: {email}, until: {lockout_until}"
+            )
+            # Calculate remaining lockout time
+            from datetime import datetime
+            if lockout_until:
+                remaining_seconds = int((lockout_until - datetime.utcnow()).total_seconds())
+                remaining_minutes = max(1, remaining_seconds // 60)
+            else:
+                remaining_minutes = 30
+            
             return jsonify({
-                "message": "Account has been locked due to too many failed login attempts. Please try again later.",
-                "lockout_until": lockout_until.isoformat() if lockout_until else None
+                "success": False,
+                "message": f"Account has been locked due to too many failed login attempts. Please try again in {remaining_minutes} minute(s).",
+                "lockout_until": lockout_until.isoformat() if lockout_until else None,
+                "remaining_minutes": remaining_minutes,
+                "failed_attempts": failed_attempts,
+                "max_attempts": lockout.max_attempts
             }), 423
         
         return jsonify({
+            "success": False,
             "message": "Invalid email or password",
-            "remaining_attempts": remaining
+            "remaining_attempts": remaining,
+            "failed_attempts": failed_attempts,
+            "max_attempts": lockout.max_attempts
         }), 401
     
     # Successful login - reset lockout and log
