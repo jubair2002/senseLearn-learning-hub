@@ -5,13 +5,6 @@ from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 
-from datetime import datetime
-
-from flask import current_app, jsonify, request
-from flask_login import login_user, logout_user, login_required, current_user
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import joinedload
-
 from src import db
 from src.config import config
 from src.auth import auth_bp
@@ -300,17 +293,31 @@ def register():
 
 
 @auth_bp.route("/login", methods=["POST"])
+@rate_limit(max_requests=5, window_seconds=300, error_message="Too many login attempts. Please try again in 5 minutes.")
 def login():
+    from src.security import get_account_lockout, SecurityLogger, InputValidator, sanitize_input
+    
     data = request.get_json() or {}
-    email = (data.get("email") or "").strip().lower()
+    email = sanitize_input(data.get("email") or "", "email").strip().lower()
     password = data.get("password") or ""
     remember = data.get("remember", False)  # Default to False if not provided
 
     if not email or not password:
         return jsonify({"message": "Email and password are required"}), 400
 
-    if not is_valid_email(email):
+    # Validate email format
+    if not InputValidator.validate_email(email):
         return jsonify({"message": "Please provide a valid email address"}), 400
+    
+    # Check for account lockout
+    lockout = get_account_lockout()
+    is_locked, lockout_until = lockout.is_locked(email)
+    if is_locked:
+        SecurityLogger.log_account_locked(email, "Too many failed attempts")
+        return jsonify({
+            "message": f"Account is locked due to too many failed login attempts. Please try again later.",
+            "lockout_until": lockout_until.isoformat() if lockout_until else None
+        }), 423  # 423 Locked
 
     # Optimize query - only select needed fields for login check (faster than full object)
     user_result = db.session.query(
@@ -319,11 +326,35 @@ def login():
     ).filter_by(email=email).first()
     
     if not user_result:
+        # Record failed attempt even if user doesn't exist (prevent user enumeration)
+        lockout.record_failed_attempt(email)
+        SecurityLogger.log_failed_login(email, "User not found")
         return jsonify({"message": "Invalid email or password"}), 401
     
     # Verify password (fast operation)
     if not verify_password(password, user_result.password_hash):
-        return jsonify({"message": "Invalid email or password"}), 401
+        # Record failed attempt
+        lockout.record_failed_attempt(email)
+        remaining = lockout.get_remaining_attempts(email)
+        SecurityLogger.log_failed_login(email, "Invalid password")
+        
+        # Check if account is now locked
+        is_locked, lockout_until = lockout.is_locked(email)
+        if is_locked:
+            SecurityLogger.log_account_locked(email, "Too many failed attempts")
+            return jsonify({
+                "message": "Account has been locked due to too many failed login attempts. Please try again later.",
+                "lockout_until": lockout_until.isoformat() if lockout_until else None
+            }), 423
+        
+        return jsonify({
+            "message": "Invalid email or password",
+            "remaining_attempts": remaining
+        }), 401
+    
+    # Successful login - reset lockout and log
+    lockout.record_successful_attempt(email)
+    SecurityLogger.log_successful_login(user_result.id, email)
     
     # Load full user object for login_user using identity map (very fast - no query if already loaded)
     user = db.session.get(User, user_result.id)
