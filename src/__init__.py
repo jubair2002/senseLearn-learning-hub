@@ -93,6 +93,10 @@ def create_app() -> Flask:
     login_manager.login_view = 'login_page'  # This is the function name in __init__.py
     compress.init_app(app)  # Enable response compression
     
+    # Initialize security features
+    from src.security import init_security
+    init_security(app)
+    
     # Add response headers for caching and performance
     @app.after_request
     def add_performance_headers(response):

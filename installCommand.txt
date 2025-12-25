@@ -13,4 +13,5 @@ flask db stamp head
 INSERT INTO users (email, password_hash, full_name, user_type, email_verified) 
 VALUES ('admin@example.com', '<hashed_password>', 'Admin Name', 'admin', 1);
 
-mkdir D:\uploads
+mkdir D:\uploads   (for windows user)
+mkdir /tmp/senselearn (for linux/unix) can be any directory
