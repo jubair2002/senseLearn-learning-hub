@@ -168,7 +168,7 @@ class Course(db.Model):
     description = db.Column(db.Text, nullable=True)
     target_disability_types = db.Column(db.String(255), nullable=True)  # Comma-separated list: "Deaf,Mute" or "All"
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
-    created_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='SET NULL'), nullable=False, index=True)  # Admin who created it
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='SET NULL'), nullable=True, index=True)  # Admin who created it
     
     # Relationships
     creator = db.relationship("User", foreign_keys=[created_by], backref="created_courses")
@@ -192,7 +192,7 @@ class CourseStudent(db.Model):
     course_id = db.Column(db.Integer, db.ForeignKey("courses.id", ondelete='CASCADE'), nullable=False, index=True)
     student_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='CASCADE'), nullable=False, index=True)
     status = db.Column(db.String(20), nullable=False, default="enrolled", index=True)  # enrolled, pending, rejected
-    assigned_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='SET NULL'), nullable=False)  # Admin or tutor who assigned
+    assigned_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='SET NULL'), nullable=True)  # Admin or tutor who assigned
     assigned_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
     
     # Relationships
@@ -245,7 +245,7 @@ class CourseModule(db.Model):
     description = db.Column(db.Text, nullable=True)
     order_index = db.Column(db.Integer, nullable=False, default=0, index=True)  # For ordering modules
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
-    created_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='SET NULL'), nullable=False)  # Tutor who created it
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='SET NULL'), nullable=True)  # Tutor who created it
     
     # Relationships
     course = db.relationship("Course", backref="modules")
@@ -271,7 +271,7 @@ class ModuleFile(db.Model):
     file_size = db.Column(db.Integer, nullable=False)  # Size in bytes
     mime_type = db.Column(db.String(100), nullable=True)  # MIME type
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
-    uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='SET NULL'), nullable=False)  # Tutor who uploaded
+    uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='SET NULL'), nullable=True)  # Tutor who uploaded
     
     # Relationships
     module = db.relationship("CourseModule", backref="files")
