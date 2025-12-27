@@ -2434,19 +2434,30 @@
                 // Load quizzes separately (optional - don't fail if this fails)
                 let quizzesResult = { success: false, quizzes: [] };
                 try {
-                    console.log('Loading quizzes for course:', courseId);
-                    const quizzesResponse = await fetch(`/quiz/api/courses/${courseId}/quizzes`);
+                    console.log('Loading quizzes for course:', courseId, 'for module:', moduleId);
+                    // Add cache-busting parameter to ensure we get fresh data
+                    const quizzesResponse = await fetch(`/quiz/api/courses/${courseId}/quizzes?t=${Date.now()}`);
                     console.log('Quizzes response status:', quizzesResponse.status);
+                    
+                    if (!quizzesResponse.ok) {
+                        console.error('Quizzes API error:', quizzesResponse.status, quizzesResponse.statusText);
+                        throw new Error(`HTTP ${quizzesResponse.status}: ${quizzesResponse.statusText}`);
+                    }
+                    
                     const quizzesContentType = quizzesResponse.headers.get('content-type') || '';
                     if (quizzesContentType.includes('application/json')) {
                         quizzesResult = await quizzesResponse.json();
                         console.log('Quizzes loaded:', quizzesResult);
+                        console.log('Total quizzes:', quizzesResult.quizzes ? quizzesResult.quizzes.length : 0);
+                        if (quizzesResult.quizzes && quizzesResult.quizzes.length > 0) {
+                            console.log('All quizzes:', quizzesResult.quizzes.map(q => ({ id: q.id, title: q.title, module_id: q.module_id })));
+                        }
                     } else {
                         const text = await quizzesResponse.text();
                         console.warn('Could not parse quizzes response:', text.substring(0, 200));
                     }
                 } catch (quizError) {
-                    console.warn('Error loading quizzes (non-critical):', quizError);
+                    console.error('Error loading quizzes (non-critical):', quizError);
                     // Continue without quizzes
                 }
                 
@@ -2455,7 +2466,23 @@
                     // Get quizzes for this module (handle errors gracefully)
                     let quizzes = [];
                     if (quizzesResult && quizzesResult.success && Array.isArray(quizzesResult.quizzes)) {
-                        quizzes = quizzesResult.quizzes.filter(q => q.module_id === moduleId);
+                        // Filter quizzes by module_id - handle both number and string comparisons
+                        const targetModuleId = parseInt(moduleId);
+                        console.log('Filtering quizzes for module ID:', targetModuleId);
+                        console.log('All quizzes before filter:', quizzesResult.quizzes.map(q => ({ id: q.id, title: q.title, module_id: q.module_id, module_id_type: typeof q.module_id })));
+                        
+                        quizzes = quizzesResult.quizzes.filter(q => {
+                            const quizModuleId = q.module_id !== null && q.module_id !== undefined ? parseInt(q.module_id) : null;
+                            const matches = quizModuleId === targetModuleId;
+                            if (matches) {
+                                console.log('Quiz matches module filter:', { quiz_id: q.id, quiz_title: q.title, quiz_module_id: quizModuleId, target_module_id: targetModuleId });
+                            }
+                            return matches;
+                        });
+                        console.log('Filtered quizzes for module', moduleId, ':', quizzes.length, 'quizzes');
+                        if (quizzes.length > 0) {
+                            console.log('Filtered quiz details:', quizzes.map(q => ({ id: q.id, title: q.title, module_id: q.module_id })));
+                        }
                     }
                     
                     const moduleItem = document.querySelector(`[data-module-id="${moduleId}"]`);
@@ -2466,16 +2493,10 @@
                     let html = `
                         <div class="space-y-6">
                             <!-- Module Header -->
-                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                                <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200">
-                                    <div>
-                                        <h3 class="text-2xl font-bold text-slate-800 mb-1">${moduleName}</h3>
-                                        ${moduleDesc ? `<p class="text-sm text-slate-600">${moduleDesc}</p>` : ''}
-                                    </div>
-                                    <button onclick="showAddFileModal(${moduleId})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
-                                        <i class="fas fa-plus"></i>
-                                        <span>Add File</span>
-                                    </button>
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                                <div>
+                                    <h3 class="text-2xl font-bold text-slate-800 mb-2">${moduleName}</h3>
+                                    ${moduleDesc ? `<p class="text-sm text-slate-600">${moduleDesc}</p>` : ''}
                                 </div>
                             </div>
                             
@@ -2485,8 +2506,9 @@
                                     <h4 class="text-xl font-bold text-slate-800">
                                         <i class="fas fa-file mr-2"></i>Files
                                     </h4>
-                                    <button onclick="showAddFileModal(${moduleId})" class="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                                        <i class="fas fa-plus mr-1"></i>Add File
+                                    <button onclick="showAddFileModal(${moduleId})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                                        <i class="fas fa-plus"></i>
+                                        <span>Add File</span>
                                     </button>
                                 </div>
                     `;
@@ -2559,8 +2581,9 @@
                                     <h4 class="text-xl font-bold text-slate-800">
                                         <i class="fas fa-clipboard-list mr-2"></i>Quizzes
                                     </h4>
-                                    <button onclick="window.showCreateQuizModalForModule(${courseId}, ${moduleId})" class="px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                                        <i class="fas fa-plus mr-1"></i>Create Quiz
+                                    <button onclick="window.showCreateQuizModalForModule(${courseId}, ${moduleId})" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2">
+                                        <i class="fas fa-plus"></i>
+                                        <span>Create Quiz</span>
                                     </button>
                                 </div>
                                 <div id="quizzes-list-module-${moduleId}" class="space-y-3">

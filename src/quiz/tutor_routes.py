@@ -39,8 +39,12 @@ def list_quizzes(course_id):
         # Get course
         course = Course.query.get_or_404(course_id)
         
-        # Get all quizzes for this course
-        quizzes = Quiz.query.filter_by(course_id=course_id).order_by(Quiz.order_index, Quiz.created_at).all()
+        # Get all quizzes for this course - use explicit query to avoid caching
+        quizzes = db.session.query(Quiz).filter_by(course_id=course_id).order_by(Quiz.order_index, Quiz.created_at).all()
+        
+        print(f"Found {len(quizzes)} quizzes for course {course_id}")
+        for quiz in quizzes:
+            print(f"  Quiz ID={quiz.id}, Title={quiz.title}, Module ID={quiz.module_id}")
         
         quizzes_data = []
         for quiz in quizzes:
@@ -110,7 +114,7 @@ def create_quiz(course_id):
         data = request.get_json() or {}
         
         # Validate required fields
-        title = data.get('title', '').strip()
+        title = (data.get('title') or '').strip()
         if not title:
             return jsonify({'success': False, 'error': 'Quiz title is required'}), 400
         
@@ -124,10 +128,10 @@ def create_quiz(course_id):
         # Create quiz
         quiz = Quiz(
             course_id=course_id,
-            module_id=module_id,
+            module_id=module_id,  # This can be None if not provided
             title=title,
-            description=data.get('description', '').strip() or None,
-            instructions=data.get('instructions', '').strip() or None,
+            description=(data.get('description') or '').strip() or None,
+            instructions=(data.get('instructions') or '').strip() or None,
             time_limit_minutes=data.get('time_limit_minutes'),
             passing_score=Decimal(str(data.get('passing_score', 60.0))) if data.get('passing_score') else Decimal('60.0'),
             max_attempts=data.get('max_attempts', 1),
@@ -137,6 +141,11 @@ def create_quiz(course_id):
         
         db.session.add(quiz)
         db.session.commit()
+        
+        # Verify the quiz was saved correctly
+        saved_quiz = Quiz.query.get(quiz.id)
+        if saved_quiz:
+            print(f"Quiz saved: ID={saved_quiz.id}, Title={saved_quiz.title}, Module ID={saved_quiz.module_id}, Course ID={saved_quiz.course_id}")
         
         return jsonify({
             'success': True,
@@ -260,11 +269,11 @@ def update_quiz(quiz_id):
         
         # Update fields if provided
         if 'title' in data:
-            quiz.title = data['title'].strip()
+            quiz.title = (data.get('title') or '').strip()
         if 'description' in data:
-            quiz.description = data.get('description', '').strip() or None
+            quiz.description = (data.get('description') or '').strip() or None
         if 'instructions' in data:
-            quiz.instructions = data.get('instructions', '').strip() or None
+            quiz.instructions = (data.get('instructions') or '').strip() or None
         if 'time_limit_minutes' in data:
             quiz.time_limit_minutes = data['time_limit_minutes']
         if 'passing_score' in data:
@@ -386,14 +395,14 @@ def add_question(quiz_id):
         data = request.get_json() or {}
         
         # Validate required fields
-        question_type = data.get('question_type', '').strip()
+        question_type = (data.get('question_type') or '').strip()
         if question_type not in ['multiple_choice', 'short_answer', 'true_false']:
             return jsonify({
                 'success': False,
                 'error': 'Invalid question_type. Must be: multiple_choice, short_answer, or true_false'
             }), 400
         
-        question_text = data.get('question_text', '').strip()
+        question_text = (data.get('question_text') or '').strip()
         if not question_text:
             return jsonify({'success': False, 'error': 'question_text is required'}), 400
         
@@ -408,7 +417,7 @@ def add_question(quiz_id):
             question_text=question_text,
             points=points,
             order_index=data.get('order_index', 0),
-            correct_answer=data.get('correct_answer', '').strip() if question_type in ['short_answer', 'true_false'] else None
+            correct_answer=(data.get('correct_answer') or '').strip() if question_type in ['short_answer', 'true_false'] else None
         )
         
         db.session.add(question)
@@ -430,7 +439,7 @@ def add_question(quiz_id):
             for idx, opt_data in enumerate(options):
                 option = QuestionOption(
                     question_id=question.id,
-                    option_text=opt_data.get('option_text', '').strip(),
+                    option_text=(opt_data.get('option_text') or '').strip(),
                     is_correct=bool(opt_data.get('is_correct', False)),
                     order_index=opt_data.get('order_index', idx)
                 )
@@ -499,13 +508,13 @@ def update_question(question_id):
         
         # Update fields
         if 'question_text' in data:
-            question.question_text = data['question_text'].strip()
+            question.question_text = (data.get('question_text') or '').strip()
         if 'points' in data:
             question.points = Decimal(str(data['points']))
         if 'order_index' in data:
             question.order_index = data['order_index']
         if 'correct_answer' in data and question.question_type in ['short_answer', 'true_false']:
-            question.correct_answer = data['correct_answer'].strip()
+            question.correct_answer = (data.get('correct_answer') or '').strip()
         
         # Update options for multiple choice
         if question.question_type == 'multiple_choice' and 'options' in data:
@@ -527,7 +536,7 @@ def update_question(question_id):
             for idx, opt_data in enumerate(options):
                 option = QuestionOption(
                     question_id=question.id,
-                    option_text=opt_data.get('option_text', '').strip(),
+                    option_text=(opt_data.get('option_text') or '').strip(),
                     is_correct=bool(opt_data.get('is_correct', False)),
                     order_index=opt_data.get('order_index', idx)
                 )

@@ -40,6 +40,83 @@ async function loadQuizzes() {
     }
 }
 
+// Refresh quiz list for a specific module (used after creating a quiz)
+async function refreshQuizListForModule(courseId, moduleId) {
+    console.log('Refreshing quiz list for module:', moduleId);
+    const quizListEl = document.getElementById(`quizzes-list-module-${moduleId}`);
+    
+    if (!quizListEl) {
+        console.warn('Quiz list element not found for module:', moduleId, 'Looking for: quizzes-list-module-' + moduleId);
+        return;
+    }
+    
+    try {
+        // Fetch fresh quizzes with cache-busting
+        const response = await fetch(`/quiz/api/courses/${courseId}/quizzes?t=${Date.now()}`);
+        const data = await response.json();
+        
+        console.log('Quiz refresh response:', data);
+        
+        if (data.success && data.quizzes) {
+            // Filter quizzes for this module
+            const moduleQuizzes = data.quizzes.filter(q => {
+                const quizModuleId = q.module_id !== null && q.module_id !== undefined ? parseInt(q.module_id) : null;
+                const targetModuleId = parseInt(moduleId);
+                const matches = quizModuleId === targetModuleId;
+                if (matches) {
+                    console.log('Quiz matches:', { id: q.id, title: q.title, module_id: quizModuleId });
+                }
+                return matches;
+            });
+            
+            console.log('Found', moduleQuizzes.length, 'quizzes for module', moduleId);
+            
+            // Update the quiz list HTML
+            if (moduleQuizzes.length > 0) {
+                quizListEl.innerHTML = moduleQuizzes.map(quiz => `
+                    <div class="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <h5 class="font-semibold text-slate-800 mb-1">${(quiz.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</h5>
+                                ${quiz.description ? `<p class="text-sm text-slate-600 mb-2">${(quiz.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>` : ''}
+                                <div class="flex items-center gap-4 text-xs text-slate-500">
+                                    <span><i class="fas fa-question-circle mr-1"></i>${quiz.question_count || 0} questions</span>
+                                    <span><i class="fas fa-star mr-1"></i>${quiz.total_points || 0} points</span>
+                                    <span class="px-2 py-1 rounded ${quiz.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}">
+                                        ${quiz.is_active ? 'Active' : 'Inactive'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="window.viewQuiz(${quiz.id})" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                                    <i class="fas fa-eye mr-1"></i>View
+                                </button>
+                                <button onclick="window.deleteQuiz(${quiz.id})" class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
+                                    <i class="fas fa-trash mr-1"></i>Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                quizListEl.innerHTML = `
+                    <div class="text-center py-8 text-slate-400">
+                        <i class="fas fa-clipboard-list text-4xl mb-3"></i>
+                        <p class="text-sm">No quizzes for this module yet</p>
+                        <button onclick="window.showCreateQuizModalForModule(${courseId}, ${moduleId})" class="mt-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm">
+                            <i class="fas fa-plus mr-2"></i>Create Quiz
+                        </button>
+                    </div>
+                `;
+            }
+        } else {
+            console.error('Failed to load quizzes:', data.error);
+        }
+    } catch (error) {
+        console.error('Error refreshing quiz list:', error);
+    }
+}
+
 // Render quizzes list
 function renderQuizzes(quizzesList) {
     const listEl = document.getElementById('quizzes-list');
@@ -92,9 +169,16 @@ window.showCreateQuizModal = function() {
         return;
     }
     
+    // Reset form first
+    const form = document.getElementById('create-quiz-form');
+    if (form) {
+        form.reset();
+    }
+    
+    // Then set the hidden fields (after reset so they don't get cleared)
     document.getElementById('quiz-course-id').value = currentCourseId;
     document.getElementById('quiz-module-id').value = currentModuleId || '';
-    document.getElementById('create-quiz-form').reset();
+    
     modal.classList.remove('hidden');
 };
 
@@ -109,9 +193,19 @@ window.showCreateQuizModalForModule = function(courseId, moduleId) {
     currentCourseId = courseId;
     currentModuleId = moduleId;
     
+    // Reset form first
+    const form = document.getElementById('create-quiz-form');
+    if (form) {
+        form.reset();
+    }
+    
+    // Then set the hidden fields (after reset so they don't get cleared)
     document.getElementById('quiz-course-id').value = courseId;
     document.getElementById('quiz-module-id').value = moduleId;
-    document.getElementById('create-quiz-form').reset();
+    
+    console.log('Opening quiz modal for course:', courseId, 'module:', moduleId);
+    console.log('Hidden field values - course_id:', document.getElementById('quiz-course-id').value, 'module_id:', document.getElementById('quiz-module-id').value);
+    
     modal.classList.remove('hidden');
 };
 
@@ -121,61 +215,116 @@ window.closeCreateQuizModal = function() {
     if (modal) modal.classList.add('hidden');
 };
 
-// Handle create quiz form submission
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('create-quiz-form');
-    if (form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
+// Handle create quiz form submission - use document-level event delegation
+// This works even if the form is loaded dynamically via AJAX
+document.addEventListener('submit', async function(e) {
+    // Check if this is the create quiz form
+    if (e.target && e.target.id === 'create-quiz-form') {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('Create quiz form submitted');
+        
+        const formData = {
+            title: document.getElementById('quiz-title').value.trim(),
+            description: document.getElementById('quiz-description').value.trim() || null,
+            instructions: document.getElementById('quiz-instructions').value.trim() || null,
+            time_limit_minutes: document.getElementById('quiz-time-limit').value ? parseInt(document.getElementById('quiz-time-limit').value) : null,
+            passing_score: parseFloat(document.getElementById('quiz-passing-score').value) || 60.0,
+            max_attempts: parseInt(document.getElementById('quiz-max-attempts').value) || 1,
+        };
+        
+        // Get module_id from hidden input - check both the input and the currentModuleId variable
+        const moduleIdInput = document.getElementById('quiz-module-id');
+        let moduleId = moduleIdInput ? moduleIdInput.value : null;
+        
+        // Fallback to currentModuleId if input is empty
+        if (!moduleId || moduleId === '') {
+            moduleId = currentModuleId;
+        }
+        
+        console.log('Module ID input element:', moduleIdInput);
+        console.log('Module ID from input (raw):', moduleIdInput ? moduleIdInput.value : 'N/A');
+        console.log('Module ID from variable:', currentModuleId);
+        console.log('Final module ID to use:', moduleId);
+        
+        if (moduleId && moduleId !== '' && moduleId !== null) {
+            formData.module_id = parseInt(moduleId);
+            console.log('Added module_id to formData:', formData.module_id);
+        } else {
+            console.warn('No module_id available - quiz will be created without module association');
+        }
+        
+        console.log('Creating quiz with data:', formData);
+        
+        try {
+            const response = await fetch(`/quiz/api/courses/${currentCourseId}/quizzes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
             
-            const formData = {
-                title: document.getElementById('quiz-title').value.trim(),
-                description: document.getElementById('quiz-description').value.trim() || null,
-                instructions: document.getElementById('quiz-instructions').value.trim() || null,
-                time_limit_minutes: document.getElementById('quiz-time-limit').value ? parseInt(document.getElementById('quiz-time-limit').value) : null,
-                passing_score: parseFloat(document.getElementById('quiz-passing-score').value) || 60.0,
-                max_attempts: parseInt(document.getElementById('quiz-max-attempts').value) || 1,
-            };
+            const data = await response.json();
+            console.log('Quiz creation response:', data);
             
-            const moduleId = document.getElementById('quiz-module-id').value;
-            if (moduleId) {
-                formData.module_id = parseInt(moduleId);
-            }
-            
-            try {
-                const response = await fetch(`/quiz/api/courses/${currentCourseId}/quizzes`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
-                });
+            if (data.success) {
+                console.log('Quiz created successfully. Quiz data:', data.quiz);
+                console.log('Created quiz module_id:', data.quiz ? data.quiz.module_id : 'N/A');
+                closeCreateQuizModal();
+                showNotification('Quiz created successfully!', 'success');
                 
-                const data = await response.json();
-                
-                if (data.success) {
-                    closeCreateQuizModal();
-                    // Reload the module to show the new quiz
-                    const courseViewEl = document.querySelector('[data-course-id]');
-                    if (courseViewEl) {
-                        const courseId = parseInt(courseViewEl.getAttribute('data-course-id'));
-                        const moduleItem = document.querySelector('.module-item.border-blue-500, .module-item[data-module-id]');
+                // Get the module ID that was used to create the quiz
+                const courseViewEl = document.querySelector('[data-course-id]');
+                if (courseViewEl) {
+                    const courseId = parseInt(courseViewEl.getAttribute('data-course-id'));
+                    // Use the module_id from the form data (the one we just used to create the quiz)
+                    let targetModuleId = null;
+                    
+                    if (moduleId && moduleId !== '' && moduleId !== null) {
+                        targetModuleId = parseInt(moduleId);
+                    } else if (data.quiz && data.quiz.module_id) {
+                        targetModuleId = parseInt(data.quiz.module_id);
+                    } else {
+                        // Find the currently selected module (has bg-blue-50 class)
+                        const moduleItem = document.querySelector('.module-item.bg-blue-50, .module-item.border-blue-300');
                         if (moduleItem) {
-                            const moduleId = parseInt(moduleItem.getAttribute('data-module-id'));
-                            if (typeof selectModule === 'function') {
-                                selectModule(courseId, moduleId);
-                            } else if (typeof window.selectModule === 'function') {
-                                window.selectModule(courseId, moduleId);
-                            }
+                            targetModuleId = parseInt(moduleItem.getAttribute('data-module-id'));
                         }
                     }
-                    showNotification('Quiz created successfully!', 'success');
+                    
+                    if (!targetModuleId) {
+                        // Fallback: try to find any module item
+                        const anyModuleItem = document.querySelector('.module-item[data-module-id]');
+                        if (anyModuleItem) {
+                            targetModuleId = parseInt(anyModuleItem.getAttribute('data-module-id'));
+                        }
+                    }
+                    
+                    console.log('Refreshing quiz list after creation - courseId:', courseId, 'moduleId:', targetModuleId);
+                    
+                    if (!isNaN(targetModuleId) && !isNaN(courseId)) {
+                        // Wait a moment for database commit, then refresh quiz list
+                        setTimeout(() => {
+                            refreshQuizListForModule(courseId, targetModuleId);
+                        }, 800);
+                        
+                        // Don't reload the entire module - just refresh the quiz list
+                        // This prevents the page from "vanishing"
+                    } else {
+                        console.warn('Invalid module or course ID for refresh');
+                    }
                 } else {
-                    showNotification(data.error || 'Failed to create quiz', 'error');
+                    console.warn('Could not find course view element');
                 }
-            } catch (error) {
-                console.error('Error creating quiz:', error);
-                showNotification('Error creating quiz. Please try again.', 'error');
+            } else {
+                showNotification(data.error || 'Failed to create quiz', 'error');
             }
-        });
+        } catch (error) {
+            console.error('Error creating quiz:', error);
+            showNotification('Error creating quiz. Please try again.', 'error');
+        }
+        
+        return false; // Prevent any form submission
     }
 });
 
@@ -187,7 +336,7 @@ window.viewQuiz = async function(quizId) {
         const response = await fetch(`/quiz/api/quizzes/${quizId}`);
         const data = await response.json();
         
-        if (data.success) {
+        if (data.success && data.quiz) {
             currentQuiz = data.quiz;
             showQuizDetailsModal(data.quiz);
         } else {
@@ -197,109 +346,63 @@ window.viewQuiz = async function(quizId) {
         console.error('Error loading quiz:', error);
         showNotification('Error loading quiz. Please try again.', 'error');
     }
-}
+};
 
 // Show quiz details modal - make globally accessible
 window.showQuizDetailsModal = function(quiz) {
     const modal = document.getElementById('quiz-details-modal');
-    if (!modal) return;
+    if (!modal) {
+        console.error('quiz-details-modal not found');
+        return;
+    }
     
-    document.getElementById('quiz-details-title').textContent = quiz.title;
+    // Set quiz info
     document.getElementById('quiz-info-title').textContent = quiz.title;
     document.getElementById('quiz-info-description').textContent = quiz.description || 'No description';
-    document.getElementById('quiz-info-time').textContent = quiz.time_limit_minutes ? `${quiz.time_limit_minutes} min` : 'No limit';
+    document.getElementById('quiz-info-time').textContent = quiz.time_limit_minutes ? `${quiz.time_limit_minutes} minutes` : 'No limit';
     document.getElementById('quiz-info-passing').textContent = quiz.passing_score ? `${quiz.passing_score}%` : 'N/A';
     document.getElementById('quiz-info-attempts').textContent = quiz.max_attempts || 'Unlimited';
     
+    // Set quiz stats
     document.getElementById('quiz-stats-questions').textContent = quiz.question_count || 0;
     document.getElementById('quiz-stats-points').textContent = quiz.total_points || 0;
     
-    // Store quiz ID for edit form
+    // Store quiz ID for editing
     document.getElementById('edit-quiz-id').value = quiz.id;
     document.getElementById('edit-quiz-title').value = quiz.title;
     document.getElementById('edit-quiz-description').value = quiz.description || '';
     document.getElementById('edit-quiz-passing').value = quiz.passing_score || 60;
     
+    // Load questions
     renderQuestions(quiz.questions || []);
+    
+    // Load attempts
     loadQuizAttempts(quiz.id);
     
     modal.classList.remove('hidden');
-}
+};
 
 // Close quiz details modal - make globally accessible
 window.closeQuizDetailsModal = function() {
     const modal = document.getElementById('quiz-details-modal');
     if (modal) modal.classList.add('hidden');
-    currentQuizId = null;
-    currentQuiz = null;
 };
 
-// Render questions list
-function renderQuestions(questions) {
-    const listEl = document.getElementById('questions-list');
-    if (!listEl) return;
-    
-    if (questions.length === 0) {
-        listEl.innerHTML = `
-            <div class="text-center py-8 text-slate-400">
-                <i class="fas fa-question-circle text-4xl mb-2"></i>
-                <p class="text-sm">No questions yet. Add your first question!</p>
-            </div>
-        `;
+// Show add question modal - make globally accessible
+window.showAddQuestionModal = function(quizId) {
+    currentQuizId = quizId;
+    const modal = document.getElementById('add-question-modal');
+    if (!modal) {
+        console.error('add-question-modal not found');
         return;
     }
     
-    listEl.innerHTML = questions.map((q, index) => `
-        <div class="question-item">
-            <div class="question-header">
-                <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="question-type-badge question-type-${q.question_type}">
-                            ${q.question_type.replace('_', ' ').toUpperCase()}
-                        </span>
-                        <span class="text-sm text-slate-500">${q.points} points</span>
-                    </div>
-                    <p class="question-text">${escapeHtml(q.question_text)}</p>
-                    ${q.question_type === 'multiple_choice' && q.options ? `
-                        <div class="mt-3 space-y-1">
-                            ${q.options.map(opt => `
-                                <div class="option-item ${opt.is_correct ? 'correct' : ''}">
-                                    <i class="fas fa-${opt.is_correct ? 'check-circle text-green-600' : 'circle text-slate-400'}"></i>
-                                    <span class="${opt.is_correct ? 'font-semibold text-green-700' : 'text-slate-700'}">${escapeHtml(opt.option_text)}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                    ${q.question_type !== 'multiple_choice' ? `
-                        <div class="mt-2 text-sm">
-                            <span class="text-slate-500">Correct Answer:</span>
-                            <span class="ml-2 font-medium text-green-700">${escapeHtml(q.correct_answer || 'N/A')}</span>
-                        </div>
-                    ` : ''}
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="deleteQuestion(${q.id})" class="px-2 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Show add question modal - make globally accessible
-window.showAddQuestionModal = function() {
-    const modal = document.getElementById('add-question-modal');
-    if (!modal) return;
-    
-    document.getElementById('question-quiz-id').value = currentQuizId;
+    document.getElementById('question-quiz-id').value = quizId;
     document.getElementById('add-question-form').reset();
-    document.getElementById('multiple-choice-section').classList.add('hidden');
-    document.getElementById('answer-section').classList.add('hidden');
-    document.getElementById('options-container').innerHTML = '';
-    
+    document.getElementById('question-type').value = '';
+    handleQuestionTypeChange();
     modal.classList.remove('hidden');
-}
+};
 
 // Close add question modal - make globally accessible
 window.closeAddQuestionModal = function() {
@@ -307,155 +410,95 @@ window.closeAddQuestionModal = function() {
     if (modal) modal.classList.add('hidden');
 };
 
-// Handle question type change - make globally accessible
+// Handle question type change
 window.handleQuestionTypeChange = function() {
     const type = document.getElementById('question-type').value;
-    const mcSection = document.getElementById('multiple-choice-section');
+    const multipleChoiceSection = document.getElementById('multiple-choice-section');
     const answerSection = document.getElementById('answer-section');
+    const optionsContainer = document.getElementById('options-container');
     
-    mcSection.classList.add('hidden');
-    answerSection.classList.add('hidden');
+    if (multipleChoiceSection) multipleChoiceSection.classList.add('hidden');
+    if (answerSection) answerSection.classList.add('hidden');
     
     if (type === 'multiple_choice') {
-        mcSection.classList.remove('hidden');
-        if (document.getElementById('options-container').children.length === 0) {
-            addOption();
-            addOption();
+        if (multipleChoiceSection) {
+            multipleChoiceSection.classList.remove('hidden');
+            if (optionsContainer && optionsContainer.children.length === 0) {
+                // Add initial 2 options
+                addOptionField();
+                addOptionField();
+            }
         }
     } else if (type === 'short_answer' || type === 'true_false') {
-        answerSection.classList.remove('hidden');
-        if (type === 'true_false') {
-            document.getElementById('correct-answer').placeholder = 'Enter "true" or "false"';
-        } else {
-            document.getElementById('correct-answer').placeholder = 'Enter the correct answer';
-        }
+        if (answerSection) answerSection.classList.remove('hidden');
     }
-}
+};
 
-// Add option for multiple choice - make globally accessible
-window.addOption = function() {
+// Add option field for multiple choice
+window.addOptionField = function() {
     const container = document.getElementById('options-container');
-    const optionCount = container.children.length;
+    if (!container) return;
     
+    const optionCount = container.children.length;
     const optionDiv = document.createElement('div');
-    optionDiv.className = 'option-input-group';
+    optionDiv.className = 'flex items-center gap-2';
     optionDiv.innerHTML = `
-        <input type="text" class="option-input" placeholder="Option ${optionCount + 1}" required>
-        <label class="flex items-center gap-2">
-            <input type="radio" name="correct_option" value="${optionCount}" class="option-checkbox" required>
-            <span class="text-sm text-slate-600">Correct</span>
-        </label>
-        <button type="button" onclick="removeOption(this)" class="option-remove-btn">
+        <input type="text" name="option_text" placeholder="Option text" required
+               class="flex-1 px-3 py-2 border border-slate-300 rounded-lg">
+        <input type="radio" name="correct_option" value="${optionCount}" required>
+        <label class="text-sm text-slate-600">Correct</label>
+        <button type="button" onclick="removeOptionField(this)" class="px-2 py-1 text-red-600 hover:text-red-700">
             <i class="fas fa-times"></i>
         </button>
     `;
     container.appendChild(optionDiv);
-}
+};
 
-// Remove option - make globally accessible
-window.removeOption = function(btn) {
+// Remove option field
+window.removeOptionField = function(button) {
     const container = document.getElementById('options-container');
-    if (container.children.length > 2) {
-        btn.closest('.option-input-group').remove();
+    if (container && container.children.length > 2) {
+        button.parentElement.remove();
     } else {
-        showNotification('At least 2 options are required', 'error');
+        alert('Multiple choice questions must have at least 2 options');
     }
+};
+
+// Create quiz function
+async function createQuiz() {
+    // This is handled by the form submit event listener above
 }
 
-// Handle add question form submission
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('add-question-form');
-    if (form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const type = document.getElementById('question-type').value;
-            const questionData = {
-                question_type: type,
-                question_text: document.getElementById('question-text').value.trim(),
-                points: parseFloat(document.getElementById('question-points').value) || 1.0,
-            };
-            
-            if (type === 'multiple_choice') {
-                const options = [];
-                const optionInputs = document.querySelectorAll('#options-container .option-input');
-                const correctRadio = document.querySelector('input[name="correct_option"]:checked');
-                
-                if (!correctRadio) {
-                    showNotification('Please select a correct option', 'error');
-                    return;
-                }
-                
-                optionInputs.forEach((input, index) => {
-                    if (input.value.trim()) {
-                        options.push({
-                            option_text: input.value.trim(),
-                            is_correct: index === parseInt(correctRadio.value),
-                            order_index: index
-                        });
-                    }
-                });
-                
-                if (options.length < 2) {
-                    showNotification('At least 2 options are required', 'error');
-                    return;
-                }
-                
-                questionData.options = options;
-            } else {
-                questionData.correct_answer = document.getElementById('correct-answer').value.trim();
-                if (!questionData.correct_answer) {
-                    showNotification('Please enter a correct answer', 'error');
-                    return;
-                }
-            }
-            
-            try {
-                const response = await fetch(`/quiz/api/quizzes/${currentQuizId}/questions`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(questionData)
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    closeAddQuestionModal();
-                    viewQuiz(currentQuizId); // Reload quiz to show new question
-                    showNotification('Question added successfully!', 'success');
-                } else {
-                    showNotification(data.error || 'Failed to add question', 'error');
-                }
-            } catch (error) {
-                console.error('Error adding question:', error);
-                showNotification('Error adding question. Please try again.', 'error');
-            }
-        });
-    }
-});
-
-// Delete question - make globally accessible
-window.deleteQuestion = async function(questionId) {
-    if (!confirm('Are you sure you want to delete this question?')) return;
+// Update quiz function
+window.updateQuiz = async function() {
+    const quizId = document.getElementById('edit-quiz-id').value;
+    const updateData = {
+        title: document.getElementById('edit-quiz-title').value.trim(),
+        description: document.getElementById('edit-quiz-description').value.trim() || null,
+        passing_score: parseFloat(document.getElementById('edit-quiz-passing').value) || 60.0,
+    };
     
     try {
-        const response = await fetch(`/quiz/api/questions/${questionId}`, {
-            method: 'DELETE'
+        const response = await fetch(`/quiz/api/quizzes/${quizId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
         });
         
         const data = await response.json();
         
         if (data.success) {
-            viewQuiz(currentQuizId); // Reload quiz
-            showNotification('Question deleted successfully!', 'success');
+            showNotification('Quiz updated successfully!', 'success');
+            // Reload quiz details
+            viewQuiz(quizId);
         } else {
-            showNotification(data.error || 'Failed to delete question', 'error');
+            showNotification(data.error || 'Failed to update quiz', 'error');
         }
     } catch (error) {
-        console.error('Error deleting question:', error);
-        showNotification('Error deleting question. Please try again.', 'error');
+        console.error('Error updating quiz:', error);
+        showNotification('Error updating quiz. Please try again.', 'error');
     }
-}
+};
 
 // Delete quiz - make globally accessible
 window.deleteQuiz = async function(quizId) {
@@ -500,55 +543,146 @@ window.deleteQuiz = async function(quizId) {
     }
 }
 
-// Show edit quiz form - make globally accessible
-window.showEditQuizForm = function() {
-    document.getElementById('quiz-info-section').classList.add('hidden');
-    document.getElementById('edit-quiz-form-section').classList.remove('hidden');
-};
-
-// Cancel edit quiz - make globally accessible
-window.cancelEditQuiz = function() {
-    document.getElementById('quiz-info-section').classList.remove('hidden');
-    document.getElementById('edit-quiz-form-section').classList.add('hidden');
-};
-
-// Handle edit quiz form
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('edit-quiz-form');
-    if (form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const quizId = document.getElementById('edit-quiz-id').value;
-            const updateData = {
-                title: document.getElementById('edit-quiz-title').value.trim(),
-                description: document.getElementById('edit-quiz-description').value.trim() || null,
-                passing_score: parseFloat(document.getElementById('edit-quiz-passing').value) || 60.0,
-            };
-            
-            try {
-                const response = await fetch(`/quiz/api/quizzes/${quizId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updateData)
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    viewQuiz(quizId); // Reload quiz
-                    cancelEditQuiz();
-                    showNotification('Quiz updated successfully!', 'success');
-                } else {
-                    showNotification(data.error || 'Failed to update quiz', 'error');
-                }
-            } catch (error) {
-                console.error('Error updating quiz:', error);
-                showNotification('Error updating quiz. Please try again.', 'error');
-            }
+// Add question function
+window.addQuestion = async function() {
+    const form = document.getElementById('add-question-form');
+    const quizId = document.getElementById('question-quiz-id').value;
+    const type = document.getElementById('question-type').value;
+    
+    const questionData = {
+        question_type: type,
+        question_text: document.getElementById('question-text').value.trim(),
+        points: parseFloat(document.getElementById('question-points').value) || 1.0,
+    };
+    
+    if (type === 'multiple_choice') {
+        const options = [];
+        const optionInputs = document.querySelectorAll('#options-container input[name="option_text"]');
+        const correctOption = document.querySelector('input[name="correct_option"]:checked');
+        
+        optionInputs.forEach((input, index) => {
+            options.push({
+                option_text: input.value.trim(),
+                is_correct: correctOption && parseInt(correctOption.value) === index,
+                order_index: index
+            });
         });
+        
+        questionData.options = options;
+    } else {
+        questionData.correct_answer = document.getElementById('correct-answer').value.trim();
     }
-});
+    
+    try {
+        const response = await fetch(`/quiz/api/quizzes/${quizId}/questions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(questionData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            closeAddQuestionModal();
+            // Reload quiz details to show new question
+            viewQuiz(quizId);
+            showNotification('Question added successfully!', 'success');
+        } else {
+            showNotification(data.error || 'Failed to add question', 'error');
+        }
+    } catch (error) {
+        console.error('Error adding question:', error);
+        showNotification('Error adding question. Please try again.', 'error');
+    }
+};
+
+// Update question function
+window.updateQuestion = async function(questionId) {
+    // Implementation for updating questions
+    showNotification('Update question functionality coming soon', 'info');
+};
+
+// Delete question - make globally accessible
+window.deleteQuestion = async function(questionId) {
+    if (!confirm('Are you sure you want to delete this question?')) return;
+    
+    try {
+        const response = await fetch(`/quiz/api/questions/${questionId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('Question deleted successfully!', 'success');
+            // Reload quiz details
+            if (currentQuizId) {
+                viewQuiz(currentQuizId);
+            }
+        } else {
+            showNotification(data.error || 'Failed to delete question', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting question:', error);
+        showNotification('Error deleting question. Please try again.', 'error');
+    }
+}
+
+// Render questions in quiz details
+function renderQuestions(questions) {
+    const listEl = document.getElementById('questions-list');
+    if (!listEl) return;
+    
+    if (questions.length === 0) {
+        listEl.innerHTML = '<div class="text-center py-8 text-slate-400"><p>No questions yet. Add your first question!</p></div>';
+        return;
+    }
+    
+    listEl.innerHTML = questions.map(q => {
+        let questionHtml = `
+            <div class="border border-slate-200 rounded-lg p-4 mb-3">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">${q.question_type.replace('_', ' ')}</span>
+                            <span class="text-sm text-slate-500">${q.points} points</span>
+                        </div>
+                        <p class="font-medium text-slate-800 mb-2">${escapeHtml(q.question_text)}</p>
+        `;
+        
+        if (q.question_type === 'multiple_choice' && q.options) {
+            questionHtml += '<div class="space-y-1">';
+            q.options.forEach(opt => {
+                questionHtml += `
+                    <div class="flex items-center gap-2 text-sm">
+                        <input type="radio" disabled ${opt.is_correct ? 'checked' : ''}>
+                        <span class="${opt.is_correct ? 'font-semibold text-green-700' : 'text-slate-600'}">${escapeHtml(opt.option_text)}</span>
+                        ${opt.is_correct ? '<i class="fas fa-check-circle text-green-600"></i>' : ''}
+                    </div>
+                `;
+            });
+            questionHtml += '</div>';
+        } else {
+            questionHtml += `<p class="text-sm text-slate-600"><strong>Correct Answer:</strong> ${escapeHtml(q.correct_answer || 'N/A')}</p>`;
+        }
+        
+        questionHtml += `
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editQuestion(${q.id})" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                            <i class="fas fa-edit mr-1"></i>Edit
+                        </button>
+                        <button onclick="deleteQuestion(${q.id})" class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
+                            <i class="fas fa-trash mr-1"></i>Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        return questionHtml;
+    }).join('');
+}
 
 // Load quiz attempts
 async function loadQuizAttempts(quizId) {
@@ -557,26 +691,30 @@ async function loadQuizAttempts(quizId) {
         const data = await response.json();
         
         if (data.success) {
-            const attempts = data.attempts || [];
-            document.getElementById('quiz-stats-attempts').textContent = attempts.length;
+            renderQuizAttempts(data.attempts || []);
         }
     } catch (error) {
         console.error('Error loading quiz attempts:', error);
     }
 }
 
-// Utility functions
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+// Render quiz attempts
+function renderQuizAttempts(attempts) {
+    const statsEl = document.getElementById('quiz-stats-attempts');
+    if (statsEl) {
+        statsEl.textContent = attempts.length;
+    }
 }
 
+// Show notification
 function showNotification(message, type = 'info') {
     // Simple notification - you can enhance this
-    const bgColor = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600';
     const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50`;
+    notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+        type === 'success' ? 'bg-green-600' : 
+        type === 'error' ? 'bg-red-600' : 
+        'bg-blue-600'
+    } text-white`;
     notification.textContent = message;
     document.body.appendChild(notification);
     
@@ -585,3 +723,9 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
