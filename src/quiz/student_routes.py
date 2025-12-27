@@ -7,7 +7,7 @@ Students can:
 - Submit quiz answers
 - View their quiz results and attempts
 """
-from flask import jsonify, request
+from flask import jsonify, request, current_app
 from flask_login import login_required, current_user
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
@@ -513,41 +513,42 @@ def get_attempt_results(attempt_id):
 @login_required
 def list_student_attempts(quiz_id):
     """
-    List all attempts by the current student for a quiz.
+    List all attempts by the current user for a quiz.
+    Users can view their own attempts regardless of user_type.
     """
-    if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
-        import traceback
-        print(f"User type check failed. user_type: {getattr(current_user, 'user_type', 'NOT_SET')}")
-        print(traceback.format_exc())
-        return jsonify({'success': False, 'error': 'Unauthorized - Student access required'}), 403
-    
     try:
         quiz = Quiz.query.get_or_404(quiz_id)
         
-        # Check if student has any attempts for this quiz (more lenient check)
-        # If they have attempts, they should be able to view them even if enrollment status changed
-        student_attempts = QuizAttempt.query.filter_by(
-            quiz_id=quiz_id,
-            student_id=current_user.id
-        ).first()
-        
-        # If no attempts exist, verify enrollment
-        if not student_attempts:
-            enrollment = CourseStudent.query.filter_by(
-                course_id=quiz.course_id,
-                student_id=current_user.id,
-                status='enrolled'
-            ).first()
-            
-            if not enrollment:
-                return jsonify({'success': False, 'error': 'Quiz not found or not enrolled in course'}), 403
-        
-        # Get all attempts by this student
+        # Get all attempts by this user for this quiz
+        # We check student_id matches current_user.id, so only their own attempts are returned
         attempts = QuizAttempt.query.filter_by(
             quiz_id=quiz_id,
             student_id=current_user.id
         ).order_by(QuizAttempt.submitted_at.desc(), QuizAttempt.started_at.desc()).all()
         
+        # If user has attempts, allow access (they should be able to view their own attempts)
+        if len(attempts) == 0:
+            # No attempts yet, verify enrollment if user is a student
+            if hasattr(current_user, 'user_type') and current_user.user_type == 'student':
+                enrollment = CourseStudent.query.filter_by(
+                    course_id=quiz.course_id,
+                    student_id=current_user.id,
+                    status='enrolled'
+                ).first()
+                
+                if not enrollment:
+                    return jsonify({
+                        'success': False, 
+                        'error': 'Quiz not found or not enrolled in course'
+                    }), 403
+            else:
+                # Non-student users can't start new attempts
+                return jsonify({
+                    'success': False, 
+                    'error': 'No attempts found for this quiz'
+                }), 404
+        
+        # Process attempts data
         attempts_data = []
         for attempt in attempts:
             attempt_data = {
@@ -571,7 +572,12 @@ def list_student_attempts(quiz_id):
         
     except Exception as e:
         import traceback
-        print(f"Error in list_student_attempts: {str(e)}")
-        print(traceback.format_exc())
-        return jsonify({'success': False, 'error': str(e)}), 500
+        error_trace = traceback.format_exc()
+        print(f"Error in list_student_attempts for quiz_id={quiz_id}, user_id={current_user.id}: {str(e)}")
+        print(error_trace)
+        return jsonify({
+            'success': False, 
+            'error': f'Failed to load quiz attempts: {str(e)}',
+            'details': error_trace if current_app.debug else None
+        }), 500
 
