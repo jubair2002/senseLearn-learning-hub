@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Show attempt count if available
                     if (data.failed_attempts !== undefined && data.max_attempts !== undefined) {
-                        lockoutMsg += `<br><span style="color: #dc2626; font-weight: bold;">🔒 Attempt ${data.failed_attempts} of ${data.max_attempts} - Account Locked</span>`;
+                        lockoutMsg += `<br><span style="color: #dc2626; font-weight: bold;">Attempt ${data.failed_attempts} of ${data.max_attempts} - Account Locked</span>`;
                     }
                     
                     msg.innerHTML = lockoutMsg;
@@ -136,21 +136,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Show attempt count if available
                     if (failed !== undefined && max !== undefined && !isNaN(failed) && !isNaN(max)) {
-                        errorMsg += `<div style="color: #dc2626; font-weight: bold; font-size: 15px; margin: 4px 0;">🔴 Attempt ${failed} of ${max}</div>`;
+                        errorMsg += `<div style="color: #dc2626; font-weight: bold; font-size: 15px; margin: 4px 0;">Attempt ${failed} of ${max}</div>`;
                         
                         if (remaining !== undefined && !isNaN(remaining)) {
                             if (remaining > 0) {
-                                errorMsg += `<div style="color: #ea580c; font-size: 13px; margin-top: 4px;">⚠️ ${remaining} attempt(s) remaining before account lockout</div>`;
+                                errorMsg += `<div style="color: #ea580c; font-size: 13px; margin-top: 4px;">${remaining} attempt(s) remaining before account lockout</div>`;
                             } else {
-                                errorMsg += `<div style="color: #dc2626; font-weight: bold; font-size: 13px; margin-top: 4px;">⚠️ No attempts remaining - account will be locked!</div>`;
+                                errorMsg += `<div style="color: #dc2626; font-weight: bold; font-size: 13px; margin-top: 4px;">No attempts remaining - account will be locked!</div>`;
                             }
                         }
                     } else if (remaining !== undefined && !isNaN(remaining)) {
                         // Fallback if only remaining_attempts is available
                         if (remaining > 0) {
-                            errorMsg += `<div style="color: #ea580c; margin-top: 4px;">⚠️ ${remaining} attempt(s) remaining</div>`;
+                            errorMsg += `<div style="color: #ea580c; margin-top: 4px;">${remaining} attempt(s) remaining</div>`;
                         } else {
-                            errorMsg += `<div style="color: #dc2626; margin-top: 4px;">⚠️ No attempts remaining</div>`;
+                            errorMsg += `<div style="color: #dc2626; margin-top: 4px;">No attempts remaining</div>`;
                         }
                     }
                     

@@ -16,8 +16,9 @@ from .csrf import CSRFProtection, csrf_protect
 from .input_validator import InputValidator, sanitize_input
 from .password_validator import PasswordValidator
 from .security_headers import SecurityHeaders
-from .account_lockout import AccountLockout
+from .account_lockout import AccountLockout, get_account_lockout
 from .security_logger import SecurityLogger
+from .security_init import init_security
 
 __all__ = [
     'RateLimiter',
@@ -29,6 +30,8 @@ __all__ = [
     'PasswordValidator',
     'SecurityHeaders',
     'AccountLockout',
+    'get_account_lockout',
     'SecurityLogger',
+    'init_security',
 ]
 

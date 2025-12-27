@@ -110,15 +110,7 @@ def create_app() -> Flask:
             response.cache_control.no_cache = True
             response.cache_control.no_store = True
             response.cache_control.must_revalidate = True
-        # Add security headers
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        # Allow embedding for file viewer (students need to view files in iframe)
-        # Only deny for HTML pages, allow for file serving
-        if request.endpoint != 'serve_upload':
-            response.headers['X-Frame-Options'] = 'DENY'
-        else:
-            response.headers['X-Frame-Options'] = 'SAMEORIGIN'  # Allow same-origin embedding
-        response.headers['X-XSS-Protection'] = '1; mode=block'
+        # Note: Security headers are handled by SecurityHeaders.init_app()
         return response
 
     # User loader function for Flask-Login - optimized with caching
@@ -429,14 +421,17 @@ def create_app() -> Flask:
             current_app.logger.warning(f"404 error: {method} {path}")
         except:
             pass
-        if path.startswith('/tutor/api/') or path.startswith('/student/api/') or path.startswith('/admin/api/'):
+        # Return JSON for API routes
+        if path.startswith('/api/') or path.startswith('/tutor/api/') or path.startswith('/student/api/') or path.startswith('/admin/api/'):
             return jsonify({
                 'success': False, 
                 'error': f'Route not found: {method} {path}',
                 'path': path,
                 'method': method
             }), 404
-        return e
+        # For non-API routes, return a simple 404 message
+        # Flask will handle rendering if a template exists
+        return f"Page not found: {path}", 404
     
     @app.errorhandler(405)
     def handle_405(e):

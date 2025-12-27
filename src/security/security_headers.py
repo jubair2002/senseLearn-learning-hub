@@ -28,13 +28,13 @@ class SecurityHeaders:
         def add_security_headers(response):
             """Add security headers to all responses."""
             # Content Security Policy
-            # Adjust based on your needs - this is a restrictive policy
+            # Allow external CDNs for Tailwind CSS, Font Awesome, etc.
             csp = (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "  # Allow inline for compatibility
-                "style-src 'self' 'unsafe-inline'; "  # Allow inline styles
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; "  # Allow CDN scripts
+                "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; "  # Allow CDN styles
                 "img-src 'self' data: https:; "
-                "font-src 'self' data:; "
+                "font-src 'self' data: https://cdnjs.cloudflare.com; "  # Allow CDN fonts
                 "connect-src 'self'; "
                 "frame-ancestors 'self'; "
                 "base-uri 'self'; "
