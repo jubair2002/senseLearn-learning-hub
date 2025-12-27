@@ -15,7 +15,7 @@
         <div class="flex-1 overflow-y-auto p-2">
             {% if modules %}
                 {% for module in modules %}
-                <div onclick="selectModule({{ course_id }}, {{ module.id }})" class="module-item p-3 mb-2 rounded-lg cursor-pointer hover:bg-slate-50 border border-slate-200 transition" data-module-id="{{ module.id }}">
+                <div class="module-item p-3 mb-2 rounded-lg cursor-pointer hover:bg-slate-50 border border-slate-200 transition" data-module-id="{{ module.id }}" data-course-id="{{ course_id }}">
                     <div class="flex items-start justify-between">
                         <div class="flex-1">
                             <h4 class="font-semibold text-slate-800 mb-1">{{ module.name }}</h4>
@@ -70,62 +70,16 @@
                     <span>Back to Courses</span>
                 </button>
             </div>
-            
-            <!-- Tabs -->
-            <div class="flex items-center gap-2 border-t border-slate-200 pt-3 mt-3">
-                <button onclick="showCourseTab('modules')" id="tab-modules" class="px-4 py-2 rounded-lg font-medium transition tab-button active">
-                    <i class="fas fa-folder mr-2"></i>Modules
-                </button>
-                <button onclick="showCourseTab('quizzes')" id="tab-quizzes" class="px-4 py-2 rounded-lg font-medium transition tab-button text-slate-600 hover:bg-slate-100">
-                    <i class="fas fa-clipboard-list mr-2"></i>Quizzes
-                </button>
-            </div>
         </div>
         
         <!-- Module Content Area -->
         <div id="module-content" class="flex-1 overflow-y-auto p-6 bg-slate-50">
             {% if modules and modules|length > 0 %}
-                <!-- Auto-select module on load - check localStorage first for saved module -->
-                <script>
-                    (function() {
-                        const courseId = {{ course_id }};
-                        const firstModuleId = {{ modules[0].id if modules else 'null' }};
-                        
-                        // Wait for functions to be available
-                        function trySelectModule() {
-                            if (typeof selectModule === 'function') {
-                                // Check localStorage for saved module ID for this course
-                                const savedModuleId = localStorage.getItem('tutor_selected_module_' + courseId);
-                                
-                                let moduleIdToSelect = null;
-                                
-                                if (savedModuleId) {
-                                    // Check if the saved module still exists in the current modules list
-                                    const moduleIds = [{% for module in modules %}{{ module.id }}{% if not loop.last %}, {% endif %}{% endfor %}];
-                                    const savedId = parseInt(savedModuleId);
-                                    
-                                    if (moduleIds.includes(savedId)) {
-                                        // Saved module exists, use it
-                                        moduleIdToSelect = savedId;
-                                    } else {
-                                        // Saved module doesn't exist anymore (might have been deleted), use first module
-                                        moduleIdToSelect = firstModuleId;
-                                    }
-                                } else {
-                                    // No saved module, use first module
-                                    moduleIdToSelect = firstModuleId;
-                                }
-                                
-                                if (moduleIdToSelect) {
-                                    selectModule(courseId, moduleIdToSelect);
-                                }
-                            } else {
-                                setTimeout(trySelectModule, 50);
-                            }
-                        }
-                        setTimeout(trySelectModule, 200);
-                    })();
-                </script>
+                <div class="text-center py-12 text-slate-400">
+                    <i class="fas fa-book-open text-6xl mb-4"></i>
+                    <p class="text-lg">Select a module from the sidebar</p>
+                    <p class="text-sm mt-2">or wait for auto-selection...</p>
+                </div>
             {% else %}
                 <div class="text-center py-12 text-slate-400">
                     <i class="fas fa-book-open text-6xl mb-4"></i>
@@ -133,33 +87,6 @@
                     <p class="text-sm mt-2">or create a new module to get started</p>
                 </div>
             {% endif %}
-        </div>
-        
-        <!-- Quiz Management Area -->
-        <div id="quiz-content" class="flex-1 overflow-y-auto p-6 bg-slate-50 hidden">
-            <div id="quiz-management-section">
-                <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-                    <!-- Header -->
-                    <div class="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 class="text-2xl font-bold text-slate-800">Quiz Management</h3>
-                            <p class="text-sm text-slate-500 mt-1">Create and manage quizzes for this course</p>
-                        </div>
-                        <button onclick="showCreateQuizModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
-                            <i class="fas fa-plus"></i>
-                            <span>Create Quiz</span>
-                        </button>
-                    </div>
-
-                    <!-- Quizzes List -->
-                    <div id="quizzes-list" class="space-y-4">
-                        <div class="text-center py-12 text-slate-400">
-                            <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
-                            <p>Loading quizzes...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>

@@ -98,6 +98,23 @@ window.showCreateQuizModal = function() {
     modal.classList.remove('hidden');
 };
 
+// Show create quiz modal for a specific module
+window.showCreateQuizModalForModule = function(courseId, moduleId) {
+    const modal = document.getElementById('create-quiz-modal');
+    if (!modal) {
+        console.error('create-quiz-modal not found');
+        return;
+    }
+    
+    currentCourseId = courseId;
+    currentModuleId = moduleId;
+    
+    document.getElementById('quiz-course-id').value = courseId;
+    document.getElementById('quiz-module-id').value = moduleId;
+    document.getElementById('create-quiz-form').reset();
+    modal.classList.remove('hidden');
+};
+
 // Close create quiz modal - make globally accessible
 window.closeCreateQuizModal = function() {
     const modal = document.getElementById('create-quiz-modal');
@@ -136,7 +153,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (data.success) {
                     closeCreateQuizModal();
-                    loadQuizzes();
+                    // Reload the module to show the new quiz
+                    const courseViewEl = document.querySelector('[data-course-id]');
+                    if (courseViewEl) {
+                        const courseId = parseInt(courseViewEl.getAttribute('data-course-id'));
+                        const moduleItem = document.querySelector('.module-item.border-blue-500, .module-item[data-module-id]');
+                        if (moduleItem) {
+                            const moduleId = parseInt(moduleItem.getAttribute('data-module-id'));
+                            if (typeof selectModule === 'function') {
+                                selectModule(courseId, moduleId);
+                            } else if (typeof window.selectModule === 'function') {
+                                window.selectModule(courseId, moduleId);
+                            }
+                        }
+                    }
                     showNotification('Quiz created successfully!', 'success');
                 } else {
                     showNotification(data.error || 'Failed to create quiz', 'error');
@@ -439,8 +469,28 @@ window.deleteQuiz = async function(quizId) {
         const data = await response.json();
         
         if (data.success) {
-            loadQuizzes();
             showNotification('Quiz deleted successfully!', 'success');
+            
+            // Reload the module to refresh the quiz list
+            const courseViewEl = document.querySelector('[data-course-id]');
+            if (courseViewEl) {
+                const courseId = parseInt(courseViewEl.getAttribute('data-course-id'));
+                const moduleItem = document.querySelector('.module-item.border-blue-500, .module-item[data-module-id]');
+                if (moduleItem) {
+                    const moduleId = parseInt(moduleItem.getAttribute('data-module-id'));
+                    if (typeof selectModule === 'function') {
+                        selectModule(courseId, moduleId);
+                    } else if (typeof window.selectModule === 'function') {
+                        window.selectModule(courseId, moduleId);
+                    }
+                }
+            }
+            
+            // Also close quiz details modal if open
+            const quizModal = document.getElementById('quiz-details-modal');
+            if (quizModal && !quizModal.classList.contains('hidden')) {
+                closeQuizDetailsModal();
+            }
         } else {
             showNotification(data.error || 'Failed to delete quiz', 'error');
         }

@@ -701,6 +701,42 @@
         let currentSelectedModuleId = null;
         let currentCourseIdForModule = null;
         
+        // Define selectModule function immediately at global scope to ensure it's always available
+        window.selectModule = function(courseId, moduleId) {
+            console.log('window.selectModule called with courseId:', courseId, 'moduleId:', moduleId);
+            if (!courseId || !moduleId) {
+                console.error('Invalid parameters - courseId:', courseId, 'moduleId:', moduleId);
+                return;
+            }
+            
+            currentSelectedModuleId = moduleId;
+            
+            // Save selected module to localStorage for persistence across refreshes
+            localStorage.setItem(`tutor_selected_module_${courseId}`, moduleId.toString());
+            
+            // Update active state in sidebar
+            document.querySelectorAll('.module-item').forEach(item => {
+                item.classList.remove('bg-blue-50', 'border-blue-300');
+                item.classList.add('border-slate-200');
+            });
+            const selectedItem = document.querySelector(`[data-module-id="${moduleId}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('bg-blue-50', 'border-blue-300');
+                selectedItem.classList.remove('border-slate-200');
+            } else {
+                console.warn('Selected module item not found for moduleId:', moduleId);
+            }
+            
+            // Load module files - use setTimeout to ensure loadModuleFiles is defined
+            setTimeout(() => {
+                if (typeof loadModuleFiles === 'function') {
+                    loadModuleFiles(courseId, moduleId);
+                } else {
+                    console.error('loadModuleFiles function not available');
+                }
+            }, 0);
+        };
+        
         // Page titles mapping
         const pageTitles = {
             'dashboard': 'Dashboard',
@@ -1924,6 +1960,56 @@
                 
                 if (result.success && result.html) {
                     contentEl.innerHTML = result.html;
+                    
+                    // Wait for DOM to be ready, then auto-select first module if available
+                    setTimeout(() => {
+                        console.log('Attempting to auto-select module after course view loads');
+                        const courseViewEl = document.querySelector('[data-course-id]');
+                        console.log('courseViewEl:', courseViewEl);
+                        
+                        if (courseViewEl) {
+                            const courseIdFromDOM = parseInt(courseViewEl.getAttribute('data-course-id'));
+                            const actualCourseId = courseIdFromDOM || courseId;
+                            console.log('Course ID:', actualCourseId);
+                            
+                            // Check for saved module preference
+                            const savedModuleId = localStorage.getItem(`tutor_selected_module_${actualCourseId}`);
+                            console.log('Saved module ID:', savedModuleId);
+                            
+                            if (savedModuleId) {
+                                const savedId = parseInt(savedModuleId);
+                                const savedModuleEl = document.querySelector(`[data-module-id="${savedId}"]`);
+                                console.log('Saved module element:', savedModuleEl);
+                                
+                                if (savedModuleEl && typeof window.selectModule === 'function') {
+                                    console.log('Selecting saved module:', savedId);
+                                    window.selectModule(actualCourseId, savedId);
+                                    return;
+                                }
+                            }
+                            
+                            // Otherwise select first module
+                            const firstModule = document.querySelector('.module-item[data-module-id]');
+                            console.log('First module element:', firstModule);
+                            
+                            if (firstModule && typeof window.selectModule === 'function') {
+                                const firstModuleId = parseInt(firstModule.getAttribute('data-module-id'));
+                                console.log('First module ID:', firstModuleId);
+                                
+                                if (!isNaN(firstModuleId)) {
+                                    console.log('Selecting first module:', firstModuleId);
+                                    window.selectModule(actualCourseId, firstModuleId);
+                                } else {
+                                    console.error('Invalid first module ID:', firstModuleId);
+                                }
+                            } else {
+                                console.warn('First module not found or selectModule not available');
+                                console.log('window.selectModule type:', typeof window.selectModule);
+                            }
+                        } else {
+                            console.error('Course view element not found!');
+                        }
+                    }, 500);
                 } else {
                     // Show error message from server
                     const errorMsg = result.error || 'Unknown error';
@@ -1943,6 +2029,11 @@
             const savedModuleId = currentSelectedModuleId || localStorage.getItem(`tutor_selected_module_${courseId}`);
             
             const contentEl = document.getElementById('course-view-content');
+            if (!contentEl) {
+                console.error('course-view-content element not found');
+                return Promise.resolve();
+            }
+            
             contentEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Refreshing...</p></div>';
             
             try {
@@ -1964,29 +2055,35 @@
                 if (result.success && result.html) {
                     contentEl.innerHTML = result.html;
                     
-                    // After HTML is loaded, restore the selected module if one was saved
-                    if (savedModuleId) {
-                        // Wait a bit for the DOM to be ready, then restore the module
-                        setTimeout(() => {
-                            const moduleId = parseInt(savedModuleId);
-                            if (!isNaN(moduleId) && typeof selectModule === 'function') {
-                                // Check if the module still exists in the DOM
-                                const moduleElement = document.querySelector(`[data-module-id="${moduleId}"]`);
-                                if (moduleElement) {
-                                    selectModule(courseId, moduleId);
-                                } else {
-                                    // Module might have been deleted, try to select first module
-                                    const firstModule = document.querySelector('.module-item[data-module-id]');
-                                    if (firstModule) {
-                                        const firstModuleId = parseInt(firstModule.getAttribute('data-module-id'));
-                                        if (!isNaN(firstModuleId)) {
-                                            selectModule(courseId, firstModuleId);
-                                        }
+                    // After HTML is loaded, restore the selected module if one was saved, or select first module
+                    setTimeout(() => {
+                        const courseViewEl = document.querySelector('[data-course-id]');
+                        if (courseViewEl) {
+                            const courseIdFromDOM = parseInt(courseViewEl.getAttribute('data-course-id'));
+                            const actualCourseId = courseIdFromDOM || courseId;
+                            
+                            if (savedModuleId && typeof window.selectModule === 'function') {
+                                // Try to restore saved module
+                                const moduleId = parseInt(savedModuleId);
+                                if (!isNaN(moduleId)) {
+                                    const moduleElement = document.querySelector(`[data-module-id="${moduleId}"]`);
+                                    if (moduleElement) {
+                                        window.selectModule(actualCourseId, moduleId);
+                                        return;
                                     }
                                 }
                             }
-                        }, 300);
-                    }
+                            
+                            // If no saved module or saved module not found, select first module
+                            const firstModule = document.querySelector('.module-item[data-module-id]');
+                            if (firstModule && typeof window.selectModule === 'function') {
+                                const firstModuleId = parseInt(firstModule.getAttribute('data-module-id'));
+                                if (!isNaN(firstModuleId)) {
+                                    window.selectModule(actualCourseId, firstModuleId);
+                                }
+                            }
+                        }
+                    }, 300);
                 } else {
                     // Show error message from server
                     const errorMsg = result.error || 'Unknown error';
@@ -2306,56 +2403,69 @@
         }
         
         // Module management functions
-        function selectModule(courseId, moduleId) {
-            currentSelectedModuleId = moduleId;
-            
-            // Save selected module to localStorage for persistence across refreshes
-            localStorage.setItem(`tutor_selected_module_${courseId}`, moduleId.toString());
-            
-            // Update active state in sidebar
-            document.querySelectorAll('.module-item').forEach(item => {
-                item.classList.remove('bg-blue-50', 'border-blue-300');
-                item.classList.add('border-slate-200');
-            });
-            const selectedItem = document.querySelector(`[data-module-id="${moduleId}"]`);
-            if (selectedItem) {
-                selectedItem.classList.add('bg-blue-50', 'border-blue-300');
-                selectedItem.classList.remove('border-slate-200');
-            }
-            
-            // Load module files
-            loadModuleFiles(courseId, moduleId);
-        }
+        // Note: selectModule is already defined at the top of the script for global access
         
         async function loadModuleFiles(courseId, moduleId) {
+            console.log('loadModuleFiles called with courseId:', courseId, 'moduleId:', moduleId);
             const contentEl = document.getElementById('module-content');
-            if (!contentEl) return;
+            if (!contentEl) {
+                console.error('module-content element not found!');
+                return;
+            }
+            console.log('module-content element found:', contentEl);
             
             contentEl.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading module...</p></div>';
             
             try {
-                const response = await fetch(`/tutor/api/modules/${moduleId}/files`);
+                // Load files first (required)
+                const filesResponse = await fetch(`/tutor/api/modules/${moduleId}/files`);
                 
-                // Check content type before parsing
-                const contentType = response.headers.get('content-type') || '';
-                let result;
-                
-                if (contentType.includes('application/json')) {
-                    result = await response.json();
+                // Parse files response
+                const filesContentType = filesResponse.headers.get('content-type') || '';
+                let filesResult;
+                if (filesContentType.includes('application/json')) {
+                    filesResult = await filesResponse.json();
                 } else {
-                    const text = await response.text();
-                    console.error('Non-JSON response:', text.substring(0, 500));
-                    throw new Error('Server returned non-JSON response. Status: ' + response.status);
+                    const text = await filesResponse.text();
+                    console.error('Non-JSON response for files:', text.substring(0, 500));
+                    throw new Error('Server returned non-JSON response. Status: ' + filesResponse.status);
                 }
                 
-                if (result.success) {
-                    const files = result.files || [];
+                // Load quizzes separately (optional - don't fail if this fails)
+                let quizzesResult = { success: false, quizzes: [] };
+                try {
+                    console.log('Loading quizzes for course:', courseId);
+                    const quizzesResponse = await fetch(`/quiz/api/courses/${courseId}/quizzes`);
+                    console.log('Quizzes response status:', quizzesResponse.status);
+                    const quizzesContentType = quizzesResponse.headers.get('content-type') || '';
+                    if (quizzesContentType.includes('application/json')) {
+                        quizzesResult = await quizzesResponse.json();
+                        console.log('Quizzes loaded:', quizzesResult);
+                    } else {
+                        const text = await quizzesResponse.text();
+                        console.warn('Could not parse quizzes response:', text.substring(0, 200));
+                    }
+                } catch (quizError) {
+                    console.warn('Error loading quizzes (non-critical):', quizError);
+                    // Continue without quizzes
+                }
+                
+                if (filesResult.success) {
+                    const files = filesResult.files || [];
+                    // Get quizzes for this module (handle errors gracefully)
+                    let quizzes = [];
+                    if (quizzesResult && quizzesResult.success && Array.isArray(quizzesResult.quizzes)) {
+                        quizzes = quizzesResult.quizzes.filter(q => q.module_id === moduleId);
+                    }
+                    
                     const moduleItem = document.querySelector(`[data-module-id="${moduleId}"]`);
                     const moduleName = moduleItem ? moduleItem.querySelector('h4').textContent : 'Module';
                     const moduleDesc = moduleItem ? (moduleItem.querySelector('p.text-xs.text-slate-500')?.textContent || '') : '';
                     
-                    if (files.length > 0) {
-                        contentEl.innerHTML = `
+                    // Build HTML with both files and quizzes
+                    let html = `
+                        <div class="space-y-6">
+                            <!-- Module Header -->
                             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                                 <div class="flex items-center justify-between mb-4 pb-4 border-b border-slate-200">
                                     <div>
@@ -2367,6 +2477,22 @@
                                         <span>Add File</span>
                                     </button>
                                 </div>
+                            </div>
+                            
+                            <!-- Files Section -->
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="text-xl font-bold text-slate-800">
+                                        <i class="fas fa-file mr-2"></i>Files
+                                    </h4>
+                                    <button onclick="showAddFileModal(${moduleId})" class="px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                        <i class="fas fa-plus mr-1"></i>Add File
+                                    </button>
+                                </div>
+                    `;
+                    
+                    if (files.length > 0) {
+                        html += `
                                 <div class="mb-4">
                                     <p class="text-sm text-slate-600">
                                         <i class="fas fa-info-circle mr-1"></i>
@@ -2410,24 +2536,73 @@
                                     `;
                                     }).join('')}
                                 </div>
-                            </div>
                         `;
                     } else {
-                        contentEl.innerHTML = `
-                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center">
-                                <h3 class="text-2xl font-bold text-slate-800 mb-2">${moduleName}</h3>
-                                ${moduleDesc ? `<p class="text-sm text-slate-600 mb-4">${moduleDesc}</p>` : ''}
-                                <div class="py-8">
-                                    <i class="fas fa-folder-open text-6xl text-slate-300 mb-4"></i>
-                                    <p class="text-slate-500 mb-2 text-lg">No files in this module yet</p>
-                                    <p class="text-sm text-slate-400 mb-6">Upload PDFs, presentations, documents, or images to share with students</p>
-                                    <button onclick="showAddFileModal(${moduleId})" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-base font-medium">
+                        html += `
+                                <div class="text-center py-8">
+                                    <i class="fas fa-folder-open text-4xl text-slate-300 mb-3"></i>
+                                    <p class="text-slate-500 mb-2">No files in this module yet</p>
+                                    <button onclick="showAddFileModal(${moduleId})" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                                         <i class="fas fa-plus mr-2"></i>Upload File
                                     </button>
                                 </div>
-                            </div>
                         `;
                     }
+                    
+                    html += `</div>`;
+                    
+                    // Add Quizzes Section
+                    html += `
+                            <!-- Quizzes Section -->
+                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h4 class="text-xl font-bold text-slate-800">
+                                        <i class="fas fa-clipboard-list mr-2"></i>Quizzes
+                                    </h4>
+                                    <button onclick="window.showCreateQuizModalForModule(${courseId}, ${moduleId})" class="px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                                        <i class="fas fa-plus mr-1"></i>Create Quiz
+                                    </button>
+                                </div>
+                                <div id="quizzes-list-module-${moduleId}" class="space-y-3">
+                                    ${quizzes.length > 0 ? quizzes.map(quiz => `
+                                        <div class="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
+                                            <div class="flex items-start justify-between">
+                                                <div class="flex-1">
+                                                    <h5 class="font-semibold text-slate-800 mb-1">${(quiz.title || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</h5>
+                                                    ${quiz.description ? `<p class="text-sm text-slate-600 mb-2">${(quiz.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>` : ''}
+                                                    <div class="flex items-center gap-4 text-xs text-slate-500">
+                                                        <span><i class="fas fa-question-circle mr-1"></i>${quiz.question_count || 0} questions</span>
+                                                        <span><i class="fas fa-star mr-1"></i>${quiz.total_points || 0} points</span>
+                                                        <span class="px-2 py-1 rounded ${quiz.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}">
+                                                            ${quiz.is_active ? 'Active' : 'Inactive'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="flex gap-2">
+                                                    <button onclick="window.viewQuiz(${quiz.id})" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                                                        <i class="fas fa-eye mr-1"></i>View
+                                                    </button>
+                                                    <button onclick="window.deleteQuiz(${quiz.id})" class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700">
+                                                        <i class="fas fa-trash mr-1"></i>Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('') : `
+                                        <div class="text-center py-8 text-slate-400">
+                                            <i class="fas fa-clipboard-list text-4xl mb-3"></i>
+                                            <p class="text-sm">No quizzes for this module yet</p>
+                                            <button onclick="window.showCreateQuizModalForModule(${courseId}, ${moduleId})" class="mt-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm">
+                                                <i class="fas fa-plus mr-2"></i>Create Quiz
+                                            </button>
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    contentEl.innerHTML = html;
                 } else {
                     contentEl.innerHTML = '<div class="text-center py-12 text-red-600"><p>Error loading module files</p></div>';
                 }
@@ -2511,9 +2686,30 @@
                 }
                 
                 if (result.success) {
+                    const newModuleId = result.module ? result.module.id : null;
                     alert('Module created successfully!');
                     closeCreateModuleModal();
-                    loadCourseView(courseId); // Reload course view to show new module
+                    
+                    // Reload course view to show new module
+                    if (typeof loadCourseView === 'function') {
+                        loadCourseView(courseId).then(() => {
+                            // After reload, select the newly created module
+                            if (newModuleId && typeof window.selectModule === 'function') {
+                                setTimeout(() => {
+                                    window.selectModule(courseId, newModuleId);
+                                }, 500);
+                            }
+                        });
+                    } else if (typeof openCourse === 'function') {
+                        openCourse(courseId).then(() => {
+                            // After reload, select the newly created module
+                            if (newModuleId && typeof window.selectModule === 'function') {
+                                setTimeout(() => {
+                                    window.selectModule(courseId, newModuleId);
+                                }, 500);
+                            }
+                        });
+                    }
                 } else {
                     alert('Error: ' + (result.error || 'Failed to create module'));
                 }
@@ -2820,16 +3016,80 @@
         
         console.log('showCourseTab function defined:', typeof window.showCourseTab);
         
-        // Event delegation for quiz tab button (in case onclick doesn't work)
-        document.addEventListener('click', function(e) {
-            if (e.target && (e.target.id === 'tab-quizzes' || e.target.closest('#tab-quizzes'))) {
+        // Event delegation for module items (works for dynamically loaded content)
+        document.body.addEventListener('click', function(e) {
+            // Check if clicked element is a module item or inside it
+            let target = e.target;
+            let moduleItem = null;
+            
+            // Walk up the DOM tree to find the module item
+            while (target && target !== document.body) {
+                if (target.classList && target.classList.contains('module-item')) {
+                    moduleItem = target;
+                    break;
+                }
+                target = target.parentElement;
+            }
+            
+            if (moduleItem) {
                 e.preventDefault();
+                e.stopPropagation();
+                
+                const moduleId = parseInt(moduleItem.getAttribute('data-module-id'));
+                const courseId = parseInt(moduleItem.getAttribute('data-course-id'));
+                
+                console.log('Module item clicked via event delegation - courseId:', courseId, 'moduleId:', moduleId);
+                
+                if (!isNaN(moduleId) && !isNaN(courseId)) {
+                    if (typeof window.selectModule === 'function') {
+                        window.selectModule(courseId, moduleId);
+                    } else {
+                        console.error('selectModule function not available');
+                        alert('Error: Function not available. Please refresh the page.');
+                    }
+                } else {
+                    console.error('Invalid module or course ID:', { moduleId, courseId });
+                }
+                return;
+            }
+            
+            // Check if clicked element is the quiz tab button or inside it
+            target = e.target;
+            let quizTab = null;
+            let moduleTab = null;
+            
+            // Walk up the DOM tree to find the button
+            while (target && target !== document.body) {
+                if (target.id === 'tab-quizzes') {
+                    quizTab = target;
+                    break;
+                }
+                if (target.id === 'tab-modules') {
+                    moduleTab = target;
+                    break;
+                }
+                target = target.parentElement;
+            }
+            
+            if (quizTab) {
+                e.preventDefault();
+                e.stopPropagation();
                 console.log('Quiz tab clicked via event delegation');
-                window.showCourseTab('quizzes');
-            } else if (e.target && (e.target.id === 'tab-modules' || e.target.closest('#tab-modules'))) {
+                if (typeof window.showCourseTab === 'function') {
+                    window.showCourseTab('quizzes');
+                } else {
+                    console.error('showCourseTab function not available');
+                    alert('Error: Function not available. Please refresh the page.');
+                }
+            } else if (moduleTab) {
                 e.preventDefault();
+                e.stopPropagation();
                 console.log('Modules tab clicked via event delegation');
-                window.showCourseTab('modules');
+                if (typeof window.showCourseTab === 'function') {
+                    window.showCourseTab('modules');
+                } else {
+                    console.error('showCourseTab function not available');
+                }
             }
         });
     </script>
