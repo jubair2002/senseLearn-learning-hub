@@ -10,4 +10,5 @@ from src.config import config
 quiz_bp = Blueprint('quiz', __name__, url_prefix='/quiz')
 
 from src.quiz import tutor_routes  # Import tutor routes
+from src.quiz import student_routes  # Import student routes
 

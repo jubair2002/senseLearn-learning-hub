@@ -482,6 +482,66 @@ def add_question(quiz_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@quiz_bp.route('/api/questions/<int:question_id>', methods=['GET'])
+@login_required
+def get_question(question_id):
+    """
+    Get a single question with its options.
+    """
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        question = Question.query.get_or_404(question_id)
+        
+        # Get quiz to verify authorization
+        quiz = Quiz.query.get(question.quiz_id)
+        if not quiz:
+            return jsonify({'success': False, 'error': 'Quiz not found for this question'}), 404
+        
+        # Verify tutor is assigned to the course
+        assignment = db.session.query(course_tutors).filter_by(
+            course_id=quiz.course_id,
+            tutor_id=current_user.id
+        ).first()
+        
+        if not assignment:
+            return jsonify({'success': False, 'error': 'Question not found or not authorized'}), 404
+        
+        question_data = {
+            'id': question.id,
+            'quiz_id': question.quiz_id,
+            'question_type': question.question_type,
+            'question_text': question.question_text,
+            'points': float(question.points),
+            'order_index': question.order_index,
+            'correct_answer': question.correct_answer,
+        }
+        
+        # Add options for multiple choice
+        if question.question_type == 'multiple_choice':
+            question_data['options'] = [
+                {
+                    'id': opt.id,
+                    'option_text': opt.option_text,
+                    'is_correct': opt.is_correct,
+                    'order_index': opt.order_index
+                }
+                for opt in question.options.order_by(QuestionOption.order_index).all()
+            ]
+        
+        return jsonify({
+            'success': True,
+            'question': question_data
+        }), 200
+        
+    except Exception as e:
+        import traceback
+        print(f"Error in get_question: {str(e)}")
+        print(traceback.format_exc())
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @quiz_bp.route('/api/questions/<int:question_id>', methods=['PUT', 'PATCH'])
 @login_required
 def update_question(question_id):
@@ -493,7 +553,11 @@ def update_question(question_id):
     
     try:
         question = Question.query.get_or_404(question_id)
-        quiz = question.quiz
+        
+        # Get quiz to verify authorization
+        quiz = Quiz.query.get(question.quiz_id)
+        if not quiz:
+            return jsonify({'success': False, 'error': 'Quiz not found for this question'}), 404
         
         # Verify tutor is assigned to the course
         assignment = db.session.query(course_tutors).filter_by(

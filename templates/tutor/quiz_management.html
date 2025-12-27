@@ -109,7 +109,7 @@
                         <h4 id="quiz-info-title" class="text-lg font-semibold text-slate-800"></h4>
                         <p id="quiz-info-description" class="text-sm text-slate-600 mt-1"></p>
                     </div>
-                    <button onclick="showEditQuizForm()" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
+                    <button onclick="window.showEditQuizForm()" class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700">
                         <i class="fas fa-edit mr-1"></i>Edit
                     </button>
                 </div>
@@ -155,7 +155,7 @@
                         <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                             Save Changes
                         </button>
-                        <button type="button" onclick="cancelEditQuiz()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded hover:bg-slate-300">
+                        <button type="button" onclick="window.cancelEditQuiz()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded hover:bg-slate-300">
                             Cancel
                         </button>
                     </div>
@@ -166,7 +166,7 @@
             <div class="mb-4">
                 <div class="flex items-center justify-between mb-4">
                     <h4 class="text-lg font-semibold text-slate-800">Questions</h4>
-                    <button onclick="showAddQuestionModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2">
+                    <button onclick="window.showAddQuestionModal(currentQuizId)" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2">
                         <i class="fas fa-plus"></i>
                         <span>Add Question</span>
                     </button>
@@ -245,7 +245,7 @@
                 <div id="options-container" class="space-y-2">
                     <!-- Options will be added dynamically -->
                 </div>
-                <button type="button" onclick="addOption()" class="mt-2 px-3 py-1 text-sm bg-slate-200 text-slate-700 rounded hover:bg-slate-300">
+                <button type="button" onclick="window.addOptionField()" class="mt-2 px-3 py-1 text-sm bg-slate-200 text-slate-700 rounded hover:bg-slate-300">
                     <i class="fas fa-plus mr-1"></i>Add Option
                 </button>
             </div>
