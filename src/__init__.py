@@ -459,10 +459,16 @@ def create_app() -> Flask:
     # Register admin blueprint
     from src.admin import admin_bp
     app.register_blueprint(admin_bp)
+    
+    # Register quiz blueprint
+    from src.quiz import quiz_bp
+    app.register_blueprint(quiz_bp)
 
     # Create tables if they do not exist
     with app.app_context():
         from src.auth.models import User, PasswordResetCode
+        # Import quiz models so they're registered with SQLAlchemy
+        from src.quiz.models import Quiz, Question, QuestionOption, QuizAttempt, Answer
         db.create_all()
 
     return app
