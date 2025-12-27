@@ -371,6 +371,10 @@ window.showQuizDetailsModal = function(quiz) {
     document.getElementById('edit-quiz-title').value = quiz.title;
     document.getElementById('edit-quiz-description').value = quiz.description || '';
     document.getElementById('edit-quiz-passing').value = quiz.passing_score || 60;
+    const maxAttemptsInput = document.getElementById('edit-quiz-max-attempts');
+    if (maxAttemptsInput) {
+        maxAttemptsInput.value = quiz.max_attempts || '';
+    }
     
     // Load questions
     renderQuestions(quiz.questions || []);
@@ -591,10 +595,14 @@ window.updateQuiz = async function() {
         return;
     }
     
+    const maxAttemptsInput = document.getElementById('edit-quiz-max-attempts');
+    const maxAttemptsValue = maxAttemptsInput ? maxAttemptsInput.value.trim() : '';
+    
     const updateData = {
         title: document.getElementById('edit-quiz-title').value.trim(),
         description: document.getElementById('edit-quiz-description').value.trim() || null,
         passing_score: parseFloat(document.getElementById('edit-quiz-passing').value) || 60.0,
+        max_attempts: maxAttemptsValue ? parseInt(maxAttemptsValue) : null,
     };
     
     if (!updateData.title) {

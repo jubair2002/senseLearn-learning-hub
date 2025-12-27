@@ -279,7 +279,7 @@ def update_quiz(quiz_id):
         if 'passing_score' in data:
             quiz.passing_score = Decimal(str(data['passing_score']))
         if 'max_attempts' in data:
-            quiz.max_attempts = data['max_attempts']
+            quiz.max_attempts = data['max_attempts'] if data['max_attempts'] is not None and data['max_attempts'] != '' else None
         if 'is_active' in data:
             quiz.is_active = bool(data['is_active'])
         if 'order_index' in data:
