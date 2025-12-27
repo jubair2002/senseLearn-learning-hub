@@ -1,0 +1,164 @@
+/* Quiz Management Styles */
+
+.quiz-card {
+    @apply bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow;
+}
+
+.quiz-card-header {
+    @apply flex items-start justify-between mb-3;
+}
+
+.quiz-card-title {
+    @apply text-lg font-semibold text-slate-800;
+}
+
+.quiz-card-meta {
+    @apply flex items-center gap-4 text-sm text-slate-500 mt-2;
+}
+
+.quiz-card-actions {
+    @apply flex items-center gap-2;
+}
+
+.question-item {
+    @apply bg-white border border-slate-200 rounded-lg p-4 mb-3;
+}
+
+.question-header {
+    @apply flex items-start justify-between mb-2;
+}
+
+.question-text {
+    @apply text-slate-800 font-medium;
+}
+
+.question-type-badge {
+    @apply px-2 py-1 text-xs rounded-full font-medium;
+}
+
+.question-type-multiple_choice {
+    @apply bg-blue-100 text-blue-700;
+}
+
+.question-type-short_answer {
+    @apply bg-green-100 text-green-700;
+}
+
+.question-type-true_false {
+    @apply bg-purple-100 text-purple-700;
+}
+
+.option-item {
+    @apply flex items-center gap-3 p-2 bg-slate-50 rounded border border-slate-200;
+}
+
+.option-item.correct {
+    @apply bg-green-50 border-green-300;
+}
+
+.option-checkbox {
+    @apply w-4 h-4 text-green-600 border-slate-300 rounded focus:ring-green-500;
+}
+
+.quiz-stats-card {
+    @apply bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4;
+}
+
+.modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center;
+}
+
+.modal-content {
+    @apply bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto;
+}
+
+/* Animation for modals */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-content {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Loading spinner */
+.quiz-loading {
+    @apply text-center py-12 text-slate-400;
+}
+
+.quiz-loading i {
+    @apply text-4xl mb-4;
+}
+
+/* Empty state */
+.quiz-empty-state {
+    @apply text-center py-12 text-slate-400;
+}
+
+.quiz-empty-state i {
+    @apply text-6xl mb-4;
+}
+
+/* Badge styles */
+.badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-active {
+    @apply bg-green-100 text-green-800;
+}
+
+.badge-inactive {
+    @apply bg-slate-100 text-slate-800;
+}
+
+/* Button styles */
+.btn-primary {
+    @apply px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium;
+}
+
+.btn-secondary {
+    @apply px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition font-medium;
+}
+
+.btn-danger {
+    @apply px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium;
+}
+
+.btn-success {
+    @apply px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium;
+}
+
+/* Form styles */
+.form-input {
+    @apply w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.form-label {
+    @apply block text-sm font-medium text-slate-700 mb-2;
+}
+
+.form-textarea {
+    @apply w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none;
+}
+
+/* Question options styling */
+.option-input-group {
+    @apply flex items-center gap-2;
+}
+
+.option-input {
+    @apply flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.option-remove-btn {
+    @apply px-2 py-1 text-red-600 hover:bg-red-50 rounded transition;
+}
+

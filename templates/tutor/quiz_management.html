@@ -1,170 +1,28 @@
-<div class="flex h-full" data-course-id="{{ course_id }}">
-    <!-- Left Sidebar - Modules -->
-    <div class="w-80 bg-white border-r border-slate-200 flex flex-col">
-        <!-- Sidebar Header -->
-        <div class="p-4 border-b border-slate-200">
-            <div class="flex items-center justify-between mb-2">
-                <h3 class="text-lg font-bold text-slate-800">Modules</h3>
+<!-- Quiz Management Section -->
+<div id="quiz-management-section" class="hidden">
+    <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h3 class="text-2xl font-bold text-slate-800">Quiz Management</h3>
+                <p class="text-sm text-slate-500 mt-1">Create and manage quizzes for this course</p>
             </div>
-            <button onclick="showCreateModuleModal({{ course_id }})" class="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
-                <i class="fas fa-plus mr-2"></i>New Module
+            <button onclick="showCreateQuizModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                <i class="fas fa-plus"></i>
+                <span>Create Quiz</span>
             </button>
         </div>
-        
-        <!-- Modules List -->
-        <div class="flex-1 overflow-y-auto p-2">
-            {% if modules %}
-                {% for module in modules %}
-                <div onclick="selectModule({{ course_id }}, {{ module.id }})" class="module-item p-3 mb-2 rounded-lg cursor-pointer hover:bg-slate-50 border border-slate-200 transition" data-module-id="{{ module.id }}">
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <h4 class="font-semibold text-slate-800 mb-1">{{ module.name }}</h4>
-                            {% if module.description %}
-                            <p class="text-xs text-slate-500 line-clamp-2">{{ module.description }}</p>
-                            {% endif %}
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="text-xs text-slate-400">
-                                    <i class="fas fa-file mr-1"></i>{{ module.file_count }} file{{ 's' if module.file_count != 1 else '' }}
-                                </span>
-                                {% if module.file_count > 0 %}
-                                <span class="text-xs text-blue-600">
-                                    <i class="fas fa-check-circle"></i>
-                                </span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="text-center py-8 text-slate-400">
-                    <i class="fas fa-folder-open text-4xl mb-2"></i>
-                    <p class="text-sm">No modules yet</p>
-                    <p class="text-xs mt-1">Click "New" to create one</p>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-    
-    <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col overflow-hidden">
-        <!-- Course Header -->
-        <div class="bg-white border-b border-slate-200 p-4">
-            <div class="flex items-start justify-between mb-3">
-                <div class="flex-1">
-                    <h2 class="text-2xl font-bold text-slate-800">{{ course.name }}</h2>
-                    {% if course.description %}
-                    <p class="text-slate-600 mt-1">{{ course.description }}</p>
-                    {% else %}
-                    <p class="text-slate-400 italic mt-1">No description provided</p>
-                    {% endif %}
-                    <div class="flex items-center gap-4 text-sm text-slate-500 mt-2">
-                        <span><i class="fas fa-calendar mr-1"></i>Created: {{ course.created_at.strftime('%B %d, %Y') if course.created_at else 'N/A' }}</span>
-                        {% if course.target_disability_types %}
-                        <span><i class="fas fa-users mr-1"></i>For: {{ course.target_disability_types }}</span>
-                        {% endif %}
-                    </div>
-                </div>
-                <button onclick="showSection('courses')" class="ml-4 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition text-sm font-medium flex items-center gap-2 whitespace-nowrap">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Back to Courses</span>
-                </button>
-            </div>
-            
-            <!-- Tabs -->
-            <div class="flex items-center gap-2 border-t border-slate-200 pt-3 mt-3">
-                <button onclick="showCourseTab('modules')" id="tab-modules" class="px-4 py-2 rounded-lg font-medium transition tab-button active">
-                    <i class="fas fa-folder mr-2"></i>Modules
-                </button>
-                <button onclick="showCourseTab('quizzes')" id="tab-quizzes" class="px-4 py-2 rounded-lg font-medium transition tab-button">
-                    <i class="fas fa-clipboard-list mr-2"></i>Quizzes
-                </button>
-            </div>
-        </div>
-        
-        <!-- Module Content Area -->
-        <div id="module-content" class="flex-1 overflow-y-auto p-6 bg-slate-50">
-            {% if modules and modules|length > 0 %}
-                <!-- Auto-select module on load - check localStorage first for saved module -->
-                <script>
-                    (function() {
-                        const courseId = {{ course_id }};
-                        const firstModuleId = {{ modules[0].id if modules else 'null' }};
-                        
-                        // Wait for functions to be available
-                        function trySelectModule() {
-                            if (typeof selectModule === 'function') {
-                                // Check localStorage for saved module ID for this course
-                                const savedModuleId = localStorage.getItem('tutor_selected_module_' + courseId);
-                                
-                                let moduleIdToSelect = null;
-                                
-                                if (savedModuleId) {
-                                    // Check if the saved module still exists in the current modules list
-                                    const moduleIds = [{% for module in modules %}{{ module.id }}{% if not loop.last %}, {% endif %}{% endfor %}];
-                                    const savedId = parseInt(savedModuleId);
-                                    
-                                    if (moduleIds.includes(savedId)) {
-                                        // Saved module exists, use it
-                                        moduleIdToSelect = savedId;
-                                    } else {
-                                        // Saved module doesn't exist anymore (might have been deleted), use first module
-                                        moduleIdToSelect = firstModuleId;
-                                    }
-                                } else {
-                                    // No saved module, use first module
-                                    moduleIdToSelect = firstModuleId;
-                                }
-                                
-                                if (moduleIdToSelect) {
-                                    selectModule(courseId, moduleIdToSelect);
-                                }
-                            } else {
-                                setTimeout(trySelectModule, 50);
-                            }
-                        }
-                        setTimeout(trySelectModule, 200);
-                    })();
-                </script>
-            {% else %}
-                <div class="text-center py-12 text-slate-400">
-                    <i class="fas fa-book-open text-6xl mb-4"></i>
-                    <p class="text-lg">Select a module from the sidebar</p>
-                    <p class="text-sm mt-2">or create a new module to get started</p>
-                </div>
-            {% endif %}
-        </div>
-        
-        <!-- Quiz Management Area -->
-        <div id="quiz-content" class="flex-1 overflow-y-auto p-6 bg-slate-50 hidden">
-            <div id="quiz-management-section">
-                <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-                    <!-- Header -->
-                    <div class="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 class="text-2xl font-bold text-slate-800">Quiz Management</h3>
-                            <p class="text-sm text-slate-500 mt-1">Create and manage quizzes for this course</p>
-                        </div>
-                        <button onclick="showCreateQuizModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
-                            <i class="fas fa-plus"></i>
-                            <span>Create Quiz</span>
-                        </button>
-                    </div>
 
-                    <!-- Quizzes List -->
-                    <div id="quizzes-list" class="space-y-4">
-                        <div class="text-center py-12 text-slate-400">
-                            <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
-                            <p>Loading quizzes...</p>
-                        </div>
-                    </div>
-                </div>
+        <!-- Quizzes List -->
+        <div id="quizzes-list" class="space-y-4">
+            <div class="text-center py-12 text-slate-400">
+                <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+                <p>Loading quizzes...</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Quiz Management Modals (only modals, not the main section) -->
 <!-- Create Quiz Modal -->
 <div id="create-quiz-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
     <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -231,7 +89,7 @@
     </div>
 </div>
 
-<!-- Quiz Details Modal -->
+<!-- Quiz Details Modal (View/Edit Quiz + Questions) -->
 <div id="quiz-details-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
     <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div class="p-6 border-b border-slate-200">
@@ -412,36 +270,3 @@
     </div>
 </div>
 
-<script>
-    // Tab switching for course view
-    function showCourseTab(tab) {
-        const moduleContent = document.getElementById('module-content');
-        const quizContent = document.getElementById('quiz-content');
-        const tabModules = document.getElementById('tab-modules');
-        const tabQuizzes = document.getElementById('tab-quizzes');
-        
-        if (tab === 'modules') {
-            moduleContent.classList.remove('hidden');
-            quizContent.classList.add('hidden');
-            tabModules.classList.add('active', 'bg-blue-600', 'text-white');
-            tabModules.classList.remove('text-slate-600', 'hover:bg-slate-100');
-            tabQuizzes.classList.remove('active', 'bg-blue-600', 'text-white');
-            tabQuizzes.classList.add('text-slate-600', 'hover:bg-slate-100');
-        } else if (tab === 'quizzes') {
-            moduleContent.classList.add('hidden');
-            quizContent.classList.remove('hidden');
-            tabQuizzes.classList.add('active', 'bg-blue-600', 'text-white');
-            tabQuizzes.classList.remove('text-slate-600', 'hover:bg-slate-100');
-            tabModules.classList.remove('active', 'bg-blue-600', 'text-white');
-            tabModules.classList.add('text-slate-600', 'hover:bg-slate-100');
-            
-            // Initialize quiz management
-            const courseId = {{ course_id }};
-            if (typeof initQuizManagement === 'function') {
-                initQuizManagement(courseId);
-            }
-        }
-    }
-</script>
-
-<!-- Note: Modals are defined in dashboard.html for persistence -->
