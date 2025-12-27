@@ -7,12 +7,13 @@ let currentQuizId = null;
 let quizzes = [];
 let currentQuiz = null;
 
-// Initialize quiz management for a course
-function initQuizManagement(courseId, moduleId = null) {
+// Initialize quiz management for a course - make it globally accessible
+window.initQuizManagement = function(courseId, moduleId = null) {
+    console.log('initQuizManagement called with courseId:', courseId, 'moduleId:', moduleId);
     currentCourseId = courseId;
     currentModuleId = moduleId;
     loadQuizzes();
-}
+};
 
 // Load all quizzes for the current course
 async function loadQuizzes() {
@@ -83,22 +84,25 @@ function renderQuizzes(quizzesList) {
     `).join('');
 }
 
-// Show create quiz modal
-function showCreateQuizModal() {
+// Show create quiz modal - make globally accessible
+window.showCreateQuizModal = function() {
     const modal = document.getElementById('create-quiz-modal');
-    if (!modal) return;
+    if (!modal) {
+        console.error('create-quiz-modal not found');
+        return;
+    }
     
     document.getElementById('quiz-course-id').value = currentCourseId;
     document.getElementById('quiz-module-id').value = currentModuleId || '';
     document.getElementById('create-quiz-form').reset();
     modal.classList.remove('hidden');
-}
+};
 
-// Close create quiz modal
-function closeCreateQuizModal() {
+// Close create quiz modal - make globally accessible
+window.closeCreateQuizModal = function() {
     const modal = document.getElementById('create-quiz-modal');
     if (modal) modal.classList.add('hidden');
-}
+};
 
 // Handle create quiz form submission
 document.addEventListener('DOMContentLoaded', function() {
@@ -145,8 +149,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// View quiz details
-async function viewQuiz(quizId) {
+// View quiz details - make globally accessible
+window.viewQuiz = async function(quizId) {
     currentQuizId = quizId;
     
     try {
@@ -165,8 +169,8 @@ async function viewQuiz(quizId) {
     }
 }
 
-// Show quiz details modal
-function showQuizDetailsModal(quiz) {
+// Show quiz details modal - make globally accessible
+window.showQuizDetailsModal = function(quiz) {
     const modal = document.getElementById('quiz-details-modal');
     if (!modal) return;
     
@@ -192,13 +196,13 @@ function showQuizDetailsModal(quiz) {
     modal.classList.remove('hidden');
 }
 
-// Close quiz details modal
-function closeQuizDetailsModal() {
+// Close quiz details modal - make globally accessible
+window.closeQuizDetailsModal = function() {
     const modal = document.getElementById('quiz-details-modal');
     if (modal) modal.classList.add('hidden');
     currentQuizId = null;
     currentQuiz = null;
-}
+};
 
 // Render questions list
 function renderQuestions(questions) {
@@ -253,8 +257,8 @@ function renderQuestions(questions) {
     `).join('');
 }
 
-// Show add question modal
-function showAddQuestionModal() {
+// Show add question modal - make globally accessible
+window.showAddQuestionModal = function() {
     const modal = document.getElementById('add-question-modal');
     if (!modal) return;
     
@@ -267,14 +271,14 @@ function showAddQuestionModal() {
     modal.classList.remove('hidden');
 }
 
-// Close add question modal
-function closeAddQuestionModal() {
+// Close add question modal - make globally accessible
+window.closeAddQuestionModal = function() {
     const modal = document.getElementById('add-question-modal');
     if (modal) modal.classList.add('hidden');
-}
+};
 
-// Handle question type change
-function handleQuestionTypeChange() {
+// Handle question type change - make globally accessible
+window.handleQuestionTypeChange = function() {
     const type = document.getElementById('question-type').value;
     const mcSection = document.getElementById('multiple-choice-section');
     const answerSection = document.getElementById('answer-section');
@@ -298,8 +302,8 @@ function handleQuestionTypeChange() {
     }
 }
 
-// Add option for multiple choice
-function addOption() {
+// Add option for multiple choice - make globally accessible
+window.addOption = function() {
     const container = document.getElementById('options-container');
     const optionCount = container.children.length;
     
@@ -318,8 +322,8 @@ function addOption() {
     container.appendChild(optionDiv);
 }
 
-// Remove option
-function removeOption(btn) {
+// Remove option - make globally accessible
+window.removeOption = function(btn) {
     const container = document.getElementById('options-container');
     if (container.children.length > 2) {
         btn.closest('.option-input-group').remove();
@@ -400,8 +404,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Delete question
-async function deleteQuestion(questionId) {
+// Delete question - make globally accessible
+window.deleteQuestion = async function(questionId) {
     if (!confirm('Are you sure you want to delete this question?')) return;
     
     try {
@@ -423,8 +427,8 @@ async function deleteQuestion(questionId) {
     }
 }
 
-// Delete quiz
-async function deleteQuiz(quizId) {
+// Delete quiz - make globally accessible
+window.deleteQuiz = async function(quizId) {
     if (!confirm('Are you sure you want to delete this quiz? This action cannot be undone.')) return;
     
     try {
@@ -446,17 +450,17 @@ async function deleteQuiz(quizId) {
     }
 }
 
-// Show edit quiz form
-function showEditQuizForm() {
+// Show edit quiz form - make globally accessible
+window.showEditQuizForm = function() {
     document.getElementById('quiz-info-section').classList.add('hidden');
     document.getElementById('edit-quiz-form-section').classList.remove('hidden');
-}
+};
 
-// Cancel edit quiz
-function cancelEditQuiz() {
+// Cancel edit quiz - make globally accessible
+window.cancelEditQuiz = function() {
     document.getElementById('quiz-info-section').classList.remove('hidden');
     document.getElementById('edit-quiz-form-section').classList.add('hidden');
-}
+};
 
 // Handle edit quiz form
 document.addEventListener('DOMContentLoaded', function() {

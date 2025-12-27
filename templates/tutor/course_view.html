@@ -76,7 +76,7 @@
                 <button onclick="showCourseTab('modules')" id="tab-modules" class="px-4 py-2 rounded-lg font-medium transition tab-button active">
                     <i class="fas fa-folder mr-2"></i>Modules
                 </button>
-                <button onclick="showCourseTab('quizzes')" id="tab-quizzes" class="px-4 py-2 rounded-lg font-medium transition tab-button">
+                <button onclick="showCourseTab('quizzes')" id="tab-quizzes" class="px-4 py-2 rounded-lg font-medium transition tab-button text-slate-600 hover:bg-slate-100">
                     <i class="fas fa-clipboard-list mr-2"></i>Quizzes
                 </button>
             </div>
@@ -412,36 +412,6 @@
     </div>
 </div>
 
-<script>
-    // Tab switching for course view
-    function showCourseTab(tab) {
-        const moduleContent = document.getElementById('module-content');
-        const quizContent = document.getElementById('quiz-content');
-        const tabModules = document.getElementById('tab-modules');
-        const tabQuizzes = document.getElementById('tab-quizzes');
-        
-        if (tab === 'modules') {
-            moduleContent.classList.remove('hidden');
-            quizContent.classList.add('hidden');
-            tabModules.classList.add('active', 'bg-blue-600', 'text-white');
-            tabModules.classList.remove('text-slate-600', 'hover:bg-slate-100');
-            tabQuizzes.classList.remove('active', 'bg-blue-600', 'text-white');
-            tabQuizzes.classList.add('text-slate-600', 'hover:bg-slate-100');
-        } else if (tab === 'quizzes') {
-            moduleContent.classList.add('hidden');
-            quizContent.classList.remove('hidden');
-            tabQuizzes.classList.add('active', 'bg-blue-600', 'text-white');
-            tabQuizzes.classList.remove('text-slate-600', 'hover:bg-slate-100');
-            tabModules.classList.remove('active', 'bg-blue-600', 'text-white');
-            tabModules.classList.add('text-slate-600', 'hover:bg-slate-100');
-            
-            // Initialize quiz management
-            const courseId = {{ course_id }};
-            if (typeof initQuizManagement === 'function') {
-                initQuizManagement(courseId);
-            }
-        }
-    }
-</script>
+<!-- Note: showCourseTab function is defined in dashboard.html for global access -->
 
 <!-- Note: Modals are defined in dashboard.html for persistence -->

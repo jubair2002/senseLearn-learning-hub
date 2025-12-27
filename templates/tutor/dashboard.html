@@ -2757,6 +2757,81 @@
                 alert('Error: ' + error.message);
             }
         }
+        
+        // Tab switching for course view - must be in main dashboard scope
+        window.showCourseTab = function(tab) {
+            console.log('showCourseTab called with:', tab);
+            const moduleContent = document.getElementById('module-content');
+            const quizContent = document.getElementById('quiz-content');
+            const tabModules = document.getElementById('tab-modules');
+            const tabQuizzes = document.getElementById('tab-quizzes');
+            
+            if (!moduleContent || !quizContent || !tabModules || !tabQuizzes) {
+                console.error('Required elements not found for tab switching');
+                console.log('moduleContent:', moduleContent);
+                console.log('quizContent:', quizContent);
+                console.log('tabModules:', tabModules);
+                console.log('tabQuizzes:', tabQuizzes);
+                return;
+            }
+            
+            if (tab === 'modules') {
+                moduleContent.classList.remove('hidden');
+                quizContent.classList.add('hidden');
+                tabModules.classList.add('active', 'bg-blue-600', 'text-white');
+                tabModules.classList.remove('text-slate-600', 'hover:bg-slate-100');
+                tabQuizzes.classList.remove('active', 'bg-blue-600', 'text-white');
+                tabQuizzes.classList.add('text-slate-600', 'hover:bg-slate-100');
+            } else if (tab === 'quizzes') {
+                console.log('Switching to quizzes tab');
+                moduleContent.classList.add('hidden');
+                quizContent.classList.remove('hidden');
+                tabQuizzes.classList.add('active', 'bg-blue-600', 'text-white');
+                tabQuizzes.classList.remove('text-slate-600', 'hover:bg-slate-100');
+                tabModules.classList.remove('active', 'bg-blue-600', 'text-white');
+                tabModules.classList.add('text-slate-600', 'hover:bg-slate-100');
+                
+                // Initialize quiz management
+                // Get course ID from the course view content
+                const courseViewEl = document.querySelector('[data-course-id]');
+                if (courseViewEl) {
+                    const courseId = parseInt(courseViewEl.getAttribute('data-course-id'));
+                    console.log('Initializing quiz management for course:', courseId);
+                    console.log('initQuizManagement available:', typeof window.initQuizManagement);
+                    
+                    if (typeof window.initQuizManagement === 'function') {
+                        window.initQuizManagement(courseId);
+                    } else {
+                        console.error('initQuizManagement function not found');
+                        // Try again after a short delay
+                        setTimeout(() => {
+                            if (typeof window.initQuizManagement === 'function') {
+                                window.initQuizManagement(courseId);
+                            } else {
+                                console.error('Still cannot find initQuizManagement after timeout');
+                            }
+                        }, 500);
+                    }
+                } else {
+                    console.error('Could not find course ID in DOM');
+                }
+            }
+        };
+        
+        console.log('showCourseTab function defined:', typeof window.showCourseTab);
+        
+        // Event delegation for quiz tab button (in case onclick doesn't work)
+        document.addEventListener('click', function(e) {
+            if (e.target && (e.target.id === 'tab-quizzes' || e.target.closest('#tab-quizzes'))) {
+                e.preventDefault();
+                console.log('Quiz tab clicked via event delegation');
+                window.showCourseTab('quizzes');
+            } else if (e.target && (e.target.id === 'tab-modules' || e.target.closest('#tab-modules'))) {
+                e.preventDefault();
+                console.log('Modules tab clicked via event delegation');
+                window.showCourseTab('modules');
+            }
+        });
     </script>
     
     <!-- Quiz Management Scripts -->
