@@ -726,15 +726,31 @@
         // Define selectModule function immediately at global scope to ensure it's always available
         window.selectModule = function(courseId, moduleId) {
             console.log('window.selectModule called with courseId:', courseId, 'moduleId:', moduleId);
-            if (!courseId || !moduleId) {
-                console.error('Invalid parameters - courseId:', courseId, 'moduleId:', moduleId);
+            
+            // If courseId is not provided, try to get it from DOM
+            if (!courseId || isNaN(courseId)) {
+                const courseViewEl = document.querySelector('[data-course-id]');
+                if (courseViewEl) {
+                    courseId = parseInt(courseViewEl.getAttribute('data-course-id'));
+                    console.log('Retrieved courseId from DOM:', courseId);
+                }
+            }
+            
+            if (!moduleId || isNaN(moduleId)) {
+                console.error('Invalid moduleId:', moduleId);
                 return;
+            }
+            
+            if (!courseId || isNaN(courseId)) {
+                console.warn('CourseId not provided, but proceeding with moduleId:', moduleId);
             }
             
             currentSelectedModuleId = moduleId;
             
-            // Save selected module to localStorage for persistence across refreshes
-            localStorage.setItem(`tutor_selected_module_${courseId}`, moduleId.toString());
+            // Save selected module to localStorage for persistence across refreshes (only if courseId is available)
+            if (courseId && !isNaN(courseId)) {
+                localStorage.setItem(`tutor_selected_module_${courseId}`, moduleId.toString());
+            }
             
             // Update active state in sidebar
             document.querySelectorAll('.module-item').forEach(item => {
@@ -752,7 +768,17 @@
             // Load module files - use setTimeout to ensure loadModuleFiles is defined
             setTimeout(() => {
                 if (typeof loadModuleFiles === 'function') {
-                    loadModuleFiles(courseId, moduleId);
+                    // Use courseId if available, otherwise try to get it
+                    const finalCourseId = courseId || (() => {
+                        const courseViewEl = document.querySelector('[data-course-id]');
+                        return courseViewEl ? parseInt(courseViewEl.getAttribute('data-course-id')) : null;
+                    })();
+                    
+                    if (finalCourseId && !isNaN(finalCourseId)) {
+                        loadModuleFiles(finalCourseId, moduleId);
+                    } else {
+                        console.error('Could not determine courseId for loadModuleFiles, moduleId:', moduleId);
+                    }
                 } else {
                     console.error('loadModuleFiles function not available');
                 }
@@ -1985,9 +2011,9 @@
                 if (result.success && result.html) {
                     contentEl.innerHTML = result.html;
                     
-                    // Wait for DOM to be ready, then auto-select first module if available
+                    // Wait for DOM to be ready, then attach click handlers and auto-select
                     setTimeout(() => {
-                        console.log('Attempting to auto-select module after course view loads');
+                        console.log('Setting up module click handlers after course view loads');
                         const courseViewEl = document.querySelector('[data-course-id]');
                         console.log('courseViewEl:', courseViewEl);
                         
@@ -1995,6 +2021,38 @@
                             const courseIdFromDOM = parseInt(courseViewEl.getAttribute('data-course-id'));
                             const actualCourseId = courseIdFromDOM || courseId;
                             console.log('Course ID:', actualCourseId);
+                            
+                            // Attach click handlers directly to all module items
+                            const moduleItems = document.querySelectorAll('.module-item');
+                            console.log('Found module items:', moduleItems.length);
+                            
+                            moduleItems.forEach(moduleItem => {
+                                const moduleId = parseInt(moduleItem.getAttribute('data-module-id'));
+                                const moduleCourseId = parseInt(moduleItem.getAttribute('data-course-id')) || actualCourseId;
+                                
+                                console.log('Attaching click handler to module:', moduleId);
+                                
+                                // Attach click handler directly
+                                moduleItem.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    
+                                    console.log('Module clicked directly - courseId:', moduleCourseId, 'moduleId:', moduleId);
+                                    
+                                    if (!isNaN(moduleId)) {
+                                        if (typeof window.selectModule === 'function') {
+                                            window.selectModule(moduleCourseId, moduleId);
+                                        } else {
+                                            console.error('selectModule function not available');
+                                        }
+                                    } else {
+                                        console.error('Invalid module ID:', moduleId);
+                                    }
+                                });
+                                
+                                // Make sure it's clickable
+                                moduleItem.style.cursor = 'pointer';
+                            });
                             
                             // Check for saved module preference
                             const savedModuleId = localStorage.getItem(`tutor_selected_module_${actualCourseId}`);
@@ -2033,7 +2091,7 @@
                         } else {
                             console.error('Course view element not found!');
                         }
-                    }, 500);
+                    }, 100);
                 } else {
                     // Show error message from server
                     const errorMsg = result.error || 'Unknown error';
@@ -3180,6 +3238,7 @@
         console.log('showCourseTab function defined:', typeof window.showCourseTab);
         
         // Event delegation for module items (works for dynamically loaded content)
+        // Use capture phase to ensure we catch the event early
         document.body.addEventListener('click', function(e) {
             // Check if clicked element is a module item or inside it
             let target = e.target;
@@ -3191,27 +3250,57 @@
                     moduleItem = target;
                     break;
                 }
+                // Also check for data-module-id attribute as fallback
+                if (target.hasAttribute && target.hasAttribute('data-module-id')) {
+                    moduleItem = target;
+                    break;
+                }
                 target = target.parentElement;
             }
             
+            // If we found a module item, handle it
             if (moduleItem) {
+                // Don't prevent default if clicking on a button or link inside
+                const clickedElement = e.target;
+                if (clickedElement.tagName === 'BUTTON' || clickedElement.tagName === 'A' || 
+                    clickedElement.closest('button') || clickedElement.closest('a')) {
+                    // Let buttons/links handle their own clicks
+                    return;
+                }
+                
                 e.preventDefault();
                 e.stopPropagation();
                 
                 const moduleId = parseInt(moduleItem.getAttribute('data-module-id'));
-                const courseId = parseInt(moduleItem.getAttribute('data-course-id'));
+                let courseId = parseInt(moduleItem.getAttribute('data-course-id'));
                 
-                console.log('Module item clicked via event delegation - courseId:', courseId, 'moduleId:', moduleId);
+                // Fallback: get courseId from course view container
+                if (!courseId || isNaN(courseId)) {
+                    const courseViewEl = document.querySelector('[data-course-id]');
+                    if (courseViewEl) {
+                        courseId = parseInt(courseViewEl.getAttribute('data-course-id'));
+                    }
+                }
                 
-                if (!isNaN(moduleId) && !isNaN(courseId)) {
+                console.log('Module item clicked - courseId:', courseId, 'moduleId:', moduleId);
+                console.log('Module item element:', moduleItem);
+                console.log('selectModule function available:', typeof window.selectModule);
+                
+                if (!isNaN(moduleId)) {
                     if (typeof window.selectModule === 'function') {
-                        window.selectModule(courseId, moduleId);
+                        if (courseId && !isNaN(courseId)) {
+                            window.selectModule(courseId, moduleId);
+                        } else {
+                            console.error('Could not determine courseId for module:', moduleId);
+                            // Try to proceed anyway - selectModule might handle it
+                            window.selectModule(null, moduleId);
+                        }
                     } else {
                         console.error('selectModule function not available');
                         alert('Error: Function not available. Please refresh the page.');
                     }
                 } else {
-                    console.error('Invalid module or course ID:', { moduleId, courseId });
+                    console.error('Invalid module ID:', moduleId, 'from element:', moduleItem);
                 }
                 return;
             }
