@@ -15,8 +15,8 @@ def upgrade():
     # Check if password_reset_codes table exists and add foreign key if needed
     if 'password_reset_codes' in tables:
         try:
-    with op.batch_alter_table('password_reset_codes', schema=None) as batch_op:
-        batch_op.create_foreign_key(None, 'users', ['user_id'], ['id'])
+            with op.batch_alter_table('password_reset_codes', schema=None) as batch_op:
+                batch_op.create_foreign_key(None, 'users', ['user_id'], ['id'])
         except Exception:
             # Foreign key might already exist, skip
             pass
@@ -33,13 +33,13 @@ def upgrade():
         # Only proceed if we need to create something
         if not email_index_exists or not username_constraint_exists:
             try:
-    with op.batch_alter_table('users', schema=None) as batch_op:
+                with op.batch_alter_table('users', schema=None) as batch_op:
                     # Only create index if it doesn't exist
                     if not email_index_exists:
-        batch_op.create_index(batch_op.f('ix_users_email'), ['email'], unique=True)
+                        batch_op.create_index(batch_op.f('ix_users_email'), ['email'], unique=True)
                     # Only create unique constraint if it doesn't exist
                     if not username_constraint_exists:
-        batch_op.create_unique_constraint(None, ['username'])
+                        batch_op.create_unique_constraint(None, ['username'])
             except Exception as e:
                 # Index or constraint might already exist (error 1061), skip
                 error_msg = str(e)

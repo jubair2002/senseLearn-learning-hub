@@ -478,10 +478,14 @@ def create_app() -> Flask:
     # Register quiz blueprint
     from src.quiz import quiz_bp
     app.register_blueprint(quiz_bp)
+    
+    # Register notification routes
+    from src.notifications.routes import register_notification_routes
+    register_notification_routes(app, admin_bp, tutor_bp, student_bp)
 
     # Create tables if they do not exist
     with app.app_context():
-        from src.auth.models import User, PasswordResetCode
+        from src.auth.models import User, PasswordResetCode, Notification
         # Import quiz models so they're registered with SQLAlchemy
         from src.quiz.models import Quiz, Question, QuestionOption, QuizAttempt, Answer
         db.create_all()

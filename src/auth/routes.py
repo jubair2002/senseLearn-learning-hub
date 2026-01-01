@@ -705,6 +705,11 @@ def verify_email():
 
         # Auto-login the user after successful registration
         login_user(user, remember=True)
+        
+        # Send notification to admin if tutor registered
+        if reg_data["user_type"] == "tutor":
+            from src.notifications.service import NotificationService
+            NotificationService.notify_tutor_registered(user.email)
 
         from src.config import config as app_config
         success_message = {

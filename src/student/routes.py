@@ -362,6 +362,10 @@ def request_to_join_course(course_id):
                     status='pending'
                 )
                 db.session.add(request_obj)
+                
+                # Send notification to tutor
+                from src.notifications.service import NotificationService
+                NotificationService.notify_course_request(current_user.id, course.name, assignment.tutor_id)
         
         db.session.commit()
         

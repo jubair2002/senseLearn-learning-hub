@@ -184,6 +184,7 @@ def get_documents():
         response.cache_control.private = True
         return response, 200
     except Exception as e:
+        from flask import current_app
         current_app.logger.exception("Error fetching documents")
         return jsonify({'success': False, 'error': 'Failed to load documents'}), 500
 
@@ -539,6 +540,10 @@ def respond_to_request(course_id, request_id):
         req.status = 'accepted' if action == 'accept' else 'rejected'
         req.responded_at = datetime.utcnow()
         
+        # Get course name for notifications
+        course = Course.query.get(course_id)
+        course_name = course.name if course else 'Course'
+        
         # If accepted, create enrollment
         if action == 'accept':
             # Check if already enrolled
@@ -555,6 +560,15 @@ def respond_to_request(course_id, request_id):
                     assigned_by=current_user.id
                 )
                 db.session.add(enrollment)
+                
+                # Send notification to student
+                from src.notifications.service import NotificationService
+                NotificationService.notify_course_request_approved(req.student_id, course_name)
+        
+        # Send notification to student if rejected
+        if action == 'reject':
+            from src.notifications.service import NotificationService
+            NotificationService.notify_course_request_rejected(req.student_id, course_name)
         
         db.session.commit()
         
@@ -619,6 +633,12 @@ def assign_students_to_course(course_id):
                 )
                 db.session.add(enrollment)
                 assigned_count += 1
+                
+                # Send notification to student
+                course = Course.query.get(course_id)
+                course_name = course.name if course else 'Course'
+                from src.notifications.service import NotificationService
+                NotificationService.notify_student_enrolled(student_id, course_name, current_user.id)
         
         db.session.commit()
         

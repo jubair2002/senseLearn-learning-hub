@@ -310,3 +310,34 @@ class StudentFileProgress(db.Model):
     
     def __repr__(self) -> str:
         return f"<StudentFileProgress student={self.student_id} file={self.file_id} course={self.course_id}>"
+
+
+class Notification(db.Model):
+    """Model for user notifications."""
+    __tablename__ = "notifications"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete='CASCADE'), nullable=False, index=True)
+    title = db.Column(db.String(255), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    notification_type = db.Column(db.String(50), nullable=False, index=True)  # 'info', 'success', 'warning', 'error'
+    is_read = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    read_at = db.Column(db.DateTime, nullable=True)
+    link = db.Column(db.String(500), nullable=True)  # Optional link to related page
+    
+    # Relationship
+    user = db.relationship("User", backref="notifications")
+    
+    __table_args__ = (
+        db.Index('ix_notifications_user_unread', 'user_id', 'is_read'),
+        db.Index('ix_notifications_user_created', 'user_id', 'created_at'),
+    )
+    
+    def mark_as_read(self):
+        """Mark notification as read."""
+        self.is_read = True
+        self.read_at = datetime.utcnow()
+    
+    def __repr__(self) -> str:
+        return f"<Notification {self.id} for user {self.user_id}: {self.title}>"
