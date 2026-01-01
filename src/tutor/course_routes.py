@@ -374,14 +374,25 @@ def delete_module_file(module_id, file_id):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     
     try:
+        from flask import current_app
+        current_app.logger.info(f"Attempting to delete file {file_id} from module {module_id} by tutor {current_user.id}")
+        
         # Get module file
         module_file = ModuleFile.query.get(file_id)
-        if not module_file or module_file.module_id != module_id:
-            return jsonify({'success': False, 'error': 'File not found'}), 404
+        if not module_file:
+            current_app.logger.warning(f"ModuleFile {file_id} not found in database")
+            return jsonify({'success': False, 'error': 'File not found in database'}), 404
+        
+        if module_file.module_id != module_id:
+            current_app.logger.warning(f"ModuleFile {file_id} belongs to module {module_file.module_id}, not {module_id}")
+            return jsonify({'success': False, 'error': 'File not found in this module'}), 404
+        
+        current_app.logger.info(f"Found file: {module_file.file_name}, path: {module_file.file_path}")
         
         # Get module and verify tutor is assigned to the course
         module = CourseModule.query.get(module_id)
         if not module:
+            current_app.logger.warning(f"Module {module_id} not found")
             return jsonify({'success': False, 'error': 'Module not found'}), 404
         
         # Verify tutor is assigned to this course
@@ -391,22 +402,54 @@ def delete_module_file(module_id, file_id):
         ).first()
         
         if not assignment:
+            current_app.logger.warning(f"Tutor {current_user.id} not assigned to course {module.course_id}")
             return jsonify({'success': False, 'error': 'Unauthorized'}), 403
         
+        # Delete related StudentFileProgress records first (to avoid foreign key constraint issues)
+        # Use raw SQL to avoid SQLAlchemy session tracking issues
+        current_app.logger.info(f"Deleting related student progress records for file {file_id}")
+        progress_count = StudentFileProgress.query.filter_by(file_id=file_id).count()
+        if progress_count > 0:
+            current_app.logger.info(f"Found {progress_count} progress records to delete")
+            # Use raw SQL delete to completely bypass SQLAlchemy ORM tracking
+            from sqlalchemy import text
+            db.session.execute(
+                text("DELETE FROM student_file_progress WHERE file_id = :file_id"),
+                {"file_id": file_id}
+            )
+            # Commit the progress deletion separately to ensure it's done before ModuleFile deletion
+            db.session.commit()
+            current_app.logger.info(f"Committed deletion of {progress_count} progress records")
+        
         # Delete file from filesystem
-        delete_file(module_file.file_path)
+        current_app.logger.info(f"Attempting to delete file from filesystem: {module_file.file_path}")
+        file_deleted = delete_file(module_file.file_path)
+        
+        if not file_deleted:
+            # Log warning but continue - file might not exist on filesystem
+            current_app.logger.warning(f"File not found on filesystem: {module_file.file_path}, but continuing with database deletion")
         
         # Delete from database
+        current_app.logger.info(f"Deleting file record from database")
         db.session.delete(module_file)
         db.session.commit()
         
+        current_app.logger.info(f"Successfully deleted file {file_id}")
         return jsonify({'success': True, 'message': 'File deleted successfully'}), 200
         
     except Exception as e:
         db.session.rollback()
         from flask import current_app
-        current_app.logger.exception(f"Error deleting file {file_id} from module {module_id}")
-        return jsonify({'success': False, 'error': 'Failed to delete file'}), 500
+        import traceback
+        error_msg = str(e)
+        error_trace = traceback.format_exc()
+        current_app.logger.error(f"Error deleting file {file_id} from module {module_id}: {error_msg}")
+        current_app.logger.error(f"Traceback: {error_trace}")
+        # Return more detailed error in debug mode
+        if current_app.debug:
+            return jsonify({'success': False, 'error': f'Failed to delete file: {error_msg}', 'traceback': error_trace}), 500
+        else:
+            return jsonify({'success': False, 'error': f'Failed to delete file: {error_msg}'}), 500
 
 
 @tutor_bp.route('/api/modules/<int:module_id>/files', methods=['GET'])
@@ -552,5 +595,128 @@ def get_students_progress(course_id):
     except Exception as e:
         from flask import current_app
         current_app.logger.exception(f"Error getting students progress for course {course_id}")
+        return jsonify({'success': False, 'error': 'Failed to get progress'}), 500
+
+
+@tutor_bp.route('/api/progress/all', methods=['GET'])
+@login_required
+def get_all_progress():
+    """API endpoint to get progress summary for all courses assigned to the tutor."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        # Get all courses assigned to this tutor
+        assignments = db.session.query(course_tutors).filter_by(
+            tutor_id=current_user.id
+        ).all()
+        
+        courses_data = []
+        for assignment in assignments:
+            course = Course.query.get(assignment.course_id)
+            if not course:
+                continue
+            
+            # Get all enrolled students
+            enrollments = CourseStudent.query.filter_by(
+                course_id=course.id,
+                status='enrolled'
+            ).all()
+            
+            # Get all files in the course with module info
+            modules = CourseModule.query.filter_by(course_id=course.id).order_by(CourseModule.order_index).all()
+            total_files = 0
+            file_ids = []
+            modules_data = {}
+            
+            # Include ALL modules, even if they have no files
+            for module in modules:
+                files = ModuleFile.query.filter_by(module_id=module.id).all()
+                file_count = len(files)
+                total_files += file_count
+                file_ids.extend([f.id for f in files])
+                modules_data[module.id] = {
+                    'name': module.name,
+                    'file_count': file_count,
+                    'file_ids': [f.id for f in files]
+                }
+            
+            # Get progress for all students
+            students_progress = []
+            for enrollment in enrollments:
+                student = enrollment.student
+                if not student:
+                    continue
+                
+                # Get viewed files for this student
+                viewed_progress = StudentFileProgress.query.filter(
+                    StudentFileProgress.student_id == student.id,
+                    StudentFileProgress.file_id.in_(file_ids)
+                ).all() if file_ids else []
+                
+                viewed_count = len(viewed_progress)
+                viewed_file_ids = {p.file_id for p in viewed_progress}
+                
+                # Calculate overall percentage
+                percentage = round((viewed_count / total_files * 100) if total_files > 0 else 0, 2)
+                
+                # Get progress per module - include ALL modules from the course
+                module_progress_list = []
+                # Use the modules list to ensure we include all modules, even if modules_data is somehow incomplete
+                for module in modules:
+                    module_info = modules_data.get(module.id, {
+                        'name': module.name,
+                        'file_count': 0,
+                        'file_ids': []
+                    })
+                    module_viewed = sum(1 for fid in module_info['file_ids'] if fid in viewed_file_ids)
+                    module_total = module_info['file_count']
+                    module_percentage = round((module_viewed / module_total * 100) if module_total > 0 else 0, 2)
+                    
+                    module_progress_list.append({
+                        'module_id': module.id,
+                        'module_name': module_info['name'],
+                        'total_files': module_total,
+                        'viewed_files': module_viewed,
+                        'percentage': module_percentage,
+                        'is_complete': module_total > 0 and module_viewed >= module_total
+                    })
+                
+                students_progress.append({
+                    'student_id': student.id,
+                    'student_name': student.full_name,
+                    'student_email': student.email,
+                    'total_files': total_files,
+                    'viewed_files': viewed_count,
+                    'percentage': percentage,
+                    'modules': module_progress_list
+                })
+            
+            courses_data.append({
+                'course_id': course.id,
+                'course_name': course.name,
+                'course_description': course.description,
+                'total_students': len(students_progress),
+                'total_files': total_files,
+                'total_modules': len(modules_data),
+                'students': students_progress
+            })
+        
+        # Debug logging
+        from flask import current_app
+        current_app.logger.debug(f"Progress API: Returning {len(courses_data)} courses")
+        for course_data in courses_data:
+            current_app.logger.debug(f"Course {course_data['course_id']}: {len(course_data['students'])} students, {course_data['total_modules']} modules")
+            for student in course_data['students']:
+                current_app.logger.debug(f"  Student {student['student_id']}: {len(student.get('modules', []))} modules")
+        
+        return jsonify({
+            'success': True,
+            'courses': courses_data
+        }), 200
+        
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.exception(f"Error getting all progress")
         return jsonify({'success': False, 'error': 'Failed to get progress'}), 500
 

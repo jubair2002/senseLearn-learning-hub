@@ -201,6 +201,11 @@ def verify_tutor():
         tutor.is_verified = bool(verify)
         db.session.commit()
         
+        # Send notification to tutor if verified
+        if verify:
+            from src.notifications.service import NotificationService
+            NotificationService.notify_tutor_verified(tutor_id)
+        
         action = 'verified' if verify else 'unverified'
         return jsonify({
             'success': True,
@@ -356,6 +361,11 @@ def create_account():
         )
         
         db.session.commit()
+        
+        # Send notification to admin if tutor was created
+        if user_type == 'tutor':
+            from src.notifications.service import NotificationService
+            NotificationService.notify_tutor_registered(email)
         
         return jsonify({
             'success': True,

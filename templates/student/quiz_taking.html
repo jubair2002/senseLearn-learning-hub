@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take Quiz - {{ quiz.title }} - SenseLearn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            overflow: hidden;
+        }
+        .quiz-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .quiz-content {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .timer-warning {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div class="quiz-container">
+        <!-- Quiz Header with Timer -->
+        <div class="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">{{ quiz.title }}</h1>
+                    {% if quiz.description %}
+                    <p class="text-sm text-slate-600 mt-1">{{ quiz.description }}</p>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-6">
+                    <div id="timer-display" class="text-right">
+                        <div class="text-sm text-slate-500">Time Remaining</div>
+                        <div id="timer" class="text-2xl font-bold text-slate-800">--:--</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-slate-500">Questions</div>
+                        <div id="question-counter" class="text-lg font-semibold text-slate-800">0 / 0</div>
+                    </div>
+                    <button onclick="confirmSubmit()" class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition font-medium">
+                        <i class="fas fa-check-circle mr-2"></i>Submit Quiz
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quiz Instructions (if any) -->
+        {% if quiz.instructions %}
+        <div class="bg-blue-50 border-b border-blue-200 px-6 py-3">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-info-circle text-blue-600 mt-1"></i>
+                <div class="flex-1">
+                    <p class="text-sm text-blue-800 font-medium">Instructions:</p>
+                    <p class="text-sm text-blue-700 mt-1">{{ quiz.instructions }}</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Quiz Content -->
+        <div class="quiz-content p-6">
+            <div class="max-w-4xl mx-auto">
+                <form id="quiz-form">
+                    <div id="questions-container" class="space-y-6">
+                        <!-- Questions will be loaded here -->
+                        <div class="text-center py-12">
+                            <i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i>
+                            <p class="text-slate-600">Loading quiz questions...</p>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Quiz Footer with Navigation -->
+        <div class="bg-white border-t border-slate-200 px-6 py-4 shadow-sm">
+            <div class="flex items-center justify-between max-w-4xl mx-auto">
+                <button onclick="previousQuestion()" id="prev-question-btn" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition hidden">
+                    <i class="fas fa-chevron-left mr-2"></i>Previous
+                </button>
+                <div class="flex-1"></div>
+                <button onclick="nextQuestion()" id="next-question-btn" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
+                    Next<i class="fas fa-chevron-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Submit Confirmation Modal -->
+    <div id="submit-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-slate-800 mb-4">Submit Quiz?</h3>
+                <p class="text-slate-600 mb-6">Are you sure you want to submit your quiz? You won't be able to change your answers after submission.</p>
+                <div class="flex gap-3">
+                    <button onclick="closeSubmitModal()" class="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition">
+                        Cancel
+                    </button>
+                    <button onclick="submitQuiz()" class="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
+                        Submit Quiz
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const attemptId = {{ attempt.id }};
+        const quizId = {{ quiz.id }};
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let answers = {};
+        let timerInterval = null;
+        let timeRemaining = null;
+        const timeLimitMinutes = {{ quiz.time_limit_minutes if quiz.time_limit_minutes else 'null' }};
+        
+        // Load quiz questions on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadQuizQuestions();
+            if (timeLimitMinutes) {
+                startTimer(timeLimitMinutes * 60);
+            }
+        });
+        
+        async function loadQuizQuestions() {
+            try {
+                const response = await fetch(`/quiz/api/attempts/${attemptId}/questions`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    questions = data.questions;
+                    answers = data.existing_answers || {};
+                    
+                    renderQuestions();
+                    updateQuestionCounter();
+                    updateNavigationButtons();
+                } else {
+                    alert(data.error || 'Failed to load quiz questions');
+                }
+            } catch (error) {
+                console.error('Error loading quiz questions:', error);
+                alert('Error loading quiz questions. Please try again.');
+            }
+        }
+        
+        function renderQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+            
+            questions.forEach((question, index) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = `question-item ${index === currentQuestionIndex ? '' : 'hidden'}`;
+                questionDiv.id = `question-${question.id}`;
+                
+                let questionHtml = `
+                    <div class="bg-white rounded-lg border-2 border-slate-200 p-6">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <span class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded text-sm font-medium">
+                                        Question ${index + 1}
+                                    </span>
+                                    <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm font-medium">
+                                        ${question.points} points
+                                    </span>
+                                    <span class="px-3 py-1 bg-slate-100 text-slate-700 rounded text-sm font-medium">
+                                        ${question.question_type.replace('_', ' ')}
+                                    </span>
+                                </div>
+                                <h3 class="text-lg font-bold text-slate-800 mb-4">${escapeHtml(question.question_text)}</h3>
+                `;
+                
+                if (question.question_type === 'multiple_choice') {
+                    questionHtml += '<div class="space-y-3">';
+                    question.options.forEach((option, optIndex) => {
+                        const isChecked = answers[question.id] && answers[question.id].option_id === option.id;
+                        questionHtml += `
+                            <label class="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 transition ${isChecked ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'}">
+                                <input type="radio" name="question_${question.id}" value="${option.id}" 
+                                       onchange="saveAnswer(${question.id}, null, ${option.id})"
+                                       ${isChecked ? 'checked' : ''}
+                                       class="mt-1">
+                                <span class="flex-1 text-slate-800">${escapeHtml(option.option_text)}</span>
+                            </label>
+                        `;
+                    });
+                    questionHtml += '</div>';
+                } else if (question.question_type === 'short_answer') {
+                    const answerText = answers[question.id] ? answers[question.id].answer_text : '';
+                    questionHtml += `
+                        <textarea name="question_${question.id}" 
+                                  onchange="saveAnswer(${question.id}, this.value, null)"
+                                  onblur="saveAnswer(${question.id}, this.value, null)"
+                                  class="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                  rows="4"
+                                  placeholder="Type your answer here...">${escapeHtml(answerText)}</textarea>
+                    `;
+                } else if (question.question_type === 'true_false') {
+                    const answerText = answers[question.id] ? answers[question.id].answer_text : '';
+                    questionHtml += `
+                        <div class="space-y-3">
+                            <label class="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 transition ${answerText === 'true' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'}">
+                                <input type="radio" name="question_${question.id}" value="true" 
+                                       onchange="saveAnswer(${question.id}, 'true', null)"
+                                       ${answerText === 'true' ? 'checked' : ''}>
+                                <span class="text-slate-800 font-medium">True</span>
+                            </label>
+                            <label class="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 transition ${answerText === 'false' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'}">
+                                <input type="radio" name="question_${question.id}" value="false" 
+                                       onchange="saveAnswer(${question.id}, 'false', null)"
+                                       ${answerText === 'false' ? 'checked' : ''}>
+                                <span class="text-slate-800 font-medium">False</span>
+                            </label>
+                        </div>
+                    `;
+                }
+                
+                questionHtml += `
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                questionDiv.innerHTML = questionHtml;
+                container.appendChild(questionDiv);
+            });
+        }
+        
+        function updateQuestionCounter() {
+            document.getElementById('question-counter').textContent = `${currentQuestionIndex + 1} / ${questions.length}`;
+        }
+        
+        function updateNavigationButtons() {
+            const prevBtn = document.getElementById('prev-question-btn');
+            const nextBtn = document.getElementById('next-question-btn');
+            
+            if (currentQuestionIndex === 0) {
+                prevBtn.classList.add('hidden');
+            } else {
+                prevBtn.classList.remove('hidden');
+            }
+            
+            if (currentQuestionIndex === questions.length - 1) {
+                nextBtn.textContent = 'Review';
+                nextBtn.onclick = showReviewModal;
+            } else {
+                nextBtn.textContent = 'Next';
+                nextBtn.onclick = nextQuestion;
+            }
+        }
+        
+        function showQuestion(index) {
+            // Hide all questions
+            document.querySelectorAll('.question-item').forEach(item => {
+                item.classList.add('hidden');
+            });
+            
+            // Show current question
+            const currentQuestion = document.getElementById(`question-${questions[index].id}`);
+            if (currentQuestion) {
+                currentQuestion.classList.remove('hidden');
+            }
+            
+            currentQuestionIndex = index;
+            updateQuestionCounter();
+            updateNavigationButtons();
+        }
+        
+        function nextQuestion() {
+            if (currentQuestionIndex < questions.length - 1) {
+                showQuestion(currentQuestionIndex + 1);
+            }
+        }
+        
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                showQuestion(currentQuestionIndex - 1);
+            }
+        }
+        
+        async function saveAnswer(questionId, answerText, optionId) {
+            try {
+                const response = await fetch(`/quiz/api/attempts/${attemptId}/answer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question_id: questionId,
+                        answer_text: answerText,
+                        option_id: optionId
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    // Update local answers object
+                    if (optionId) {
+                        answers[questionId] = { option_id: optionId };
+                    } else {
+                        answers[questionId] = { answer_text: answerText };
+                    }
+                }
+            } catch (error) {
+                console.error('Error saving answer:', error);
+            }
+        }
+        
+        function startTimer(seconds) {
+            timeRemaining = seconds;
+            updateTimerDisplay();
+            
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    alert('Time is up! Your quiz will be submitted automatically.');
+                    submitQuiz();
+                } else if (timeRemaining <= 60) {
+                    // Warning when less than 1 minute remaining
+                    const timerEl = document.getElementById('timer');
+                    timerEl.classList.add('timer-warning', 'text-red-600');
+                }
+            }, 1000);
+        }
+        
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            document.getElementById('timer').textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+        
+        function confirmSubmit() {
+            document.getElementById('submit-modal').classList.remove('hidden');
+        }
+        
+        function closeSubmitModal() {
+            document.getElementById('submit-modal').classList.add('hidden');
+        }
+        
+        async function submitQuiz() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+            
+            try {
+                const response = await fetch(`/quiz/api/attempts/${attemptId}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Redirect to results page
+                    // Quiz submitted successfully - redirect to courses
+                    window.location.href = '/student/dashboard/courses';
+                } else {
+                    alert(data.error || 'Failed to submit quiz');
+                }
+            } catch (error) {
+                console.error('Error submitting quiz:', error);
+                alert('Error submitting quiz. Please try again.');
+            }
+        }
+        
+        function showReviewModal() {
+            // Show review of all questions before submission
+            confirmSubmit();
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Prevent accidental page refresh
+        window.addEventListener('beforeunload', function(e) {
+            if (timerInterval) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>
+

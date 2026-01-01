@@ -32,12 +32,15 @@
                                 </div>
                                 <i class="fas fa-chevron-down text-xs text-slate-400 module-chevron transition-transform duration-200" id="chevron-{{ module.id }}"></i>
                             </div>
-                            <span class="ml-2 text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full whitespace-nowrap">{{ module.file_count }}</span>
+                            <span class="ml-2 text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full whitespace-nowrap">
+                                {{ module.file_count }} files{% if module.quiz_count > 0 %}, {{ module.quiz_count }} quiz{{ 'es' if module.quiz_count > 1 else '' }}{% endif %}
+                            </span>
                         </div>
                     </div>
                     
-                    <!-- Module Files (Collapsible) -->
+                    <!-- Module Files and Quizzes (Collapsible) -->
                     <div class="module-files ml-2 mt-2 space-y-2 hidden" id="files-{{ module.id }}">
+                        <!-- Files Section -->
                         {% if module.files and module.files|length > 0 %}
                             {% for file in module.files %}
                             <div class="file-item p-3 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md transition-all duration-200 cursor-pointer group file-link" 
@@ -74,9 +77,56 @@
                                 </div>
                             </div>
                             {% endfor %}
-                        {% else %}
+                        {% endif %}
+                        
+                        <!-- Quizzes Section -->
+                        {% if module.quizzes and module.quizzes|length > 0 %}
+                            {% for quiz in module.quizzes %}
+                            <div class="quiz-item p-3 rounded-lg border border-blue-200 bg-white hover:bg-blue-50 hover:border-blue-300 hover:shadow-md transition-all duration-200 group">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-10 h-10 bg-blue-100 group-hover:bg-blue-200 rounded-lg flex items-center justify-center transition">
+                                        <i class="fas fa-clipboard-list text-blue-600 text-lg"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-semibold text-slate-800 group-hover:text-blue-800 truncate mb-1">{{ quiz.title }}</p>
+                                        {% if quiz.description %}
+                                        <p class="text-xs text-slate-600 mb-2 line-clamp-2">{{ quiz.description }}</p>
+                                        {% endif %}
+                                        <div class="flex items-center gap-3 text-xs text-slate-500 mb-2">
+                                            <span><i class="fas fa-question-circle mr-1"></i>{{ quiz.question_count }} questions</span>
+                                            <span><i class="fas fa-star mr-1"></i>{{ quiz.total_points }} points</span>
+                                            {% if quiz.time_limit_minutes %}
+                                            <span><i class="fas fa-clock mr-1"></i>{{ quiz.time_limit_minutes }} min</span>
+                                            {% endif %}
+                                        </div>
+                                        {% if quiz.latest_score is not none %}
+                                        <div class="mb-2">
+                                            <span class="text-xs font-semibold {% if quiz.latest_score >= (quiz.passing_score or 0) %}text-green-600{% else %}text-red-600{% endif %}">
+                                                Latest: {{ "%.1f"|format(quiz.latest_score) }}%
+                                            </span>
+                                        </div>
+                                        {% endif %}
+                                        <div class="flex gap-2 mt-2">
+                                            {% if quiz.can_take %}
+                                            <button onclick="startQuiz({{ quiz.id }})" class="flex-1 px-3 py-1.5 bg-emerald-600 text-white rounded text-xs font-medium hover:bg-emerald-700 transition">
+                                                <i class="fas fa-play mr-1"></i>Start Quiz
+                                            </button>
+                                            {% else %}
+                                            <button disabled class="flex-1 px-3 py-1.5 bg-slate-300 text-slate-600 rounded text-xs font-medium cursor-not-allowed">
+                                                <i class="fas fa-lock mr-1"></i>Max Attempts
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <!-- Empty State -->
+                        {% if (not module.files or module.files|length == 0) and (not module.quizzes or module.quizzes|length == 0) %}
                             <div class="p-3 text-xs text-slate-400 italic bg-slate-50 rounded-lg border border-slate-200">
-                                <i class="fas fa-inbox mr-2"></i>No files in this module yet
+                                <i class="fas fa-inbox mr-2"></i>No content in this module yet
                             </div>
                         {% endif %}
                     </div>
@@ -576,6 +626,51 @@
             }
         }, 300);
     })();
+    
+    // Quiz functions
+    window.startQuiz = async function(quizId) {
+        try {
+            const response = await fetch(`/quiz/api/quizzes/${quizId}/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Load quiz taking interface
+                loadQuizInterface(data.attempt.id);
+            } else {
+                alert(data.error || 'Failed to start quiz');
+            }
+        } catch (error) {
+            console.error('Error starting quiz:', error);
+            alert('Error starting quiz. Please try again.');
+        }
+    };
+    
+    async function loadQuizInterface(attemptId) {
+        try {
+            const response = await fetch(`/quiz/api/attempts/${attemptId}/questions`);
+            const data = await response.json();
+            
+            if (data.success) {
+                // Redirect to quiz taking page
+                window.location.href = `/student/quiz/${attemptId}`;
+            } else {
+                alert(data.error || 'Failed to load quiz');
+            }
+        } catch (error) {
+            console.error('Error loading quiz:', error);
+            alert('Error loading quiz. Please try again.');
+        }
+    }
+    
+    function showQuizTakingInterface(quizData, attemptId) {
+        // This will be implemented in a separate quiz-taking template
+        // For now, redirect to a dedicated quiz page
+        window.location.href = `/student/quiz/${attemptId}`;
+    }
 </script>
 
 <style>

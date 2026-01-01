@@ -4,6 +4,7 @@ from src import db
 from src.student import student_bp
 from src.auth.models import Course, CourseStudent, CourseRequest, course_tutors, User, CourseModule, ModuleFile, StudentFileProgress
 from src.common.file_utils import get_file_url
+from src.quiz.models import Quiz, QuizAttempt
 
 @student_bp.route('/dashboard')
 @student_bp.route('/dashboard/<section>')
@@ -23,6 +24,30 @@ def dashboard(section=None):
         section = 'dashboard'
     
     return render_template('student/dashboard.html', user=current_user, default_section=section)
+
+
+@student_bp.route('/quiz/<int:attempt_id>')
+@login_required
+def take_quiz(attempt_id):
+    """Student quiz taking page."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
+        flash('This page is only for students.', 'error')
+        return redirect(url_for('index'))
+    
+    attempt = QuizAttempt.query.get_or_404(attempt_id)
+    
+    # Verify the attempt belongs to the current student
+    if attempt.student_id != current_user.id:
+        flash('Unauthorized access to quiz.', 'error')
+        return redirect(url_for('student.dashboard'))
+    
+    # Verify attempt is not completed
+    if attempt.is_completed:
+        flash('This quiz attempt is already completed.', 'info')
+        return redirect(url_for('student.dashboard', section='courses'))
+    
+    return render_template('student/quiz_taking.html', attempt=attempt, quiz=attempt.quiz, user=current_user)
+
 
 @student_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
@@ -337,6 +362,10 @@ def request_to_join_course(course_id):
                     status='pending'
                 )
                 db.session.add(request_obj)
+                
+                # Send notification to tutor
+                from src.notifications.service import NotificationService
+                NotificationService.notify_course_request(current_user.id, course.name, assignment.tutor_id)
         
         db.session.commit()
         
@@ -496,6 +525,21 @@ def get_course_view(course_id):
         
         # Get modules for this course
         modules = CourseModule.query.filter_by(course_id=course_id).order_by(CourseModule.order_index, CourseModule.created_at).all()
+        
+        # Get all quizzes for this course (to distribute to modules)
+        all_quizzes = Quiz.query.filter_by(
+            course_id=course_id,
+            is_active=True
+        ).order_by(Quiz.order_index, Quiz.created_at).all()
+        
+        # Create a dictionary to map module_id to quizzes
+        quizzes_by_module = {}
+        for quiz in all_quizzes:
+            module_id = quiz.module_id if quiz.module_id else 0  # Use 0 for quizzes without module
+            if module_id not in quizzes_by_module:
+                quizzes_by_module[module_id] = []
+            quizzes_by_module[module_id].append(quiz)
+        
         modules_data = []
         for module in modules:
             # Get files for this module
@@ -513,6 +557,53 @@ def get_course_view(course_id):
                     'url': get_file_url(file_obj.file_path)
                 })
             
+            # Get quizzes for this module
+            module_quizzes = quizzes_by_module.get(module.id, [])
+            quizzes_data = []
+            for quiz in module_quizzes:
+                # Check student attempts
+                attempts = QuizAttempt.query.filter_by(
+                    quiz_id=quiz.id,
+                    student_id=current_user.id
+                ).all()
+                
+                completed_attempts = [a for a in attempts if a.is_completed]
+                total_attempts = len(attempts)
+                completed_count = len(completed_attempts)
+                
+                # Check if student can take the quiz - use current max_attempts (allows resubmission if limit increased)
+                can_take = True
+                if quiz.max_attempts and completed_count >= quiz.max_attempts:
+                    can_take = False
+                
+                # Get latest attempt score (only latest counts)
+                latest_score = None
+                if completed_attempts:
+                    # Get the most recent completed attempt (sorted by submitted_at desc)
+                    latest_attempt = max(completed_attempts, key=lambda a: a.submitted_at if a.submitted_at else a.started_at)
+                    if latest_attempt and latest_attempt.score is not None:
+                        try:
+                            latest_score = float(latest_attempt.score)
+                        except (ValueError, TypeError):
+                            latest_score = None
+                
+                quiz_data = {
+                    'id': quiz.id,
+                    'title': quiz.title,
+                    'description': quiz.description,
+                    'module_id': quiz.module_id,
+                    'time_limit_minutes': quiz.time_limit_minutes,
+                    'passing_score': float(quiz.passing_score) if quiz.passing_score else None,
+                    'max_attempts': quiz.max_attempts,
+                    'question_count': quiz.get_question_count(),
+                    'total_points': float(quiz.get_total_points()),
+                    'can_take': can_take,
+                    'attempts_count': total_attempts,
+                    'completed_attempts': completed_count,
+                    'latest_score': latest_score,  # Only latest attempt counts
+                }
+                quizzes_data.append(quiz_data)
+            
             modules_data.append({
                 'id': module.id,
                 'name': module.name,
@@ -520,7 +611,9 @@ def get_course_view(course_id):
                 'order_index': module.order_index,
                 'created_at': module.created_at.isoformat() if module.created_at else None,
                 'files': files_data,
-                'file_count': len(files_data)
+                'file_count': len(files_data),
+                'quizzes': quizzes_data,
+                'quiz_count': len(quizzes_data)
             })
         
         # Render course view template
