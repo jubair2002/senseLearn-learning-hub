@@ -99,10 +99,10 @@
                                             <span><i class="fas fa-clock mr-1"></i>{{ quiz.time_limit_minutes }} min</span>
                                             {% endif %}
                                         </div>
-                                        {% if quiz.best_score is not none %}
+                                        {% if quiz.latest_score is not none %}
                                         <div class="mb-2">
-                                            <span class="text-xs font-semibold {% if quiz.best_score >= (quiz.passing_score or 0) %}text-green-600{% else %}text-red-600{% endif %}">
-                                                Best: {{ "%.1f"|format(quiz.best_score) }}%
+                                            <span class="text-xs font-semibold {% if quiz.latest_score >= (quiz.passing_score or 0) %}text-green-600{% else %}text-red-600{% endif %}">
+                                                Latest: {{ "%.1f"|format(quiz.latest_score) }}%
                                             </span>
                                         </div>
                                         {% endif %}
@@ -114,11 +114,6 @@
                                             {% else %}
                                             <button disabled class="flex-1 px-3 py-1.5 bg-slate-300 text-slate-600 rounded text-xs font-medium cursor-not-allowed">
                                                 <i class="fas fa-lock mr-1"></i>Max Attempts
-                                            </button>
-                                            {% endif %}
-                                            {% if quiz.completed_attempts > 0 %}
-                                            <button onclick="viewQuizResults({{ quiz.id }})" class="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 transition">
-                                                <i class="fas fa-chart-line mr-1"></i>Results
                                             </button>
                                             {% endif %}
                                         </div>
@@ -651,46 +646,6 @@
         } catch (error) {
             console.error('Error starting quiz:', error);
             alert('Error starting quiz. Please try again.');
-        }
-    };
-    
-    window.viewQuizResults = async function(quizId) {
-        try {
-            // Get all attempts for this quiz
-            const response = await fetch(`/quiz/api/quizzes/${quizId}/attempts`);
-            
-            let data;
-            try {
-                data = await response.json();
-            } catch (jsonError) {
-                console.error('Failed to parse JSON response:', jsonError);
-                const text = await response.text();
-                console.error('Response text:', text);
-                throw new Error(`Server error (${response.status}): ${text.substring(0, 100)}`);
-            }
-            
-            if (!response.ok) {
-                const errorMsg = data.error || data.message || `HTTP error! status: ${response.status}`;
-                console.error('Server error:', errorMsg);
-                alert(`Error: ${errorMsg}`);
-                return;
-            }
-            
-            if (data.success && data.attempts && data.attempts.length > 0) {
-                // Find the most recent completed attempt
-                const completedAttempts = data.attempts.filter(a => a.is_completed);
-                if (completedAttempts.length > 0) {
-                    // Redirect to results page for the most recent attempt (first one is already sorted by submitted_at desc)
-                    window.location.href = `/student/quiz/${completedAttempts[0].id}/results`;
-                } else {
-                    alert('No completed attempts found for this quiz. Please complete a quiz attempt first.');
-                }
-            } else {
-                alert('No quiz attempts found. Please start and complete a quiz first.');
-            }
-        } catch (error) {
-            console.error('Error loading quiz results:', error);
-            alert(`Error loading quiz results: ${error.message || 'Please try again.'}`);
         }
     };
     

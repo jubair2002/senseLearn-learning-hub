@@ -43,33 +43,10 @@ def take_quiz(attempt_id):
     
     # Verify attempt is not completed
     if attempt.is_completed:
-        flash('This quiz attempt is already completed. Viewing results.', 'info')
-        return redirect(url_for('student.quiz_results', attempt_id=attempt_id))
+        flash('This quiz attempt is already completed.', 'info')
+        return redirect(url_for('student.dashboard', section='courses'))
     
     return render_template('student/quiz_taking.html', attempt=attempt, quiz=attempt.quiz, user=current_user)
-
-
-@student_bp.route('/quiz/<int:attempt_id>/results')
-@login_required
-def quiz_results(attempt_id):
-    """Student quiz results page."""
-    if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
-        flash('This page is only for students.', 'error')
-        return redirect(url_for('index'))
-    
-    attempt = QuizAttempt.query.get_or_404(attempt_id)
-    
-    # Verify the attempt belongs to the current student
-    if attempt.student_id != current_user.id:
-        flash('Unauthorized access to quiz results.', 'error')
-        return redirect(url_for('student.dashboard'))
-    
-    # Verify attempt is completed
-    if not attempt.is_completed:
-        flash('This quiz attempt is not yet completed.', 'info')
-        return redirect(url_for('student.take_quiz', attempt_id=attempt_id))
-    
-    return render_template('student/quiz_results.html', attempt=attempt, quiz=attempt.quiz, user=current_user)
 
 
 @student_bp.route('/profile', methods=['GET', 'POST'])
@@ -590,26 +567,21 @@ def get_course_view(course_id):
                 total_attempts = len(attempts)
                 completed_count = len(completed_attempts)
                 
-                # Check if student can take the quiz
+                # Check if student can take the quiz - use current max_attempts (allows resubmission if limit increased)
                 can_take = True
                 if quiz.max_attempts and completed_count >= quiz.max_attempts:
                     can_take = False
                 
-                # Get best score - fix the error by checking if list is not empty
-                best_score = None
+                # Get latest attempt score (only latest counts)
+                latest_score = None
                 if completed_attempts:
-                    # Safely extract scores, filtering out None values and handling conversion errors
-                    scores = []
-                    for a in completed_attempts:
-                        if a.score is not None:
-                            try:
-                                score_float = float(a.score)
-                                scores.append(score_float)
-                            except (ValueError, TypeError):
-                                # Skip invalid scores
-                                continue
-                    if scores:
-                        best_score = max(scores)
+                    # Get the most recent completed attempt (sorted by submitted_at desc)
+                    latest_attempt = max(completed_attempts, key=lambda a: a.submitted_at if a.submitted_at else a.started_at)
+                    if latest_attempt and latest_attempt.score is not None:
+                        try:
+                            latest_score = float(latest_attempt.score)
+                        except (ValueError, TypeError):
+                            latest_score = None
                 
                 quiz_data = {
                     'id': quiz.id,
@@ -624,7 +596,7 @@ def get_course_view(course_id):
                     'can_take': can_take,
                     'attempts_count': total_attempts,
                     'completed_attempts': completed_count,
-                    'best_score': best_score,
+                    'latest_score': latest_score,  # Only latest attempt counts
                 }
                 quizzes_data.append(quiz_data)
             

@@ -5,7 +5,6 @@ Students can:
 - View quizzes available in their enrolled courses
 - Start quiz attempts
 - Submit quiz answers
-- View their quiz results and attempts
 """
 from flask import jsonify, request, current_app
 from flask_login import login_required, current_user
@@ -60,15 +59,21 @@ def list_course_quizzes_student(course_id):
             total_attempts = len(attempts)
             completed_count = len(completed_attempts)
             
-            # Check if student can take the quiz
+            # Check if student can take the quiz - use current max_attempts (allows resubmission if limit increased)
             can_take = True
             if quiz.max_attempts and completed_count >= quiz.max_attempts:
                 can_take = False
             
-            # Get best score
-            best_score = None
+            # Get latest attempt score (only latest counts)
+            latest_score = None
             if completed_attempts:
-                best_score = max([float(a.score) for a in completed_attempts if a.score])
+                # Get the most recent completed attempt
+                latest_attempt = max(completed_attempts, key=lambda a: a.submitted_at if a.submitted_at else a.started_at)
+                if latest_attempt and latest_attempt.score is not None:
+                    try:
+                        latest_score = float(latest_attempt.score)
+                    except (ValueError, TypeError):
+                        latest_score = None
             
             quiz_data = {
                 'id': quiz.id,
@@ -84,7 +89,7 @@ def list_course_quizzes_student(course_id):
                 'can_take': can_take,
                 'attempts_count': total_attempts,
                 'completed_attempts': completed_count,
-                'best_score': best_score,
+                'latest_score': latest_score,  # Only latest attempt counts
                 'created_at': quiz.created_at.isoformat() if quiz.created_at else None,
             }
             quizzes_data.append(quiz_data)
@@ -127,7 +132,7 @@ def start_quiz_attempt(quiz_id):
         if not quiz.is_active:
             return jsonify({'success': False, 'error': 'This quiz is not available'}), 400
         
-        # Check attempt limit
+        # Check attempt limit - use current max_attempts value (allows resubmission if limit increased)
         if quiz.max_attempts:
             completed_attempts = QuizAttempt.query.filter_by(
                 quiz_id=quiz_id,
@@ -424,132 +429,41 @@ def submit_quiz_attempt(attempt_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-@quiz_bp.route('/api/attempts/<int:attempt_id>', methods=['GET'])
-@login_required
-def get_attempt_results(attempt_id):
-    """
-    Get results for a completed quiz attempt.
-    """
-    if not hasattr(current_user, 'user_type') or current_user.user_type != 'student':
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
-    
-    try:
-        attempt = QuizAttempt.query.get_or_404(attempt_id)
-        
-        # Verify the attempt belongs to the current student
-        if attempt.student_id != current_user.id:
-            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
-        
-        if not attempt.is_completed:
-            return jsonify({'success': False, 'error': 'This attempt is not yet completed'}), 400
-        
-        quiz = attempt.quiz
-        
-        # Get detailed results
-        answers_data = []
-        for answer in attempt.answers.all():
-            answer_data = {
-                'question_id': answer.question_id,
-                'question_text': answer.question.question_text,
-                'question_type': answer.question.question_type,
-                'question_points': float(answer.question.points),
-                'answer_text': answer.answer_text,
-                'option_id': answer.option_id,
-                'option_text': answer.option.option_text if answer.option else None,
-                'is_correct': answer.is_correct,
-                'points_earned': float(answer.points_earned) if answer.points_earned else 0,
-                'correct_answer': answer.question.get_correct_answer(),
-            }
-            
-            # Add options for multiple choice questions
-            if answer.question.question_type == 'multiple_choice':
-                answer_data['options'] = [
-                    {
-                        'id': opt.id,
-                        'option_text': opt.option_text,
-                        'is_correct': opt.is_correct,
-                        'order_index': opt.order_index
-                    }
-                    for opt in answer.question.options.order_by(QuestionOption.order_index).all()
-                ]
-            
-            answer_data['question'] = {
-                'points': float(answer.question.points),
-                'question_text': answer.question.question_text,
-                'question_type': answer.question.question_type
-            }
-            
-            answers_data.append(answer_data)
-        
-        return jsonify({
-            'success': True,
-            'attempt': {
-                'id': attempt.id,
-                'quiz_id': attempt.quiz_id,
-                'started_at': attempt.started_at.isoformat(),
-                'submitted_at': attempt.submitted_at.isoformat() if attempt.submitted_at else None,
-                'score': float(attempt.score) if attempt.score else 0,
-                'total_points': float(attempt.total_points) if attempt.total_points else 0,
-                'max_points': float(attempt.max_points) if attempt.max_points else 0,
-                'is_passing': attempt.is_passing(),
-            },
-            'quiz': {
-                'id': quiz.id,
-                'title': quiz.title,
-                'description': quiz.description,
-                'passing_score': float(quiz.passing_score) if quiz.passing_score else None,
-            },
-            'answers': answers_data
-        }), 200
-        
-    except Exception as e:
-        import traceback
-        print(f"Error in get_attempt_results: {str(e)}")
-        print(traceback.format_exc())
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
 @quiz_bp.route('/api/quizzes/<int:quiz_id>/attempts', methods=['GET'])
-@login_required
 def list_student_attempts(quiz_id):
     """
     List all attempts by the current user for a quiz.
-    Users can view their own attempts regardless of user_type.
+    Any logged-in user can view their own attempts.
     """
+    # Manual authentication check (more flexible than @login_required)
+    if not current_user.is_authenticated:
+        current_app.logger.warning(f"Unauthenticated access attempt to list_student_attempts: quiz_id={quiz_id}")
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+    
     try:
-        quiz = Quiz.query.get_or_404(quiz_id)
+        # Log entry point
+        current_app.logger.info(f"list_student_attempts called: quiz_id={quiz_id}, user_id={current_user.id}, user_authenticated={current_user.is_authenticated}")
+        
+        # Debug logging
+        current_app.logger.info(f"list_student_attempts: quiz_id={quiz_id}, user_id={current_user.id}, user_type={getattr(current_user, 'user_type', 'N/A')}")
+        
+        # Get quiz - use get() instead of get_or_404 to handle 404 ourselves
+        quiz = Quiz.query.get(quiz_id)
+        if not quiz:
+            current_app.logger.warning(f"Quiz not found: quiz_id={quiz_id}")
+            return jsonify({'success': False, 'error': 'Quiz not found'}), 404
         
         # Get all attempts by this user for this quiz
-        # We check student_id matches current_user.id, so only their own attempts are returned
         attempts = QuizAttempt.query.filter_by(
             quiz_id=quiz_id,
             student_id=current_user.id
         ).order_by(QuizAttempt.submitted_at.desc(), QuizAttempt.started_at.desc()).all()
         
-        # If user has attempts, allow access (they should be able to view their own attempts)
-        if len(attempts) == 0:
-            # No attempts yet, verify enrollment if user is a student
-            if hasattr(current_user, 'user_type') and current_user.user_type == 'student':
-                enrollment = CourseStudent.query.filter_by(
-                    course_id=quiz.course_id,
-                    student_id=current_user.id,
-                    status='enrolled'
-                ).first()
-                
-                if not enrollment:
-                    return jsonify({
-                        'success': False, 
-                        'error': 'Quiz not found or not enrolled in course'
-                    }), 403
-            else:
-                # Non-student users can't start new attempts
-                return jsonify({
-                    'success': False, 
-                    'error': 'No attempts found for this quiz'
-                }), 404
+        current_app.logger.debug(f"list_student_attempts: found {len(attempts)} attempts for user {current_user.id} in quiz {quiz_id}")
         
-        # Process attempts data
+        # Process attempts data - only latest completed attempt counts
         attempts_data = []
+        latest_completed = None
         for attempt in attempts:
             attempt_data = {
                 'id': attempt.id,
@@ -560,24 +474,32 @@ def list_student_attempts(quiz_id):
                 'total_points': float(attempt.total_points) if attempt.total_points else None,
                 'max_points': float(attempt.max_points) if attempt.max_points else None,
                 'is_passing': attempt.is_passing() if attempt.is_completed else None,
+                'is_latest': False,  # Will be set below
             }
+            
+            # Mark the latest completed attempt
+            if attempt.is_completed and latest_completed is None:
+                latest_completed = attempt.id
+                attempt_data['is_latest'] = True
+            
             attempts_data.append(attempt_data)
         
         return jsonify({
             'success': True,
             'quiz_id': quiz_id,
             'quiz_title': quiz.title,
-            'attempts': attempts_data
+            'max_attempts': quiz.max_attempts,
+            'attempts': attempts_data,
+            'latest_attempt_id': latest_completed
         }), 200
         
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
-        print(f"Error in list_student_attempts for quiz_id={quiz_id}, user_id={current_user.id}: {str(e)}")
-        print(error_trace)
+        current_app.logger.error(f"Error in list_student_attempts: {str(e)}")
+        current_app.logger.error(error_trace)
         return jsonify({
             'success': False, 
-            'error': f'Failed to load quiz attempts: {str(e)}',
-            'details': error_trace if current_app.debug else None
+            'error': f'Failed to load quiz attempts: {str(e)}'
         }), 500
 

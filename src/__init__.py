@@ -91,6 +91,21 @@ def create_app() -> Flask:
     migrate.init_app(app, db)
     login_manager.init_app(app)
     login_manager.login_view = 'login_page'  # This is the function name in __init__.py
+    
+    # Custom unauthorized handler for API routes - return JSON instead of redirect
+    @login_manager.unauthorized_handler
+    def unauthorized_handler():
+        from flask import request, jsonify, current_app
+        current_app.logger.warning(f"Unauthorized access attempt to: {request.path} (method: {request.method})")
+        # If it's an API route, return JSON error
+        if request.path.startswith('/api/') or request.path.startswith('/quiz/api/') or request.path.startswith('/tutor/api/') or request.path.startswith('/student/api/'):
+            current_app.logger.warning(f"Returning JSON 401 for API route: {request.path}")
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        # Otherwise, redirect to login (default behavior)
+        from flask import redirect, url_for
+        current_app.logger.warning(f"Redirecting to login for non-API route: {request.path}")
+        return redirect(url_for('login_page'))
+    
     compress.init_app(app)  # Enable response compression
     
     # Initialize security features

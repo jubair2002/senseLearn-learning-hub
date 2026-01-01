@@ -364,7 +364,8 @@
                 
                 if (data.success) {
                     // Redirect to results page
-                    window.location.href = `/student/quiz/${attemptId}/results`;
+                    // Quiz submitted successfully - redirect to courses
+                    window.location.href = '/student/dashboard/courses';
                 } else {
                     alert(data.error || 'Failed to submit quiz');
                 }
