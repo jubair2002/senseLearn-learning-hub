@@ -554,3 +554,85 @@ def get_students_progress(course_id):
         current_app.logger.exception(f"Error getting students progress for course {course_id}")
         return jsonify({'success': False, 'error': 'Failed to get progress'}), 500
 
+
+@tutor_bp.route('/api/progress/all', methods=['GET'])
+@login_required
+def get_all_progress():
+    """API endpoint to get progress summary for all courses assigned to the tutor."""
+    if not hasattr(current_user, 'user_type') or current_user.user_type != 'tutor':
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        # Get all courses assigned to this tutor
+        assignments = db.session.query(course_tutors).filter_by(
+            tutor_id=current_user.id
+        ).all()
+        
+        courses_data = []
+        for assignment in assignments:
+            course = Course.query.get(assignment.course_id)
+            if not course:
+                continue
+            
+            # Get all enrolled students
+            enrollments = CourseStudent.query.filter_by(
+                course_id=course.id,
+                status='enrolled'
+            ).all()
+            
+            # Get all files in the course
+            modules = CourseModule.query.filter_by(course_id=course.id).order_by(CourseModule.order_index).all()
+            total_files = 0
+            file_ids = []
+            
+            for module in modules:
+                files = ModuleFile.query.filter_by(module_id=module.id).all()
+                total_files += len(files)
+                file_ids.extend([f.id for f in files])
+            
+            # Get progress for all students
+            students_progress = []
+            for enrollment in enrollments:
+                student = enrollment.student
+                if not student:
+                    continue
+                
+                # Get viewed files for this student
+                viewed_progress = StudentFileProgress.query.filter(
+                    StudentFileProgress.student_id == student.id,
+                    StudentFileProgress.file_id.in_(file_ids)
+                ).all() if file_ids else []
+                
+                viewed_count = len(viewed_progress)
+                
+                # Calculate overall percentage
+                percentage = round((viewed_count / total_files * 100) if total_files > 0 else 0, 2)
+                
+                students_progress.append({
+                    'student_id': student.id,
+                    'student_name': student.full_name,
+                    'student_email': student.email,
+                    'total_files': total_files,
+                    'viewed_files': viewed_count,
+                    'percentage': percentage
+                })
+            
+            courses_data.append({
+                'course_id': course.id,
+                'course_name': course.name,
+                'course_description': course.description,
+                'total_students': len(students_progress),
+                'total_files': total_files,
+                'students': students_progress
+            })
+        
+        return jsonify({
+            'success': True,
+            'courses': courses_data
+        }), 200
+        
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.exception(f"Error getting all progress")
+        return jsonify({'success': False, 'error': 'Failed to get progress'}), 500
+
