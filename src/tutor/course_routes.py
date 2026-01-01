@@ -374,14 +374,25 @@ def delete_module_file(module_id, file_id):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 403
     
     try:
+        from flask import current_app
+        current_app.logger.info(f"Attempting to delete file {file_id} from module {module_id} by tutor {current_user.id}")
+        
         # Get module file
         module_file = ModuleFile.query.get(file_id)
-        if not module_file or module_file.module_id != module_id:
-            return jsonify({'success': False, 'error': 'File not found'}), 404
+        if not module_file:
+            current_app.logger.warning(f"ModuleFile {file_id} not found in database")
+            return jsonify({'success': False, 'error': 'File not found in database'}), 404
+        
+        if module_file.module_id != module_id:
+            current_app.logger.warning(f"ModuleFile {file_id} belongs to module {module_file.module_id}, not {module_id}")
+            return jsonify({'success': False, 'error': 'File not found in this module'}), 404
+        
+        current_app.logger.info(f"Found file: {module_file.file_name}, path: {module_file.file_path}")
         
         # Get module and verify tutor is assigned to the course
         module = CourseModule.query.get(module_id)
         if not module:
+            current_app.logger.warning(f"Module {module_id} not found")
             return jsonify({'success': False, 'error': 'Module not found'}), 404
         
         # Verify tutor is assigned to this course
@@ -391,22 +402,54 @@ def delete_module_file(module_id, file_id):
         ).first()
         
         if not assignment:
+            current_app.logger.warning(f"Tutor {current_user.id} not assigned to course {module.course_id}")
             return jsonify({'success': False, 'error': 'Unauthorized'}), 403
         
+        # Delete related StudentFileProgress records first (to avoid foreign key constraint issues)
+        # Use raw SQL to avoid SQLAlchemy session tracking issues
+        current_app.logger.info(f"Deleting related student progress records for file {file_id}")
+        progress_count = StudentFileProgress.query.filter_by(file_id=file_id).count()
+        if progress_count > 0:
+            current_app.logger.info(f"Found {progress_count} progress records to delete")
+            # Use raw SQL delete to completely bypass SQLAlchemy ORM tracking
+            from sqlalchemy import text
+            db.session.execute(
+                text("DELETE FROM student_file_progress WHERE file_id = :file_id"),
+                {"file_id": file_id}
+            )
+            # Commit the progress deletion separately to ensure it's done before ModuleFile deletion
+            db.session.commit()
+            current_app.logger.info(f"Committed deletion of {progress_count} progress records")
+        
         # Delete file from filesystem
-        delete_file(module_file.file_path)
+        current_app.logger.info(f"Attempting to delete file from filesystem: {module_file.file_path}")
+        file_deleted = delete_file(module_file.file_path)
+        
+        if not file_deleted:
+            # Log warning but continue - file might not exist on filesystem
+            current_app.logger.warning(f"File not found on filesystem: {module_file.file_path}, but continuing with database deletion")
         
         # Delete from database
+        current_app.logger.info(f"Deleting file record from database")
         db.session.delete(module_file)
         db.session.commit()
         
+        current_app.logger.info(f"Successfully deleted file {file_id}")
         return jsonify({'success': True, 'message': 'File deleted successfully'}), 200
         
     except Exception as e:
         db.session.rollback()
         from flask import current_app
-        current_app.logger.exception(f"Error deleting file {file_id} from module {module_id}")
-        return jsonify({'success': False, 'error': 'Failed to delete file'}), 500
+        import traceback
+        error_msg = str(e)
+        error_trace = traceback.format_exc()
+        current_app.logger.error(f"Error deleting file {file_id} from module {module_id}: {error_msg}")
+        current_app.logger.error(f"Traceback: {error_trace}")
+        # Return more detailed error in debug mode
+        if current_app.debug:
+            return jsonify({'success': False, 'error': f'Failed to delete file: {error_msg}', 'traceback': error_trace}), 500
+        else:
+            return jsonify({'success': False, 'error': f'Failed to delete file: {error_msg}'}), 500
 
 
 @tutor_bp.route('/api/modules/<int:module_id>/files', methods=['GET'])

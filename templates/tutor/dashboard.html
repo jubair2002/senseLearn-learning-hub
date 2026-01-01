@@ -3157,20 +3157,49 @@
             }
             
             try {
+                console.log('Deleting file:', { moduleId, fileId, courseId });
                 const response = await fetch(`/tutor/api/modules/${moduleId}/files/${fileId}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
                 
-                const result = await response.json();
+                console.log('Delete response status:', response.status);
+                
+                let result;
+                try {
+                    result = await response.json();
+                } catch (jsonError) {
+                    const text = await response.text();
+                    console.error('Failed to parse JSON response:', text);
+                    alert('Error: Server returned invalid response. Status: ' + response.status);
+                    return;
+                }
+                
+                console.log('Delete result:', result);
                 
                 if (result.success) {
                     alert('File deleted successfully!');
-                    loadModuleFiles(courseId, moduleId);
-                    loadCourseView(courseId); // Reload to update file counts
+                    // Reload module files to update the list
+                    if (typeof loadModuleFiles === 'function') {
+                        loadModuleFiles(courseId, moduleId);
+                    }
+                    // Reload course view to update file counts
+                    if (typeof loadCourseView === 'function') {
+                        loadCourseView(courseId);
+                    }
                 } else {
-                    alert('Error: ' + result.error);
+                    // Show detailed error message
+                    let errorMsg = result.error || 'Failed to delete file';
+                    if (result.traceback) {
+                        console.error('Full error traceback:', result.traceback);
+                        errorMsg += '\n\nCheck console for details (F12)';
+                    }
+                    alert('Error: ' + errorMsg);
                 }
             } catch (error) {
+                console.error('Error deleting file:', error);
                 alert('Error: ' + error.message);
             }
         }

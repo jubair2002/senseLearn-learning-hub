@@ -103,13 +103,39 @@ def save_uploaded_file(file, tutor_id: int) -> tuple:
 def delete_file(file_path: str) -> bool:
     """Delete a file from the uploads directory."""
     try:
-        full_path = os.path.join(config.UPLOAD_DIR, file_path)
+        from flask import has_request_context
+        # Handle both relative and absolute paths
+        if os.path.isabs(file_path):
+            full_path = file_path
+        else:
+            full_path = os.path.join(config.UPLOAD_DIR, file_path)
+        
+        # Normalize path separators
+        full_path = os.path.normpath(full_path)
+        
+        # Only use current_app.logger if we're in a request context
+        if has_request_context():
+            from flask import current_app
+            current_app.logger.debug(f"Attempting to delete file: {full_path}")
+        
         if os.path.exists(full_path):
             os.remove(full_path)
+            if has_request_context():
+                from flask import current_app
+                current_app.logger.info(f"Successfully deleted file: {full_path}")
             return True
-        return False
+        else:
+            if has_request_context():
+                from flask import current_app
+                current_app.logger.warning(f"File not found for deletion: {full_path}")
+            return False
     except Exception as e:
-        current_app.logger.error(f"Error deleting file: {str(e)}")
+        from flask import has_request_context
+        if has_request_context():
+            from flask import current_app
+            current_app.logger.error(f"Error deleting file {file_path}: {str(e)}")
+        else:
+            print(f"Error deleting file {file_path}: {str(e)}")
         return False
 
 
