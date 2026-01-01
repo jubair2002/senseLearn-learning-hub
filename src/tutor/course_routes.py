@@ -580,15 +580,23 @@ def get_all_progress():
                 status='enrolled'
             ).all()
             
-            # Get all files in the course
+            # Get all files in the course with module info
             modules = CourseModule.query.filter_by(course_id=course.id).order_by(CourseModule.order_index).all()
             total_files = 0
             file_ids = []
+            modules_data = {}
             
+            # Include ALL modules, even if they have no files
             for module in modules:
                 files = ModuleFile.query.filter_by(module_id=module.id).all()
-                total_files += len(files)
+                file_count = len(files)
+                total_files += file_count
                 file_ids.extend([f.id for f in files])
+                modules_data[module.id] = {
+                    'name': module.name,
+                    'file_count': file_count,
+                    'file_ids': [f.id for f in files]
+                }
             
             # Get progress for all students
             students_progress = []
@@ -604,9 +612,32 @@ def get_all_progress():
                 ).all() if file_ids else []
                 
                 viewed_count = len(viewed_progress)
+                viewed_file_ids = {p.file_id for p in viewed_progress}
                 
                 # Calculate overall percentage
                 percentage = round((viewed_count / total_files * 100) if total_files > 0 else 0, 2)
+                
+                # Get progress per module - include ALL modules from the course
+                module_progress_list = []
+                # Use the modules list to ensure we include all modules, even if modules_data is somehow incomplete
+                for module in modules:
+                    module_info = modules_data.get(module.id, {
+                        'name': module.name,
+                        'file_count': 0,
+                        'file_ids': []
+                    })
+                    module_viewed = sum(1 for fid in module_info['file_ids'] if fid in viewed_file_ids)
+                    module_total = module_info['file_count']
+                    module_percentage = round((module_viewed / module_total * 100) if module_total > 0 else 0, 2)
+                    
+                    module_progress_list.append({
+                        'module_id': module.id,
+                        'module_name': module_info['name'],
+                        'total_files': module_total,
+                        'viewed_files': module_viewed,
+                        'percentage': module_percentage,
+                        'is_complete': module_total > 0 and module_viewed >= module_total
+                    })
                 
                 students_progress.append({
                     'student_id': student.id,
@@ -614,7 +645,8 @@ def get_all_progress():
                     'student_email': student.email,
                     'total_files': total_files,
                     'viewed_files': viewed_count,
-                    'percentage': percentage
+                    'percentage': percentage,
+                    'modules': module_progress_list
                 })
             
             courses_data.append({
@@ -623,8 +655,17 @@ def get_all_progress():
                 'course_description': course.description,
                 'total_students': len(students_progress),
                 'total_files': total_files,
+                'total_modules': len(modules_data),
                 'students': students_progress
             })
+        
+        # Debug logging
+        from flask import current_app
+        current_app.logger.debug(f"Progress API: Returning {len(courses_data)} courses")
+        for course_data in courses_data:
+            current_app.logger.debug(f"Course {course_data['course_id']}: {len(course_data['students'])} students, {course_data['total_modules']} modules")
+            for student in course_data['students']:
+                current_app.logger.debug(f"  Student {student['student_id']}: {len(student.get('modules', []))} modules")
         
         return jsonify({
             'success': True,
