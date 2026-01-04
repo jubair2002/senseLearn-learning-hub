@@ -16,7 +16,7 @@
 
 /* COLLAPSED STATE */
 .sidebar-collapsed .sidebar {
-    width: 5rem; /* w-20 */
+    width: 4rem; /* w-20 */
 }
 .sidebar-collapsed .main-content {
     margin-left: 5rem; /* ml-20 */
