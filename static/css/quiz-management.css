@@ -99,7 +99,7 @@
 
 /* Empty state */
 .quiz-empty-state {
-    @apply text-center py-12 text-slate-400;
+    @apply text-center py-13 text-slate-400;
 }
 
 .quiz-empty-state i {
