@@ -985,8 +985,8 @@
         // Load notifications on page load
         loadNotifications();
         
-        // Refresh notifications every 30 seconds
-        setInterval(loadNotifications, 30000);
+        // Refresh notifications every 40 seconds
+        setInterval(loadNotifications, 40000);
 
         // Load dashboard stats
         fetch('/student/api/stats')
@@ -1252,7 +1252,7 @@
             const allCoursesList = document.getElementById('all-courses-list');
             if (!allCoursesList) return;
             
-            allCoursesList.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading courses...</p></div>';
+            allCoursesList.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-slate-400 mb-4"></i><p class="text-slate-600">Loading courses</p></div>';
             
             // Build URL with search parameter
             let url = '/student/api/courses';
