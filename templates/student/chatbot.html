@@ -119,3 +119,52 @@
             <!-- Input Area -->
             <div class="bg-white border-t border-slate-200 p-4">
                 <div class="max-w-3xl mx-auto">
+
+
+                    <!-- File Upload Info -->
+                    <div id="upload-info" class="mb-2 text-sm text-slate-600 hidden">
+                        <i class="fas fa-file-upload mr-1"></i>
+                        <span id="upload-filename"></span>
+                        <button id="cancel-upload" class="ml-2 text-red-600 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <form id="message-form" class="flex gap-3">
+                        <div class="flex-1 flex gap-2">
+                            <label for="file-upload" class="px-4 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition cursor-pointer flex items-center">
+                                <i class="fas fa-paperclip mr-2"></i>
+                                <span class="hidden sm:inline">Upload</span>
+                                <input 
+                                    type="file" 
+                                    id="file-upload" 
+                                    accept=".pdf,.docx,.doc,.txt"
+                                    class="hidden"
+                                >
+                            </label>
+                            <input 
+                                type="text" 
+                                id="message-input" 
+                                placeholder="Type your message here or upload a document..." 
+                                class="flex-1 px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                autocomplete="off"
+                            >
+                        </div>
+                        <button 
+                            type="submit" 
+                            id="send-btn"
+                            class="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                    <p class="text-xs text-slate-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Supported formats: PDF, DOCX, DOC, TXT. Documents will be read aloud.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+    <script>
