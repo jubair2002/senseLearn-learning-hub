@@ -168,3 +168,22 @@
 
     <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
     <script>
+
+        // Verify chatbot loaded
+        window.addEventListener('load', function() {
+            if (typeof Chatbot === 'undefined') {
+                console.error('Chatbot class not found. Check if chatbot.js loaded correctly.');
+                document.getElementById('messages-container').innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-6 max-w-2xl mx-auto">
+                            <i class="fas fa-exclamation-triangle text-red-600 text-4xl mb-4"></i>
+                            <h3 class="text-lg font-semibold text-red-800 mb-2">Error Loading Chatbot</h3>
+                            <p class="text-red-700">The chatbot JavaScript failed to load. Please refresh the page.</p>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
