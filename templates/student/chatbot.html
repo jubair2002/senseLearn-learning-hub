@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot - SenseLearn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .chat-message {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .typing-indicator {
+            display: inline-flex;
+            gap: 4px;
+        }
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #6b7280;
+            animation: typing 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar for Conversations -->
+        <aside id="conversations-sidebar" class="w-80 bg-white border-r border-slate-200 flex flex-col">
+            <!-- Header -->
+            <div class="p-4 border-b border-slate-200">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-slate-800">Conversations</h2>
+                    <button id="new-conversation-btn" class="p-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div class="flex gap-2">
+                    <button id="show-active-btn" class="flex-1 px-3 py-1.5 text-sm rounded-lg bg-emerald-100 text-emerald-700 font-medium">
+                        Active
+                    </button>
+                    <button id="show-archived-btn" class="flex-1 px-3 py-1.5 text-sm rounded-lg text-slate-600 hover:bg-slate-100">
+                        Archived
+                    </button>
+                </div>
+            </div>
+
+            <!-- Conversations List -->
+            <div id="conversations-list" class="flex-1 overflow-y-auto p-2">
+                <!-- Conversations will be loaded here -->
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <div class="flex-1 flex flex-col">
+            <!-- Chat Header -->
+            <header class="bg-white border-b border-slate-200 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-800">Learning Assistant</h1>
+                        <p class="text-sm text-slate-500">Ask me anything about your courses and learning</p>
+                    </div>
+                    <a href="{{ url_for('student.dashboard') }}" class="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </header>
+
+            <!-- Messages Area -->
+            <div id="messages-container" class="flex-1 overflow-y-auto p-6 space-y-4">
+                <!-- Welcome Message -->
+                <div id="welcome-message" class="max-w-3xl mx-auto text-center py-12">
+                    <div class="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-robot text-3xl text-emerald-600"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">Welcome to Learning Assistant!</h2>
+                    <p class="text-slate-600 mb-6">I'm here to help you with your learning journey. Ask me about:</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
+                        <div class="p-4 bg-white rounded-lg border border-slate-200 hover:border-emerald-300 transition">
+                            <i class="fas fa-book text-emerald-600 mb-2"></i>
+                            <p class="font-medium text-slate-800">Your Courses</p>
+                        </div>
+                        <div class="p-4 bg-white rounded-lg border border-slate-200 hover:border-emerald-300 transition">
+                            <i class="fas fa-file-alt text-emerald-600 mb-2"></i>
+                            <p class="font-medium text-slate-800">Course Materials</p>
+                        </div>
+                        <div class="p-4 bg-white rounded-lg border border-slate-200 hover:border-emerald-300 transition">
+                            <i class="fas fa-chart-line text-emerald-600 mb-2"></i>
+                            <p class="font-medium text-slate-800">Your Progress</p>
+                        </div>
+                        <div class="p-4 bg-white rounded-lg border border-slate-200 hover:border-emerald-300 transition">
+                            <i class="fas fa-question-circle text-emerald-600 mb-2"></i>
+                            <p class="font-medium text-slate-800">Quizzes & Tests</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages will be loaded here -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="bg-white border-t border-slate-200 p-4">
+                <div class="max-w-3xl mx-auto">
+                    <!-- File Upload Info -->
+                    <div id="upload-info" class="mb-2 text-sm text-slate-600 hidden">
+                        <i class="fas fa-file-upload mr-1"></i>
+                        <span id="upload-filename"></span>
+                        <button id="cancel-upload" class="ml-2 text-red-600 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <form id="message-form" class="flex gap-3">
+                        <div class="flex-1 flex gap-2">
+                            <label for="file-upload" class="px-4 py-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition cursor-pointer flex items-center">
+                                <i class="fas fa-paperclip mr-2"></i>
+                                <span class="hidden sm:inline">Upload</span>
+                                <input 
+                                    type="file" 
+                                    id="file-upload" 
+                                    accept=".pdf,.docx,.doc,.txt"
+                                    class="hidden"
+                                >
+                            </label>
+                            <input 
+                                type="text" 
+                                id="message-input" 
+                                placeholder="Type your message here or upload a document..." 
+                                class="flex-1 px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                autocomplete="off"
+                            >
+                        </div>
+                        <button 
+                            type="submit" 
+                            id="send-btn"
+                            class="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                    <p class="text-xs text-slate-500 mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Supported formats: PDF, DOCX, DOC, TXT. Documents will be read aloud.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+    <script>
+        // Verify chatbot loaded
+        window.addEventListener('load', function() {
+            if (typeof Chatbot === 'undefined') {
+                console.error('Chatbot class not found. Check if chatbot.js loaded correctly.');
+                document.getElementById('messages-container').innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-6 max-w-2xl mx-auto">
+                            <i class="fas fa-exclamation-triangle text-red-600 text-4xl mb-4"></i>
+                            <h3 class="text-lg font-semibold text-red-800 mb-2">Error Loading Chatbot</h3>
+                            <p class="text-red-700">The chatbot JavaScript failed to load. Please refresh the page.</p>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
+

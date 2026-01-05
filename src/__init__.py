@@ -98,7 +98,7 @@ def create_app() -> Flask:
         from flask import request, jsonify, current_app
         current_app.logger.warning(f"Unauthorized access attempt to: {request.path} (method: {request.method})")
         # If it's an API route, return JSON error
-        if request.path.startswith('/api/') or request.path.startswith('/quiz/api/') or request.path.startswith('/tutor/api/') or request.path.startswith('/student/api/'):
+        if request.path.startswith('/api/') or request.path.startswith('/quiz/api/') or request.path.startswith('/tutor/api/') or request.path.startswith('/student/api/') or request.path.startswith('/student/chatbot/api/'):
             current_app.logger.warning(f"Returning JSON 401 for API route: {request.path}")
             return jsonify({'success': False, 'error': 'Authentication required'}), 401
         # Otherwise, redirect to login (default behavior)
@@ -423,6 +423,10 @@ def create_app() -> Flask:
     # Register student blueprint
     from src.student import student_bp
     app.register_blueprint(student_bp)
+    
+    # Register chatbot blueprint
+    from src.chatbot import chatbot_bp
+    app.register_blueprint(chatbot_bp)
 
     # Custom error handler for API routes to return JSON instead of HTML
     @app.errorhandler(404)
@@ -437,7 +441,7 @@ def create_app() -> Flask:
         except:
             pass
         # Return JSON for API routes
-        if path.startswith('/api/') or path.startswith('/tutor/api/') or path.startswith('/student/api/') or path.startswith('/admin/api/'):
+        if path.startswith('/api/') or path.startswith('/tutor/api/') or path.startswith('/student/api/') or path.startswith('/admin/api/') or path.startswith('/student/chatbot/api/'):
             return jsonify({
                 'success': False, 
                 'error': f'Route not found: {method} {path}',
@@ -458,7 +462,7 @@ def create_app() -> Flask:
             current_app.logger.warning(f"405 error: {method} {path}")
         except:
             pass
-        if path.startswith('/tutor/api/') or path.startswith('/student/api/') or path.startswith('/admin/api/'):
+        if path.startswith('/tutor/api/') or path.startswith('/student/api/') or path.startswith('/admin/api/') or path.startswith('/student/chatbot/api/'):
             return jsonify({
                 'success': False, 
                 'error': f'Method not allowed: {method} {path}',
@@ -484,10 +488,31 @@ def create_app() -> Flask:
     register_notification_routes(app, admin_bp, tutor_bp, student_bp)
 
     # Create tables if they do not exist
+    # Note: Chatbot tables are created via migration (run: flask db upgrade)
     with app.app_context():
         from src.auth.models import User, PasswordResetCode, Notification
         # Import quiz models so they're registered with SQLAlchemy
         from src.quiz.models import Quiz, Question, QuestionOption, QuizAttempt, Answer
-        db.create_all()
+        # Import chatbot models so they're registered with SQLAlchemy
+        # Chatbot tables should be created via migration, not db.create_all()
+        from src.chatbot.models import ChatConversation, ChatMessage, ChatbotDocument
+        
+        # Create tables
+        # Note: If you get foreign key errors for chatbot tables,
+        # run the migration first: flask db upgrade
+        try:
+            db.create_all()
+        except Exception as e:
+            # If it's a foreign key error for chatbot tables, that's expected
+            # Chatbot tables should be created via migration
+            error_str = str(e)
+            if 'chat_conversations' in error_str and ('Foreign key constraint' in error_str or 'errno: 150' in error_str):
+                # This is expected - chatbot tables need to be created via migration
+                # The app will still work, just run: flask db upgrade
+                import logging
+                logging.warning("Chatbot tables need to be created via migration. Run: flask db upgrade")
+            else:
+                # Re-raise other errors
+                raise
 
     return app
