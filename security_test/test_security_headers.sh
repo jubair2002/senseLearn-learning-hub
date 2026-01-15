@@ -19,22 +19,20 @@ echo "Security Headers Found:"
 echo ""
 
 # Check for various security headers
-headers=(
-    "Content-Security-Policy"
-    "X-Content-Type-Options"
-    "X-Frame-Options"
-    "X-XSS-Protection"
-    "Referrer-Policy"
-    "Permissions-Policy"
-    "Strict-Transport-Security"
-)
+headers="
+Content-Security-Policy
+X-Content-Type-Options
+X-Frame-Options
+X-XSS-Protection
+Referrer-Policy
+Permissions-Policy
+Strict-Transport-Security
+"
 
-found_count=0
-for header in "${headers[@]}"; do
+for header in $headers; do
     value=$(echo "$response" | grep -i "$header" | cut -d: -f2- | sed 's/^[ \t]*//')
     if [ -n "$value" ]; then
         echo "  ✅ $header: $value"
-        found_count=$((found_count + 1))
     else
         echo "  ❌ $header: Not found"
     fi
