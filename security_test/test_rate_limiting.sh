@@ -1,68 +1,67 @@
 #!/bin/bash
 # Test script for rate limiting functionality
 
-echo "============================================================"
-echo "Rate Limiting Test"
-echo "============================================================"
-echo "Testing: POST /api/auth/login"
-echo "Expected: 5 requests per 60 seconds"
-echo "============================================================"
-echo ""
+set -eu
 
 BASE_URL="${1:-http://localhost:5000}"
 LOGIN_URL="$BASE_URL/api/auth/login"
 
-echo "Making 6 requests quickly..."
+REQUESTS=6
+EXPECTED_LIMIT=5
+
+echo "============================================================"
+echo "Rate Limiting Test"
+echo "============================================================"
+echo "Endpoint: POST /api/auth/login"
+echo "Expected limit: $EXPECTED_LIMIT requests"
+echo "============================================================"
 echo ""
 
-for i in {1..6}; do
+rate_limited=false
+
+for i in $(seq 1 "$REQUESTS"); do
     echo "Request $i:"
+
     response=$(curl -s -w "\nHTTP_CODE:%{http_code}\nTIME:%{time_total}" \
         -X POST "$LOGIN_URL" \
         -H "Content-Type: application/json" \
         -d '{"email":"test@example.com","password":"wrongpassword"}' \
-        -D headers_$i.txt 2>/dev/null)
-    
-    http_code=$(echo "$response" | grep "HTTP_CODE" | cut -d: -f2)
-    time_total=$(echo "$response" | grep "TIME" | cut -d: -f2)
-    
-    # Extract rate limit headers
-    rate_limit=$(grep -i "X-RateLimit-Limit" headers_$i.txt 2>/dev/null | cut -d: -f2 | tr -d ' \r\n' || echo "N/A")
-    rate_remaining=$(grep -i "X-RateLimit-Remaining" headers_$i.txt 2>/dev/null | cut -d: -f2 | tr -d ' \r\n' || echo "N/A")
-    rate_reset=$(grep -i "X-RateLimit-Reset" headers_$i.txt 2>/dev/null | cut -d: -f2 | tr -d ' \r\n' || echo "N/A")
-    
-    # Extract response message
-    response_body=$(echo "$response" | grep -v "HTTP_CODE" | grep -v "TIME" | head -n -2)
-    
+        -D "headers_$i.txt")
+
+    http_code=$(echo "$response" | grep HTTP_CODE | cut -d: -f2)
+    time_total=$(echo "$response" | grep TIME | cut -d: -f2)
+
+    rate_limit=$(grep -i X-RateLimit-Limit headers_$i.txt | cut -d: -f2 | tr -d ' \r\n' || echo "N/A")
+    rate_remaining=$(grep -i X-RateLimit-Remaining headers_$i.txt | cut -d: -f2 | tr -d ' \r\n' || echo "N/A")
+    rate_reset=$(grep -i X-RateLimit-Reset headers_$i.txt | cut -d: -f2 | tr -d ' \r\n' || echo "N/A")
+
     if [ "$http_code" = "429" ]; then
-        echo "  🚫 Status: $http_code (Rate Limited!)"
-        echo "  ⏰ Time: ${time_total}s"
-        echo "  📊 Rate Limit Headers:"
-        echo "     X-RateLimit-Limit: $rate_limit"
-        echo "     X-RateLimit-Remaining: $rate_remaining"
-        echo "     X-RateLimit-Reset: $rate_reset"
-        echo "  📝 Response: $response_body"
+        rate_limited=true
+        echo "  Status: 429 (Rate limited)"
     else
-        echo "  ✅ Status: $http_code"
-        echo "  ⏰ Time: ${time_total}s"
-        echo "  📊 Rate Limit Headers:"
-        echo "     X-RateLimit-Limit: $rate_limit"
-        echo "     X-RateLimit-Remaining: $rate_remaining"
-        echo "     X-RateLimit-Reset: $rate_reset"
+        echo "  Status: $http_code"
     fi
+
+    echo "  Response time: ${time_total}s"
+    echo "  Rate limit headers:"
+    echo "    Limit: ${rate_limit:-N/A}"
+    echo "    Remaining: ${rate_remaining:-N/A}"
+    echo "    Reset: ${rate_reset:-N/A}"
     echo ""
-    
+
     sleep 0.1
 done
 
-# Cleanup
 rm -f headers_*.txt
 
 echo "============================================================"
 echo "Test Summary"
 echo "============================================================"
-echo "Expected: Request 6 should return 429 (Rate Limited)"
-echo ""
-echo "If you see 429 on request 6, rate limiting is working! ✅"
-echo "============================================================"
 
+if $rate_limited; then
+    echo "Rate limiting is working (HTTP 429 detected)"
+    exit 0
+else
+    echo "Rate limiting not detected"
+    exit 1
+fi
