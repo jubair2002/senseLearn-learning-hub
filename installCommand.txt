@@ -15,3 +15,5 @@ VALUES ('admin@example.com', '<hashed_password>', 'Admin Name', 'admin', 1);
 
 mkdir D:\uploads   (for windows user)
 mkdir /tmp/senselearn (for linux/unix) can be any directory
+
+pytest -v --html=report.html --self-contained-html
